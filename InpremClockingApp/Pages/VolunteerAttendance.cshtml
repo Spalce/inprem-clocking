@@ -1,0 +1,147 @@
+@page
+@model VolunteerAttendance
+@using Microsoft.AspNetCore.Authorization;
+@attribute [Authorize]
+@{
+    Layout = "Shared/_MainLayout";
+    ViewData["Title"] = "Volunteer Clocking";
+}
+
+
+<link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+
+<div class="content-wrapper">
+  <div class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h1 class="m-0">Volunteer Clocking</h1>
+        </div>
+        <div class="col-sm-6">
+          <ol class="breadcrumb float-sm-right">
+            <li class="breadcrumb-item"><a href="#">Home</a></li>
+            <li class="breadcrumb-item active">Volunteer Clocking</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="content">
+      <div class="container-fluid">
+          <p class="text-danger">If you need your hours verified please send an email to inpremcc@gmail.com. Provide your full name,
+              email used for registration and dates</p>
+          <div class="row">
+              <div class="col-md-6">
+                  <div class="card card-primary card-outline">
+                      <div class="card-header">
+                          <h5 class="m-0">New Volunteer</h5>
+                      </div>
+                      <div class="card-body">
+                          @if (TempData["Message"] != null)
+                          {
+                              <div class="alert alert-success">@TempData["Message"]</div>
+                          }
+
+                          <form id="registerForm" method="post" class="form-row">
+                              <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                              <div class="col-md-6">
+                                  <div class="form-floating">
+                                      <label asp-for="Input!.FirstName" class="small"></label>
+                                      <input asp-for="Input!.FirstName" class="form-control form-control-sm" autocomplete="first name" aria-required="true"/>
+                                      <span asp-validation-for="Input!.FirstName" class="text-danger small"></span>
+                                  </div>
+                              </div>
+                              <div class="col-md-6">
+                                  <div class="form-floating">
+                                      <label asp-for="Input!.LastName" class="small"></label>
+                                      <input asp-for="Input!.LastName" class="form-control form-control-sm" autocomplete="user name" aria-required="true"/>
+                                      <span asp-validation-for="Input!.LastName" class="text-danger small"></span>
+                                  </div>
+                              </div>
+                              <div class="col-md-6">
+                                  <div class="form-floating">
+                                      <label asp-for="Input!.EmailAddress" class="small"></label>
+                                      <input asp-for="Input!.EmailAddress" class="form-control form-control-sm" autocomplete="email" aria-required="true"/>
+                                      <span asp-validation-for="Input!.EmailAddress" class="text-danger small"></span>
+                                  </div>
+                              </div>
+                              <div class="col-md-6">
+                                  <div class="form-floating">
+                                      <label asp-for="Input!.ZipCode" class="small"></label>
+                                      <input asp-for="Input!.ZipCode" class="form-control form-control-sm" autocomplete="zip code" aria-required="true"/>
+                                      <span asp-validation-for="Input!.ZipCode" class="text-danger small"></span>
+                                  </div>
+                              </div>
+                              <div class="col-md-6">
+                                  <div class="form-floating">
+                                      <label asp-for="Input!.PhoneNumber" class="small"></label>
+                                      <input asp-for="Input!.PhoneNumber" class="form-control form-control-sm" autocomplete="phone number" aria-required="true"/>
+                                      <span asp-validation-for="Input!.PhoneNumber" class="text-danger small"></span>
+                                  </div>
+                              </div>
+                              <div class="col-md-6">
+                                  <div class="form-floating">
+                                      <label asp-for="Input!.Gender" class="small"></label>
+                                      <select asp-for="Input!.Gender" class="form-control form-control-sm" placeholder="Gender">
+                                          <option value=''>Gender</option>
+                                          <option value='M'>Male</option>
+                                          <option value='F'>Female</option>
+                                      </select>
+                                      <span asp-validation-for="Input!.Gender" class="text-danger small"></span>
+                                  </div>
+                              </div>
+                              <div class="col-md-12" style="margin-top: 20px;">
+                                  <button id="registerSubmit" type="submit" class="w-100 btn btn-sm btn-primary">Register</button>
+                              </div>
+                          </form>
+                      </div>
+                  </div>
+              </div>
+              <div class="col-md-6">
+                  <div class="card card-danger card-outline">
+                      <div class="card-header">
+                          <h5 class="m-0">Existing Volunteer</h5>
+                      </div>
+                      <div class="card-body">
+                          <form method="post">
+                              <fieldset class="form-group">
+                                  <div class="input-group col-xs-12">
+                                        <input type="text" class="form-control" id="volunteerSearch" name="volunteerSearch" placeholder="Search Volunteer">
+                                      @*<span class="input-group-append">
+                                    <button type="submit" class="btn btn-success submit-btn btn-block">Search</button>
+                                </span>*@
+                                  </div>
+                              </fieldset>
+                          </form>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+  </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
+<script>
+    $("#volunteerSearch").autocomplete({
+      source: '/api/search/volunteer',
+      autofocus: true,
+      minLength: 2,
+      select: function( event, ui ) {
+        // do something with the selected item
+        var selected = ui.item.value;
+        $.ajax({
+          url: '/api/search/volunteer-data/' + selected,
+          dataType: "json",
+          success: function( data ) {
+              window.location.assign('/volunteer-clockin/' + data.volunteerId);
+          }
+        });
+      },
+    });
+</script>
+

@@ -1,0 +1,166 @@
+@page
+@model Volunteer
+@using Microsoft.AspNetCore.Authorization;
+@attribute [Authorize]
+@{
+    ViewData["Title"] = "Volunteer List";
+}
+
+@{
+    List<object> commands = new List<object>();
+    commands.Add(new { type = "None", title = "Move", buttonOption = new { content = "Move To Staff", cssClass = "e-flat e-details" } }); // custom
+    // commands.Add(new { type = "Delete", title = "Delete", buttonOption = new { content = "Delete", cssClass = "e-flat e-deleted" } }); // custom
+}
+
+<div class="content-wrapper">
+<div class="content-header">
+  <div class="container-fluid">
+    <div class="row mb-2">
+      <div class="col-sm-6">
+        <h1 class="m-0">Volunteers List (Total: @Model.Volunteers!.Count())</h1>
+      </div>
+      <div class="col-sm-6">
+        <ol class="breadcrumb float-sm-right">
+          <li class="breadcrumb-item"><a href="#">Home</a></li>
+          <li class="breadcrumb-item active">Volunteers List</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="content">
+  <div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <ejs-grid id="Grid" dataSource="Model.Volunteers" allowPaging="true" allowSorting="true" allowGrouping="true"
+                      toolbar="@(new List<string> { "Add", "Edit", "Delete", "Search", "PdfExport", "ExcelExport" })"
+                      actionComplete="actionComplete" actionBegin="actionBegin" allowPdfExport="true" allowExcelExport="true"
+                      commandClick="commandClick" toolbarClick="toolbarClick"
+                      contextMenuItems="@(new List<object> { "AutoFit", "AutoFitAll", "SortAscending", "SortDescending","Copy", "Edit", "Delete", "Save", "Cancel","PdfExport", "ExcelExport", "CsvExport", "FirstPage", "PrevPage","LastPage", "NextPage"})"
+                      >
+                <e-grid-editSettings allowAdding="true" allowDeleting="true" allowEditing="true" mode="Dialog" showDeleteConfirmDialog="true"></e-grid-editSettings>
+                <e-grid-pagesettings pageCount="5" pageSize="20" pageSizes="true"></e-grid-pagesettings>
+                <e-grid-columns>
+                    <e-grid-column field="StaffId" headerText="ID" textAlign="Right" isIdentity="true" isPrimaryKey="true" visible="false"></e-grid-column>
+                    <e-grid-column field="FirstName" validationRules="@(new { required = true })" headerText="First Name" width="120"></e-grid-column>
+                    <e-grid-column field="LastName" validationRules="@(new { required = true })" headerText="Last Name" width="150"></e-grid-column>
+                    <e-grid-column field="EmailAddress" validationRules="@(new { required = true })" headerText="Email" width="150"></e-grid-column>
+                    <e-grid-column field="Gender" validationRules="@(new { required = true })" headerText="Gender" width="80"></e-grid-column>
+                    <e-grid-column field="PhoneNumber" headerText="Phone Number" width="150"></e-grid-column>
+                    <e-grid-column field="ZipCode" validationRules="@(new { required = true })" headerText="Zip Code" width="130"></e-grid-column>
+                    <e-grid-column headerText="Actions" width="120" commands=commands></e-grid-column>
+                </e-grid-columns>
+            </ejs-grid>
+        </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+
+    /*ej.base.L10n.load({
+        'en-US': {
+            'grid': {
+                'SaveButton': 'Save',
+                'CancelButton': 'Discard'
+            }
+        }
+    });*/
+
+    function actionBegin(args) {
+        if (args.requestType === 'save') {
+            if (args.rowData['StaffId']) {
+                $.ajax({
+                   type: "PUT",
+                   url: "https://localhost:7094/api/volunteers/" + args.rowData['StaffId'],
+                   data: JSON.stringify(args.data),
+                   contentType: "application/json; charset=utf-8",
+                   dataType: "json",
+                   processData: true,
+                   success: function (data, status, jqXHR) {
+                       // alert("success..." + data);
+                   },
+                   error: function (xhr) {
+                       // alert(xhr.responseText);
+                   }
+               });
+            } else {
+                args.data['Type'] = 'Staff';
+                $.ajax({
+                   type: "POST",
+                   url: "https://localhost:7094/api/volunteers/",
+                   data: JSON.stringify(args.data),
+                   contentType: "application/json; charset=utf-8",
+                   dataType: "json",
+                   processData: true,
+                   success: function (data, status, jqXHR) {
+                       // alert("success..." + data);
+                   },
+                   error: function (xhr) {
+                       // alert(xhr.responseText);
+                   }
+               });
+            }
+        }
+
+        if (args.requestType === 'delete') {
+            console.log(args.data);
+            $.ajax({
+               type: "DELETE",
+               url: "https://localhost:7094/api/volunteers/" + args.data['VolunteerId'],
+               data: JSON.stringify(args.data),
+               contentType: "application/json; charset=utf-8",
+               dataType: "json",
+               processData: true,
+               success: function (data, status, jqXHR) {
+                   // alert("success..." + data);
+               },
+               error: function (xhr) {
+                   // alert(xhr.responseText);
+               }
+           });
+        }
+    }
+
+    function actionComplete(args) {
+        if (args.requestType === 'beginEdit' || args.requestType === 'add') {
+            var dialog = args.dialog;
+            dialog.showCloseIcon = false;
+            // dialog.height = 400;
+            // change the header of the dialog
+            dialog.header = args.requestType === 'beginEdit' ? 'Edit Record of ' + args.rowData['FirstName'] : 'New Staff';
+        }
+    }
+
+    function commandClick(args) {
+        if (args.target.title === 'Move') {
+            console.log(JSON.stringify(args.rowData));
+            $.ajax({
+               type: "POST",
+               url: "?handler=Move",
+               data: JSON.stringify(args.rowData),
+               contentType: "application/json; charset=utf-8",
+               dataType: "json",
+               processData: true,
+               success: function (data, status, jqXHR) {
+                   // alert("success...");
+               },
+               error: function (xhr) {
+                   document.location.reload(true);
+               }
+           });
+        }
+    }
+
+    function toolbarClick(args) {
+        var gridObj = document.getElementById("Grid").ej2_instances[0];
+        if (args.item.id === 'Grid_pdfexport') {
+            gridObj.pdfExport();
+        }
+        if (args.item.id === 'Grid_excelexport') {
+            gridObj.excelExport();
+        }
+    }
+
+</script>

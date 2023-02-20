@@ -1,0 +1,136 @@
+@page "/volunteer-clockin/{id:int}"
+@model VolunteerClockPage
+@using Microsoft.AspNetCore.Authorization;
+@attribute [Authorize]
+
+@{
+  Layout = "Shared/_MainLayout";
+  ViewData["Title"] = "Volunteer Clocking Controls";
+  var id = ViewData["id"];
+}
+
+<div class="content-wrapper">
+  <div class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h1 class="m-0">Volunteer Clocking System</h1>
+        </div>
+        <div class="col-sm-6">
+          <ol class="breadcrumb float-sm-right">
+            <li class="breadcrumb-item"><a href="#">Home</a></li>
+            <li class="breadcrumb-item active">Clocking System</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="container-fluid">
+      <div class="auth-container d-flex align-items-center">
+          <div class="col-lg-4 mx-auto">
+              <div class="auth-form">
+                  <div class="text-block text-center my-3">
+                      <span class="text-small font-weight-500">Please clock in</span>
+                  </div>
+                  <div class="text-block text-center my-3">
+                      <span id="current-date" class="text-small font-weight-500">@DateTime.Now.Date.ToString("dd-MM-yyyy")</span>
+                  </div>
+                  <div class="text-block text-center my-3">
+                      <span id="current-time" class="text-small font-weight-500">@DateTime.Now.ToString("hh:mm:ss")</span>
+                  </div>
+                  <div class="form-group">
+                      <a class="btn btn-success submit-btn btn-block" id="clockin">ClockIn</a>
+                  </div>
+                  <div class="form-group">
+                      <a class="btn btn-primary submit-btn btn-block" id="leavein">Leave for Break</a>
+                  </div>
+                  <div class="form-group">
+                      <a class="btn btn-warning submit-btn btn-block" id="leaveout">Return from Break</a>
+                  </div>
+                  <div class="form-group">
+                      <a class="btn btn-danger submit-btn btn-block" id="clockout">Clock Out</a>
+                  </div>
+              </div>
+          </div>
+       </div>
+    </div>
+  </div>
+</div>
+
+<script >
+
+    $("#clockin").click(function(){
+        $.ajax({
+            url: "/api/controls/volunteer-clockin/" + @id,
+            type: "GET",
+            success: function(response) {
+                showToast(response, 5000, 'success');
+                // window.location.assign('/VolunteerAttendance');
+                // make ajax call to get the logout setting
+                $.ajax({
+                    url: "/api/controls/get-logout",
+                    type: "GET",
+                    success: function(response) {
+                        if (response === true) {
+                            window.location.assign('/Identity/Account/Logout');
+                        }
+                        else
+                        {
+                            window.location.assign('/VolunteerAttendance');
+                        }
+                    },
+                    error: function (xhr) {
+                       // showToast('Oops! An error occured. Try again', 5000, 'danger');
+                    }
+                });
+            },
+            error: function (xhr) {
+               showToast('Oops! An error occured. Try again', 5000, 'danger');
+            }
+        });
+    });
+
+    $("#leavein").click(function() {
+        $.ajax({
+            url: "/api/controls/volunteer-leavein/" + @id,
+            type: "GET",
+            success: function(response) {
+                showToast(response, 5000, 'success');
+                window.location.assign('/VolunteerAttendance');
+            },
+            error: function (xhr) {
+               showToast('Oops! An error occured. Try again', 5000, 'danger');
+            }
+        });
+    });
+
+    $("#leaveout").click(function() {
+        $.ajax({
+            url: "/api/controls/volunteer-leaveout/" + @id,
+            type: "GET",
+            success: function(response) {
+                showToast(response, 5000, 'success');
+                window.location.assign('/VolunteerAttendance');
+            },
+            error: function (xhr) {
+               showToast('Oops! An error occured. Try again', 5000, 'danger');
+            }
+        });
+    });
+
+    $("#clockout").click(function() {
+        $.ajax({
+            url: "/api/controls/volunteer-clockout/" + @id,
+            type: "GET",
+            success: function(response) {
+                showToast(response, 5000, 'success');
+                window.location.assign('/VolunteerAttendance');
+            },
+            error: function (xhr) {
+               showToast('Oops! An error occured. Try again', 5000, 'danger');
+            }
+        });
+    });
+
+</script>

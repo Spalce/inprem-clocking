@@ -1,0 +1,238 @@
+@page
+@using Newtonsoft.Json
+@model VolunteerClocking
+@using Microsoft.AspNetCore.Authorization;
+@attribute [Authorize]
+@{
+    ViewData["Title"] = "Staff Clocking";
+}
+
+@{
+    List<object> commands = new List<object>();
+    // commands.Add(new { type = "None", title = "Details", buttonOption = new { content = "Details", cssClass = "e-flat e-details" } }); // custom
+    commands.Add(new { type = "None", title = "ClockOut", buttonOption = new { content = "Clock Out", cssClass = "e-flat e-deleted" } }); // custom
+    commands.Add(new { type = "None", title = "BreakStart", buttonOption = new { content = "Break Start", cssClass = "e-flat e-deleted" } }); // custom
+    commands.Add(new { type = "None", title = "BreakEnd", buttonOption = new { content = "Break End", cssClass = "e-flat e-deleted" } }); // custom
+}
+
+<div class="content-wrapper">
+<div class="content-header">
+  <div class="container-fluid">
+    <div class="row mb-2">
+      <div class="col-sm-6">
+        <h1 class="m-0">Voulnteers Clocking</h1>
+      </div>
+      <div class="col-sm-6">
+        <ol class="breadcrumb float-sm-right">
+          <li class="breadcrumb-item"><a href="#">Home</a></li>
+          <li class="breadcrumb-item active">Volunteers Clocking</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="content">
+  <div class="container-fluid">
+      <div class="row">
+          <div class="col-md-12" style="margin-bottom: 30px;">
+                <div class="card card-primary card-outline">
+                  <div class="card-header">
+                    <h5 class="m-0">Manual Clocking Here</h5>
+                  </div>
+                  <div class="card-body">
+                    <form asp-page="VolunteerClocking" method="post">
+                          <div class="row">
+                              <div class="col-md-6">
+                                  <ejs-combobox id="cboEjsOne" ejs-for="Model.ClockingVolunteer!.VoluntId" required
+                                                dataSource="Model.Model.Volunteer" showClearButton="true"
+                                                placeholder="Select a Volunteer" allowFiltering="true" filtering="onfiltering">
+                                      <e-combobox-fields value="VolunteerId" text="FullName"></e-combobox-fields>
+                                  </ejs-combobox>
+                              </div>
+                              <div class="col-md-2">
+                                  <ejs-timepicker id="tpEjsOne" required ejs-for="Model.ClockingVolunteer!.ClockInTime" enableMask="true" format="HH:mm"></ejs-timepicker>
+                              </div>
+                              <div class="col-md-2">
+                                  <ejs-timepicker id="tpEjsTwo" required ejs-for="Model.ClockingVolunteer!.ClockOutTime" enableMask="true" format="HH:mm"></ejs-timepicker>
+                              </div>
+                              <div class="col-md-2">
+                                  <ejs-button id="btnEjsOne" type="submit" cssClass="e-flat" content="Clock In"></ejs-button>
+                              </div>
+                          </div>
+                    </form>
+                  </div>
+                </div>
+            </div>
+          <div class="col-md-12">
+              <ejs-grid id="Grid" dataSource="Model.Model!.Clocking" allowPaging="true" allowSorting="true" allowGrouping="true"
+                        toolbar="@(new List<string> { "Add", "Edit", "Delete", "Search", "PdfExport", "ExcelExport" })"
+                        actionComplete="actionComplete" actionBegin="actionBegin" allowPdfExport="true" allowExcelExport="true"
+                        commandClick="commandClick" toolbarClick="toolbarClick"
+                        contextMenuItems="@(new List<object> { "AutoFit", "AutoFitAll", "SortAscending", "SortDescending", "Copy", "Edit", "Delete", "Save", "Cancel", "PdfExport", "ExcelExport", "CsvExport", "FirstPage", "PrevPage", "LastPage", "NextPage" })">
+                  <e-grid-editSettings allowAdding="true" allowDeleting="true" allowEditing="true" mode="Dialog" showDeleteConfirmDialog="true"></e-grid-editSettings>
+                  <e-grid-pagesettings pageCount="5" pageSize="20" pageSizes="true"></e-grid-pagesettings>
+                  <e-grid-columns>
+                      <e-grid-column field="ClockingStaffId" headerText="ID" textAlign="Right" isIdentity="true" isPrimaryKey="true" visible="false"></e-grid-column>
+                      <e-grid-column field="FullName" headerText="Full Name" width="150"></e-grid-column>
+                      <e-grid-column field="ClockInTime" headerText="Clock In" format="HH:mm" width="120"></e-grid-column>
+                      <e-grid-column field="ClockOutTime" headerText="Clock Out" format="HH:mm" width="130"></e-grid-column>
+                      <e-grid-column field="LeaveOnBreakTime" headerText="Break Start" format="HH:mm" width="130"></e-grid-column>
+                      <e-grid-column field="ReturnOnBreakTime" headerText="Break End" format="HH:mm" width="130"></e-grid-column>
+                      @*<e-grid-column headerText="Actions" commands=commands></e-grid-column>*@
+                  </e-grid-columns>
+              </ejs-grid>
+          </div>
+      </div>
+  </div>
+</div>
+</div>
+
+<script>
+
+    /*ej.base.L10n.load({
+        'en-US': {
+            'grid': {
+                'SaveButton': 'Save',
+                'CancelButton': 'Discard'
+            }
+        }
+    });*/
+
+    function actionBegin(args) {
+        if (args.requestType === 'save') {
+            if (args.rowData['StaffId']) {
+                $.ajax({
+                   type: "PUT",
+                   url: "https://localhost:7094/api/staffs/" + args.rowData['StaffId'],
+                   data: JSON.stringify(args.data),
+                   contentType: "application/json; charset=utf-8",
+                   dataType: "json",
+                   processData: true,
+                   success: function (data, status, jqXHR) {
+                       // alert("success..." + data);
+                   },
+                   error: function (xhr) {
+                       // alert(xhr.responseText);
+                   }
+               });
+            } else {
+                args.data['Type'] = 'Staff';
+                $.ajax({
+                   type: "POST",
+                   url: "https://localhost:7094/api/staffs/",
+                   data: JSON.stringify(args.data),
+                   contentType: "application/json; charset=utf-8",
+                   dataType: "json",
+                   processData: true,
+                   success: function (data, status, jqXHR) {
+                       // alert("success..." + data);
+                   },
+                   error: function (xhr) {
+                       // alert(xhr.responseText);
+                   }
+               });
+            }
+        }
+
+        if (args.requestType === 'delete') {
+            $.ajax({
+               type: "DELETE",
+               url: "https://localhost:7094/api/staffs/" + args.rowData['StaffId'],
+               data: JSON.stringify(args.data),
+               contentType: "application/json; charset=utf-8",
+               dataType: "json",
+               processData: true,
+               success: function (data, status, jqXHR) {
+                   // alert("success..." + data);
+               },
+               error: function (xhr) {
+                   // alert(xhr.responseText);
+               }
+           });
+        }
+    }
+
+    function actionComplete(args) {
+        if (args.requestType === 'beginEdit' || args.requestType === 'add') {
+            var dialog = args.dialog;
+            dialog.showCloseIcon = false;
+            // dialog.height = 400;
+            // change the header of the dialog
+            dialog.header = args.requestType === 'beginEdit' ? 'Edit Record of ' + args.rowData['FirstName'] : 'New Staff';
+        }
+    }
+
+    async function commandClick(args) {
+        if (args.target.title === 'Details') {
+            alert(JSON.stringify(args.rowData));  // display row data
+        }
+
+        if (args.target.title === 'ClockOut') {
+            $.ajax({
+                type: 'POST',
+                url: "?handler=ClockOut",
+                data: JSON.stringify(args.rowData),
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+               success: function (data, status, jqXHR) {
+                  //alert("success...");
+              },
+              error: function (xhr) {
+                  //alert("Not good " + xhr.responseText);
+                  document.location.reload(true);
+              }
+            });
+        }
+
+        if (args.target.title === 'BreakStart') {
+            $.ajax({
+                type: 'POST',
+                url: "?handler=BreakStart",
+                data: JSON.stringify(args.rowData),
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+               success: function (data, status, jqXHR) {
+                  //alert("success...");
+              },
+              error: function (xhr) {
+                  //alert("Not good " + xhr.responseText);
+                  document.location.reload(true);
+              }
+            });
+        }
+
+        if (args.target.title === 'BreakEnd') {
+            $.ajax({
+                type: 'POST',
+                url: "?handler=BreakEnd",
+                data: JSON.stringify(args.rowData),
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+               success: function (data, status, jqXHR) {
+                  //alert("success...");
+              },
+              error: function (xhr) {
+                  //alert("Not good " + xhr.responseText);
+                  document.location.reload(true);
+              }
+            });
+        }
+    }
+
+    function toolbarClick(args) {
+        var gridObj = document.getElementById("Grid").ej2_instances[0];
+        if (args.item.id === 'Grid_pdfexport') {
+            gridObj.pdfExport();
+        }
+        if (args.item.id === 'Grid_excelexport') {
+            gridObj.excelExport();
+        }
+    }
+
+    function onfiltering(e) {
+        var query = new ej.data.Query();
+        query = (e.text !== '') ? query.where('FullName', 'contains', e.text, true) : query;
+        e.updateData(@Html.Raw(JsonConvert.SerializeObject(Model.Model.Volunteer)), query);
+    }
+
+</script>

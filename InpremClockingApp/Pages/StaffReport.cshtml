@@ -1,0 +1,52 @@
+@page
+@model StaffReport
+@using Microsoft.AspNetCore.Authorization;
+@attribute [Authorize]
+@{
+    ViewData["Title"] = "Staff Report";
+}
+
+<link href="https://cdn.boldreports.com/4.2.52/content/material/bold.reports.all.min.css" rel="stylesheet" />
+
+<div class="content-wrapper">
+<div class="content-header">
+  <div class="container-fluid">
+    <div class="row mb-2">
+      <div class="col-sm-6">
+        <h1 class="m-0">Staff Report</h1>
+      </div>
+      <div class="col-sm-6">
+        <ol class="breadcrumb float-sm-right">
+          <li class="breadcrumb-item"><a href="#">Home</a></li>
+          <li class="breadcrumb-item active">Staff Report</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="content">
+  <div class="container-fluid">
+    <div class="row">
+      <div style="height: 100vh; width: 100%;">
+        <bold-report-viewer id="viewer" is-responsive="true"></bold-report-viewer>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script type="text/javascript">
+     $(function () {
+         $("#viewer").boldReportViewer({
+             reportServiceUrl: "/api/ReportViewer",
+             reportPath: 'StaffVolunteer.rdl',
+             parameters: [
+                { name: 'Url', labels: ['Url'], values: ['http://app.inpremclockin.org/api/reports/staff'] },
+                { name: 'Title', labels: ['Title'], values: ['Staff List'] },
+                { name: 'StartDate', labels: ['Start Date'], values: ['2022-01-01'] },
+                { name: 'EndDate', labels: ['End Date'], values: ['2022-12-31'] },
+                { name: 'Image', labels: ['Image'], values: ['http://app.inpremclockin.org/img/inprem.png'] },
+             ]
+         });
+     });
+</script>

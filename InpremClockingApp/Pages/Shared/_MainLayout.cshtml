@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>@ViewData["Title"] - Inprem Clockin App</title>
+
+  <!-- Google Font: Source Sans Pro -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="~/lib/fontawesome-free/css/all.min.css">
+  <!-- Theme style -->
+  <link rel="stylesheet" href="~/dist/css/adminlte.min.css">
+  <link rel="stylesheet" href="~/css/site.css" asp-append-version="true"/>
+  <link rel="stylesheet" href="~/ImpremClocking.styles.css" asp-append-version="true"/>
+  <link href="https://fonts.googleapis.com/css?family=Material+Icons%7CMaterial+Icons+Outlined%7CMaterial+Icons+Two+Tone%7CMaterial+Icons+Round%7CMaterial+Icons+Sharp" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.syncfusion.com/ej2/20.3.56/material.css" />
+  <script src="https://cdn.syncfusion.com/ej2/20.3.56/dist/ej2.min.js"></script>
+  <script src="~/lib/jquery/jquery.min.js"></script>
+
+  <script src="https://cdn.boldreports.com/external/jquery-1.10.2.min.js" type="text/javascript"></script>
+
+  <!--Render the gauge item. Add this script only if your report contains the gauge report item. -->
+  <script src="https://cdn.boldreports.com/4.2.52/scripts/common/ej2-base.min.js"></script>
+  <script src="https://cdn.boldreports.com/4.2.52/scripts/common/ej2-data.min.js"></script>
+  <script src="https://cdn.boldreports.com/4.2.52/scripts/common/ej2-pdf-export.min.js"></script>
+  <script src="https://cdn.boldreports.com/4.2.52/scripts/common/ej2-svg-base.min.js"></script>
+  <script src="https://cdn.boldreports.com/4.2.52/scripts/data-visualization/ej2-lineargauge.min.js"></script>
+  <script src="https://cdn.boldreports.com/4.2.52/scripts/data-visualization/ej2-circulargauge.min.js"></script>
+
+  <!--Render the map item. Add this script only if your report contains the map report item.-->
+  <script src="https://cdn.boldreports.com/4.2.52/scripts/data-visualization/ej2-maps.min.js"></script>
+
+  <script src="https://cdn.boldreports.com/4.2.52/scripts/common/bold.reports.common.min.js"></script>
+  <script src="https://cdn.boldreports.com/4.2.52/scripts/common/bold.reports.widgets.min.js"></script>
+
+  <!--Render the chart item. Add this script only if your report contains the chart report item.-->
+  <script src="https://cdn.boldreports.com/4.2.52/scripts/data-visualization/ej.chart.min.js"></script>
+
+  <!-- Report Viewer component script-->
+  <script src="https://cdn.boldreports.com/4.2.52/scripts/bold.report-viewer.min.js"></script>
+</head>
+<body class="hold-transition sidebar-mini">
+<div class="wrapper">
+
+  <partial name="_MainTopmenu"/>
+
+  <partial name="_MainSidebar"/>
+
+  @RenderBody()
+
+  <aside class="control-sidebar control-sidebar-dark">
+    <div class="p-3">
+      <h5>Title</h5>
+      <p>Sidebar content</p>
+    </div>
+  </aside>
+
+  <partial name="_Footer"/>
+</div>
+
+<!-- jQuery -->
+<link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+<!-- Bootstrap 4 -->
+<script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+<!-- AdminLTE App -->
+<script src="~/dist/js/adminlte.min.js"></script>
+<!-- Syncfusion ASP.NET Core Script Manager -->
+	<script src="~/js/site.js" asp-append-version="true" ></script>
+    
+<script >
+	function showToast(text, duration, alertInfo) {
+		var alerts = $(".alerts"),
+			body = $("body"),
+			alertClass = "",
+			alertIco = "info";
+
+		if (!alerts.length) {
+			body.append('<div class="alerts"></div>');
+		}
+		$(".alert").remove();
+
+		if (alertInfo === "success") {
+			alertClass = "alert-success";
+			alertIco = "check";
+		} else if (alertInfo === "danger") {
+			alertClass = "alert-danger";
+			alertIco = "error";
+		} else if (alertInfo === "warning") {
+			alertClass = "alert-warning";
+			alertIco = "warning";
+		} else if (alertInfo === "default") {
+			alertClass = "alert-default";
+			alertIco = "info";
+		}
+
+		if (!$("." + alertClass + "").length) {
+			$(".alerts").append(
+			'<div class="alert ' +
+				alertClass +
+				'" data-duration-hide="' +
+				duration +
+				'"> <div class="alert-ico"> <i class="material-icons md-22">' +
+				alertIco +
+				'</i> </div> <div class="alert-text">' +
+				text +
+				"</div> </div>"
+			);
+
+			setTimeout(function() {
+				$("." + alertClass + "").remove();
+			}, duration);
+		}
+
+		$(document).on("click", ".alert-close", function() {
+			$(this)
+			.closest(".alert")
+			.remove();
+		});
+	}
+</script>
+
+@await RenderSectionAsync("Scripts", required: false)
+<ejs-scripts></ejs-scripts>
+<!-- Bold Reports script manager -->
+<bold-script-manager></bold-script-manager>
+</body>
+</html>

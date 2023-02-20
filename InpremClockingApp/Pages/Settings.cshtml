@@ -1,0 +1,59 @@
+@page
+@using Microsoft.AspNetCore.Mvc.TagHelpers
+@using Syncfusion.EJ2.Buttons
+@model Settings
+@using Microsoft.AspNetCore.Authorization;
+@attribute [Authorize]
+@{
+}
+
+<div class="content-wrapper">
+<div class="content-header">
+  <div class="container-fluid">
+    <div class="row mb-2">
+      <div class="col-sm-6">
+        <h1 class="m-0">Logout Settings</h1>
+      </div>
+      <div class="col-sm-6">
+        <ol class="breadcrumb float-sm-right">
+          <li class="breadcrumb-item"><a href="#">Home</a></li>
+          <li class="breadcrumb-item active">Logout Settings</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="content">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-6">
+        <form asp-page="Settings" method="post">
+          <input type="hidden" asp-for="Model!.Id" />
+          <div class="row">
+            <div class="col-12">
+                <div class="form-group">
+                    <label asp-for="Model!.Name"></label>
+                    <ejs-textbox readonly ejs-for="Model!.Name" id="name" placeholder="Setting Type"></ejs-textbox>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="form-group">
+                    <label asp-for="Model!.Duration"></label>
+                    <ejs-numerictextbox ejs-for="Model!.Duration" id="duration" placeholder="Duration"></ejs-numerictextbox>
+                </div>
+            </div>
+            <div class="col-12">
+                <ejs-checkbox ejs-for="Model!.Action" id="default" label="Logout After Every Clocking" checked="true"></ejs-checkbox>
+            </div>
+
+            <div class="col-12" style="margin-top: 20px;">
+              <ejs-button id="btnEjsOne" class="btn btn-outline-primary" iconCss="fa fa-plus" isPrimary="false" type="submit" cssClass="e-flat" content="Save"></ejs-button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+</div>
