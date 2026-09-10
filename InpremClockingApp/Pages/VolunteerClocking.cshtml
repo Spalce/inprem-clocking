@@ -43,20 +43,25 @@
                     <form asp-page="VolunteerClocking" method="post">
                           <div class="row">
                               <div class="col-md-6">
-                                  <ejs-combobox id="cboEjsOne" ejs-for="Model.ClockingVolunteer!.VoluntId" required
-                                                dataSource="Model.Model.Volunteer" showClearButton="true"
-                                                placeholder="Select a Volunteer" allowFiltering="true" filtering="onfiltering">
-                                      <e-combobox-fields value="VolunteerId" text="FullName"></e-combobox-fields>
-                                  </ejs-combobox>
+                                  <label for="volunteerSelect">Select Volunteer</label>
+                                  <select id="volunteerSelect" name="ClockingVolunteer.VoluntId" class="form-control" required>
+                                      <option value="">-- Select volunteer --</option>
+                                      @foreach (var s in Model.Model.Volunteer ?? Enumerable.Empty<InpremClockingApp.Models.Volunteer>())
+                                      {
+                                          <option value="@s.VolunteerId">@s.FullName</option>
+                                      }
+                                  </select>
                               </div>
                               <div class="col-md-2">
-                                  <ejs-timepicker id="tpEjsOne" required ejs-for="Model.ClockingVolunteer!.ClockInTime" enableMask="true" format="HH:mm"></ejs-timepicker>
+                                  <label for="vclockIn">Clock In</label>
+                                  <input id="vclockIn" name="ClockingVolunteer.ClockInTime" class="form-control" type="datetime-local" />
                               </div>
                               <div class="col-md-2">
-                                  <ejs-timepicker id="tpEjsTwo" required ejs-for="Model.ClockingVolunteer!.ClockOutTime" enableMask="true" format="HH:mm"></ejs-timepicker>
+                                  <label for="vclockOut">Clock Out</label>
+                                  <input id="vclockOut" name="ClockingVolunteer.ClockOutTime" class="form-control" type="datetime-local" />
                               </div>
-                              <div class="col-md-2">
-                                  <ejs-button id="btnEjsOne" type="submit" cssClass="e-flat" content="Clock In"></ejs-button>
+                              <div class="col-md-2 d-flex align-items-end">
+                                  <button id="btnVClockIn" type="submit" class="btn btn-primary">Clock In</button>
                               </div>
                           </div>
                     </form>
@@ -64,23 +69,46 @@
                 </div>
             </div>
           <div class="col-md-12">
-              <ejs-grid id="Grid" dataSource="Model.Model!.Clocking" allowPaging="true" allowSorting="true" allowGrouping="true"
-                        toolbar="@(new List<string> { "Add", "Edit", "Delete", "Search", "PdfExport", "ExcelExport" })"
-                        actionComplete="actionComplete" actionBegin="actionBegin" allowPdfExport="true" allowExcelExport="true"
-                        commandClick="commandClick" toolbarClick="toolbarClick"
-                        contextMenuItems="@(new List<object> { "AutoFit", "AutoFitAll", "SortAscending", "SortDescending", "Copy", "Edit", "Delete", "Save", "Cancel", "PdfExport", "ExcelExport", "CsvExport", "FirstPage", "PrevPage", "LastPage", "NextPage" })">
-                  <e-grid-editSettings allowAdding="true" allowDeleting="true" allowEditing="true" mode="Dialog" showDeleteConfirmDialog="true"></e-grid-editSettings>
-                  <e-grid-pagesettings pageCount="5" pageSize="20" pageSizes="true"></e-grid-pagesettings>
-                  <e-grid-columns>
-                      <e-grid-column field="ClockingStaffId" headerText="ID" textAlign="Right" isIdentity="true" isPrimaryKey="true" visible="false"></e-grid-column>
-                      <e-grid-column field="FullName" headerText="Full Name" width="150"></e-grid-column>
-                      <e-grid-column field="ClockInTime" headerText="Clock In" format="HH:mm" width="120"></e-grid-column>
-                      <e-grid-column field="ClockOutTime" headerText="Clock Out" format="HH:mm" width="130"></e-grid-column>
-                      <e-grid-column field="LeaveOnBreakTime" headerText="Break Start" format="HH:mm" width="130"></e-grid-column>
-                      <e-grid-column field="ReturnOnBreakTime" headerText="Break End" format="HH:mm" width="130"></e-grid-column>
-                      @*<e-grid-column headerText="Actions" commands=commands></e-grid-column>*@
-                  </e-grid-columns>
-              </ejs-grid>
+              <div class="table-responsive">
+                <div class="mb-3">
+                  <input id="vsearchBox" class="form-control" placeholder="Search by name..." />
+                </div>
+                <table class="table table-striped" id="vclockingTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Full Name</th>
+                            <th>Date</th>
+                            <th>Clock In</th>
+                            <th>Clock Out</th>
+                            <th>Break Start</th>
+                            <th>Break End</th>
+                            <th>Working</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in Model.Model?.Clocking ?? Enumerable.Empty<InpremClockingApp.Models.Clocking>())
+                        {
+                            <tr>
+                                <td>@c.ClockingId</td>
+                                <td>@c.FullName</td>
+                                <td>@c.CreatedAt?.ToString("yyyy-MM-dd")</td>
+                                <td>@(c.ClockInTime?.ToString("HH:mm:ss") ?? "")</td>
+                                <td>@(c.ClockOutTime?.ToString("HH:mm:ss") ?? "")</td>
+                                <td>@(c.LeaveOnBreakTime?.ToString("HH:mm:ss") ?? "")</td>
+                                <td>@(c.ReturnOnBreakTime?.ToString("HH:mm:ss") ?? "")</td>
+                                <td>@(c.WorkingHours?.ToString() ?? "")</td>
+                                <td>
+                                    <button class="btn btn-sm btn-success" onclick="vpostAction('ClockOut', { ClockingId: @c.ClockingId })">Clock Out</button>
+                                    <button class="btn btn-sm btn-warning" onclick="vpostAction('BreakStart', { ClockingId: @c.ClockingId })">Break Start</button>
+                                    <button class="btn btn-sm btn-info" onclick="vpostAction('BreakEnd', { ClockingId: @c.ClockingId })">Break End</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+              </div>
           </div>
       </div>
   </div>
@@ -218,21 +246,37 @@
             });
         }
     }
-
-    function toolbarClick(args) {
-        var gridObj = document.getElementById("Grid").ej2_instances[0];
-        if (args.item.id === 'Grid_pdfexport') {
-            gridObj.pdfExport();
-        }
-        if (args.item.id === 'Grid_excelexport') {
-            gridObj.excelExport();
+    async function vpostAction(action, data) {
+        try {
+            const res = await fetch(`?handler=${action}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (res.ok) {
+                location.reload();
+            } else {
+                console.error('Action failed', await res.text());
+                location.reload();
+            }
+        } catch (err) {
+            console.error(err);
+            location.reload();
         }
     }
 
-    function onfiltering(e) {
-        var query = new ej.data.Query();
-        query = (e.text !== '') ? query.where('FullName', 'contains', e.text, true) : query;
-        e.updateData(@Html.Raw(JsonConvert.SerializeObject(Model.Model.Volunteer)), query);
-    }
+    document.getElementById('vsearchBox').addEventListener('input', function (e) {
+        const q = e.target.value.toLowerCase();
+        document.querySelectorAll('#vclockingTable tbody tr').forEach(function (tr) {
+            const name = tr.children[1].textContent.toLowerCase();
+            tr.style.display = name.indexOf(q) === -1 ? 'none' : '';
+        });
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const now = new Date();
+        const isoLocal = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0,16);
+        if(document.getElementById('vclockIn')) document.getElementById('vclockIn').value = isoLocal;
+    });
 
 </script>

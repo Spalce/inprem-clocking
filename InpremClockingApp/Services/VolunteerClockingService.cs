@@ -13,6 +13,35 @@ public class VolunteerClockingService
         _db = db;
     }
 
+    // New helper to return volunteer clocking report rows
+    public async Task<List<VolunteerClockingVm>> GetClockingReport(DateTime start, DateTime end)
+    {
+        var record = await _db.Clockings
+            .Where(e => e.CreatedAt!.Value.Date >= start && e.CreatedAt.Value.Date <= end)
+            .ToListAsync().ConfigureAwait(false);
+
+        var list = record.Select(e => new VolunteerClockingVm
+        {
+            Clocking = new List<Clocking> { e }
+        }).ToList();
+
+        return list;
+    }
+
+    public async Task<List<VolunteerClockingVm>> GetClockingReportForVolunteer(int volunteerId, DateTime start, DateTime end)
+    {
+        var record = await _db.Clockings
+            .Where(e => e.VoluntId == volunteerId && e.CreatedAt!.Value.Date >= start && e.CreatedAt.Value.Date <= end)
+            .ToListAsync().ConfigureAwait(false);
+
+        var list = record.Select(e => new VolunteerClockingVm
+        {
+            Clocking = new List<Clocking> { e }
+        }).ToList();
+
+        return list;
+    }
+
     public async Task<IEnumerable<Clocking>> GetAll()
     {
         return await _db.Clockings.ToListAsync().ConfigureAwait(false);

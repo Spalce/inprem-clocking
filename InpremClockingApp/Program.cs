@@ -1,11 +1,11 @@
-using Bold.Licensing;
-using BoldReports.Web;
+// BoldReports removed: no BoldReports license or report designer registration
 using InpremClockingApp.Data;
 using InpremClockingApp.Models.Identity;
 using InpremClockingApp.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Syncfusion.Licensing;
+// Syncfusion removed: no Syncfusion licensing or scripts required
+using System;
 
 var builder = WebApplication.CreateBuilder(args);
 // var connection = "Server=.\SQLEXPRESS;Initial Catalog=DB_A65635_inpremdb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True";
@@ -37,11 +37,7 @@ builder.Services.AddRazorPages()
     .AddMvcOptions(option => option.EnableEndpointRouting = false);
 
 var app = builder.Build();
-//Register Syncfusion license
-SyncfusionLicenseProvider.RegisterLicense("Mgo+DSMBMAY9C3t2VVhkQlFacltJXGFWfVJpTGpQdk5xdV9DaVZUTWY/P1ZhSXxQdkRhXX5fc3RQTmFUV0M=");
-BoldLicenseProvider.RegisterLicense("iYoRUnjrsFUHSbqN0OLTX4Geovs01rfWtKly3ckoIOE=");
-//Use the below code to register extensions assembly into report designer
-ReportConfig.DefaultSettings = new ReportSettings().RegisterExtensions(new List<string> { "BoldReports.Data.WebData" });
+// BoldReports and Syncfusion removed: no license registration or report designer registration
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

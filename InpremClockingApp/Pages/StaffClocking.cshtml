@@ -1,7 +1,6 @@
 @page
 @using Newtonsoft.Json
-@using Syncfusion.EJ2.DropDowns
-@using Syncfusion.EJ2.Grids
+@* Syncfusion removed: using standard HTML controls and tables instead *@
 @model StaffClocking
 @using Microsoft.AspNetCore.Authorization;
 @attribute [Authorize]
@@ -45,20 +44,25 @@
                   <form asp-page="StaffClocking" method="post">
                         <div class="row">
                             <div class="col-md-6">
-                                <ejs-combobox id="cboEjsOne" ejs-for="Model.ClockingStaff!.StafId" required
-                                              dataSource="Model.Model.Staff" showClearButton="true"
-                                              placeholder="Select a staff" allowFiltering="true" filtering="onfiltering">
-                                    <e-combobox-fields value="StaffId" text="FullName"></e-combobox-fields>
-                                </ejs-combobox>
+                                <label for="staffSelect">Select Staff</label>
+                                <select id="staffSelect" name="ClockingStaff.StafId" class="form-control" required>
+                                    <option value="">-- Select staff --</option>
+                                    @foreach (var s in Model.Model.Staff ?? Enumerable.Empty<InpremClockingApp.Models.Staff>())
+                                    {
+                                        <option value="@s.StaffId">@s.FullName</option>
+                                    }
+                                </select>
                             </div>
                             <div class="col-md-2">
-                                <ejs-timepicker id="tpEjsOne" required ejs-for="Model.ClockingStaff!.ClockInTime" enableMask="true" format="HH:mm"></ejs-timepicker>
+                                <label for="clockIn">Clock In</label>
+                                <input id="clockIn" name="ClockingStaff.ClockInTime" class="form-control" type="datetime-local" />
                             </div>
                             <div class="col-md-2">
-                                <ejs-timepicker id="tpEjsTwo" required ejs-for="Model.ClockingStaff!.ClockOutTime" enableMask="true" format="HH:mm"></ejs-timepicker>
+                                <label for="clockOut">Clock Out</label>
+                                <input id="clockOut" name="ClockingStaff.ClockOutTime" class="form-control" type="datetime-local" />
                             </div>
-                            <div class="col-md-2">
-                                <ejs-button id="btnEjsOne" type="submit" cssClass="e-flat" content="Clock In"></ejs-button>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button id="btnClockIn" type="submit" class="btn btn-primary">Clock In</button>
                             </div>
                         </div>
                   </form>
@@ -66,24 +70,46 @@
               </div>
           </div>
           <div class="col-md-12">
-              <ejs-grid id="Grid" dataSource="Model.Model!.Clocking" allowPaging="true" allowSorting="true" allowGrouping="true"
-                        toolbar="@(new List<string> { "Add", "Edit", "Delete", "Search", "PdfExport", "ExcelExport" })"
-                        actionComplete="actionComplete" actionBegin="actionBegin" allowPdfExport="true" allowExcelExport="true"
-                        commandClick="commandClick" toolbarClick="toolbarClick"
-                        contextMenuItems="@(new List<object> { "AutoFit", "AutoFitAll", "SortAscending", "SortDescending", "Copy", "Edit", "Delete", "Save", "Cancel", "PdfExport", "ExcelExport", "CsvExport", "FirstPage", "PrevPage", "LastPage", "NextPage" })">
-                  <e-grid-editSettings allowAdding="true" allowDeleting="true" allowEditing="true" mode="Dialog" showDeleteConfirmDialog="true"></e-grid-editSettings>
-                  <e-grid-pagesettings pageCount="5" pageSize="20" pageSizes="true"></e-grid-pagesettings>
-                  <e-grid-columns>
-                      <e-grid-column field="ClockingStaffId" headerText="ID" textAlign="Right" isIdentity="true" isPrimaryKey="true" visible="false"></e-grid-column>
-                      <e-grid-column field="FullName" headerText="Full Name" width="150"></e-grid-column>
-                      <e-grid-column field="ClockInTime" headerText="Clock In" format="HH:mm" width="120"></e-grid-column>
-                      <e-grid-column field="ClockOutTime" headerText="Clock Out" format="HH:mm" width="130"></e-grid-column>
-                      <e-grid-column field="LeaveOnBreakTime" headerText="Break Start" format="HH:mm" width="130"></e-grid-column>
-                      <e-grid-column field="ReturnOnBreakTime" headerText="Break End" format="HH:mm" width="130"></e-grid-column>
-                      <e-grid-column field="WorkingHours" headerText="Working" format="HH:mm" width="150"></e-grid-column>
-                      @*<e-grid-column headerText="Actions" commands=commands></e-grid-column>*@
-                  </e-grid-columns>
-              </ejs-grid>
+              <div class="table-responsive">
+                <div class="mb-3">
+                  <input id="searchBox" class="form-control" placeholder="Search by name..." />
+                </div>
+                <table class="table table-striped" id="clockingTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Full Name</th>
+                            <th>Date</th>
+                            <th>Clock In</th>
+                            <th>Clock Out</th>
+                            <th>Break Start</th>
+                            <th>Break End</th>
+                            <th>Working</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in Model.Model?.Clocking ?? Enumerable.Empty<InpremClockingApp.Models.ClockingStaff>())
+                        {
+                            <tr>
+                                <td>@c.ClockingStaffId</td>
+                                <td>@c.FullName</td>
+                                <td>@c.CreatedAt?.ToString("yyyy-MM-dd")</td>
+                                <td>@(c.ClockInTime?.ToString("HH:mm:ss") ?? "")</td>
+                                <td>@(c.ClockOutTime?.ToString("HH:mm:ss") ?? "")</td>
+                                <td>@(c.LeaveOnBreakTime?.ToString("HH:mm:ss") ?? "")</td>
+                                <td>@(c.ReturnOnBreakTime?.ToString("HH:mm:ss") ?? "")</td>
+                                <td>@(c.WorkingHours?.ToString() ?? "")</td>
+                                <td>
+                                    <button class="btn btn-sm btn-success" onclick="postAction('ClockOut', { ClockingStaffId: @c.ClockingStaffId })">Clock Out</button>
+                                    <button class="btn btn-sm btn-warning" onclick="postAction('BreakStart', { ClockingStaffId: @c.ClockingStaffId })">Break Start</button>
+                                    <button class="btn btn-sm btn-info" onclick="postAction('BreakEnd', { ClockingStaffId: @c.ClockingStaffId })">Break End</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+              </div>
           </div>
       </div>
   </div>
@@ -165,77 +191,39 @@
         }
     }
 
-    async function commandClick(args) {
-        if (args.target.title === 'Details') {
-            alert(JSON.stringify(args.rowData));  // display row data
-        }
-
-        if (args.target.title === 'ClockOut') {
-            $.ajax({
-                type: 'POST',
-                url: "?handler=ClockOut",
-                data: JSON.stringify(args.rowData),
-                contentType: "application/json; charset=utf-8",
-                dataType: "json",
-               success: function (data, status, jqXHR) {
-                  //alert("success...");
-              },
-              error: function (xhr) {
-                  //alert("Not good " + xhr.responseText);
-                  document.location.reload(true);
-              }
+    async function postAction(action, data) {
+        try {
+            const res = await fetch(`?handler=${action}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
             });
-        }
-
-        if (args.target.title === 'BreakStart') {
-            $.ajax({
-                type: 'POST',
-                url: "?handler=BreakStart",
-                data: JSON.stringify(args.rowData),
-                contentType: "application/json; charset=utf-8",
-                dataType: "json",
-               success: function (data, status, jqXHR) {
-                  //alert("success...");
-              },
-              error: function (xhr) {
-                  //alert("Not good " + xhr.responseText);
-                  document.location.reload(true);
-              }
-            });
-        }
-
-        if (args.target.title === 'BreakEnd') {
-            $.ajax({
-                type: 'POST',
-                url: "?handler=BreakEnd",
-                data: JSON.stringify(args.rowData),
-                contentType: "application/json; charset=utf-8",
-                dataType: "json",
-               success: function (data, status, jqXHR) {
-                  //alert("success...");
-              },
-              error: function (xhr) {
-                  //alert("Not good " + xhr.responseText);
-                  document.location.reload(true);
-              }
-            });
+            if (res.ok) {
+                location.reload();
+            } else {
+                console.error('Action failed', await res.text());
+                location.reload();
+            }
+        } catch (err) {
+            console.error(err);
+            location.reload();
         }
     }
 
-    function toolbarClick(args) {
-        var gridObj = document.getElementById("Grid").ej2_instances[0];
-        if (args.item.id === 'Grid_pdfexport') {
-            gridObj.pdfExport();
-        }
-        if (args.item.id === 'Grid_excelexport') {
-            gridObj.excelExport();
-        }
-    }
+    // Simple client-side search
+    document.getElementById('searchBox').addEventListener('input', function (e) {
+        const q = e.target.value.toLowerCase();
+        document.querySelectorAll('#clockingTable tbody tr').forEach(function (tr) {
+            const name = tr.children[1].textContent.toLowerCase();
+            tr.style.display = name.indexOf(q) === -1 ? 'none' : '';
+        });
+    });
 
-    function onfiltering(e) {
-        var query = new ej.data.Query();
-        query = (e.text !== '') ? query.where('FullName', 'contains', e.text, true) : query;
-        e.updateData(@Html.Raw(JsonConvert.SerializeObject(Model.Model.Staff)), query);
-    }
+    // Prefill clock-in with current local time when opening the page
+    document.addEventListener('DOMContentLoaded', function () {
+        const now = new Date();
+        const isoLocal = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0,16);
+        document.getElementById('clockIn').value = isoLocal;
+    });
 
 </script>

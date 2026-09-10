@@ -13,6 +13,16 @@ public class StaffClockingService
         _db = db;
     }
 
+    // New helper to return report rows for staff clocking
+    public async Task<List<ClockingStaff>> GetClockingReport(DateTime start, DateTime end)
+    {
+        var record = await _db.ClockingsStaff
+            .Where(e => e.CreatedAt!.Value.Date >= start && e.CreatedAt.Value.Date <= end)
+            .ToListAsync().ConfigureAwait(false);
+
+        return record;
+    }
+
     public async Task<IEnumerable<ClockingStaff>> GetAll()
     {
         return await _db.ClockingsStaff.ToListAsync().ConfigureAwait(false);

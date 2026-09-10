@@ -1,25 +1,26 @@
-using BoldReports.Models.ReportViewer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using InpremClockingApp.Services;
+using InpremClockingApp.Models;
+using System.Threading.Tasks;
 
 namespace InpremClockingApp.Pages;
 
 public class OneStaffClockingReport : PageModel
 {
-    public IActionResult OnGet()
+    private readonly StaffClockingService _service;
+    public List<ClockingStaff> ReportRows { get; set; } = new List<ClockingStaff>();
+
+    public OneStaffClockingReport(StaffClockingService service)
     {
-        List<ReportParameter> parameters = new List<ReportParameter>();
-        parameters.Add(new ReportParameter
-        {
-            Name = "StartDate",
-            Values = new List<string> { "2016-01-01" }
-        });
-        parameters.Add(new ReportParameter
-        {
-            Name = "EndDate",
-            Values = new List<string> { DateTime.Now.Date.ToString("yyyy-MM-dd") }
-        });
-        ViewData["parameters"] = parameters;
-        return Page();
+        _service = service;
+    }
+
+    public async Task OnGetAsync(int staffId)
+    {
+        var start = DateTime.Now.Date.AddDays(-30);
+        var end = DateTime.Now.Date;
+        var rows = await _service.GetClockingReport(start, end).ConfigureAwait(false);
+        ReportRows = rows.Where(r => r.StafId == staffId).ToList();
     }
 }

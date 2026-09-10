@@ -6,7 +6,7 @@
     ViewData["Title"] = "Volunteer Clocking Report";
 }
 
-<link href="https://cdn.boldreports.com/4.2.52/content/material/bold.reports.all.min.css" rel="stylesheet" />
+<!-- BoldReports removed: render volunteer clocking report as HTML table -->
 
 <div class="content-wrapper">
     <div class="content-header">
@@ -27,10 +27,31 @@
     <div class="content">
         <div class="container-fluid">
             <div class="row">
-                <div style="height: 100vh; width: 100%;">
-                    <bold-report-viewer
-                        is-responsive="true" id="viewer">
-                    </bold-report-viewer>
+                <div style="width:100%;">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Volunteer</th>
+                                <th>Date</th>
+                                <th>Clock In</th>
+                                <th>Clock Out</th>
+                                <th>Hours</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var r in Model.ReportRows)
+                            {
+                                var item = r.Clocking?.FirstOrDefault();
+                                <tr>
+                                    <td>@(item?.FullName ?? "")</td>
+                                    <td>@(item?.CreatedAt?.ToString("yyyy-MM-dd") ?? "")</td>
+                                    <td>@(item?.ClockInTime?.ToString("HH:mm:ss") ?? "")</td>
+                                    <td>@(item?.ClockOutTime?.ToString("HH:mm:ss") ?? "")</td>
+                                    <td>@(item?.WorkingHours?.ToString() ?? "")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

@@ -1,14 +1,13 @@
 @page
-@using BoldReports.Models.ReportViewer
+@* BoldReports removed. Use server-side generated HTML tables for reports *@
 @model StaffClockingReport
 @using Microsoft.AspNetCore.Authorization;
 @attribute [Authorize]
 @{
     ViewData["Title"] = "Staff Clocking Report";
-    var param = (List<ReportParameter>)ViewData["parameters"]!;
 }
 
-<link href="https://cdn.boldreports.com/4.2.52/content/material/bold.reports.all.min.css" rel="stylesheet" />
+<!-- Report viewer removed: render report data as an HTML table below -->
 
 <div class="content-wrapper">
     <div class="content-header">
@@ -29,11 +28,31 @@
     <div class="content">
         <div class="container-fluid">
             <div class="row">
-                <div style="height: 100vh; width: 100%;">
-                    <bold-report-viewer
-                        is-responsive="true" id="viewer">
-                    </bold-report-viewer>
-                </div>
+                    <div style="width:100%;">
+                        <table class="table table-striped" id="reportTable">
+                            <thead>
+                                <tr>
+                                    <th>Staff</th>
+                                    <th>Date</th>
+                                    <th>Clock In</th>
+                                    <th>Clock Out</th>
+                                    <th>Hours</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in Model.ReportRows)
+                                {
+                                    <tr>
+                                        <td>@row.FullName</td>
+                                        <td>@row.CreatedAt?.ToString("yyyy-MM-dd")</td>
+                                        <td>@(row.ClockInTime?.ToString("HH:mm:ss") ?? "")</td>
+                                        <td>@(row.ClockOutTime?.ToString("HH:mm:ss") ?? "")</td>
+                                        <td>@(row.WorkingHours?.ToString() ?? "")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
             </div>
         </div>
     </div>

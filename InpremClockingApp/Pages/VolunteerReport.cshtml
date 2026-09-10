@@ -6,7 +6,7 @@
     ViewData["Title"] = "Volunteer Report";
 }
 
-<link href="https://cdn.boldreports.com/4.2.52/content/material/bold.reports.all.min.css" rel="stylesheet" />
+<!-- BoldReports removed: render volunteer list as HTML table -->
 
 <div class="content-wrapper">
     <div class="content-header">
@@ -27,8 +27,28 @@
     <div class="content">
         <div class="container-fluid">
             <div class="row">
-                <div style="height: 100vh; width: 100%;">
-                    <bold-report-viewer id="viewer" is-responsive="true"></bold-report-viewer>
+                <div style="width:100%;">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>First Name</th>
+                                <th>Last Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var v in Model.VolunteerList)
+                            {
+                                <tr>
+                                    <td>@v.FirstName</td>
+                                    <td>@v.LastName</td>
+                                    <td>@v.EmailAddress</td>
+                                    <td>@v.PhoneNumber</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

@@ -287,6 +287,80 @@ public class ReportsController : Controller
         return BadRequest(false!);
     }
 
+    // Export endpoints: CSV (implemented) and PDF (not implemented server-side here)
+    [HttpPost("export/staff-clocking")]
+    public async Task<IActionResult> ExportStaffClocking([FromBody] ReportModel model, [FromQuery] string format = "csv")
+    {
+        var record = await _db.ClockingsStaff
+            .Where(e => e.CreatedAt!.Value.Date >= model.StartDate && e.CreatedAt.Value.Date <= model.EndDate)
+            .ToListAsync();
+
+        if (format?.ToLower() == "csv")
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("Name,Date,ClockIn,ClockOut,BreakStart,BreakEnd,Hours");
+            foreach (var e in record)
+            {
+                var line = string.Join(",",
+                    EscapeCsv(e.FullName),
+                    e.CreatedAt?.ToString("yyyy-MM-dd"),
+                    e.ClockInTime?.ToString("HH:mm:ss"),
+                    e.ClockOutTime?.ToString("HH:mm:ss"),
+                    e.LeaveOnBreakTime?.ToString("HH:mm:ss"),
+                    e.ReturnOnBreakTime?.ToString("HH:mm:ss"),
+                    e.WorkingHours != null ? e.WorkingHours.Value.ToString() : "");
+                sb.AppendLine(line);
+            }
+            var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+            var fname = $"staff_clocking_{model.StartDate:yyyyMMdd}_{model.EndDate:yyyyMMdd}.csv";
+            return File(bytes, "text/csv", fname);
+        }
+
+        // PDF generation is not implemented here. Recommend using QuestPDF or another PDF library.
+        return StatusCode(501, "PDF export not implemented. Add a PDF library (e.g., QuestPDF) to generate PDFs.");
+    }
+
+    [HttpPost("export/volunteer-clocking")]
+    public async Task<IActionResult> ExportVolunteerClocking([FromBody] ReportModel model, [FromQuery] string format = "csv")
+    {
+        var record = await _db.Clockings
+            .Where(e => e.CreatedAt!.Value.Date >= model.StartDate && e.CreatedAt.Value.Date <= model.EndDate)
+            .ToListAsync();
+
+        if (format?.ToLower() == "csv")
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("Name,Date,ClockIn,ClockOut,BreakStart,BreakEnd,Hours");
+            foreach (var e in record)
+            {
+                var line = string.Join(",",
+                    EscapeCsv(e.FullName),
+                    e.CreatedAt?.ToString("yyyy-MM-dd"),
+                    e.ClockInTime?.ToString("HH:mm:ss"),
+                    e.ClockOutTime?.ToString("HH:mm:ss"),
+                    e.LeaveOnBreakTime?.ToString("HH:mm:ss"),
+                    e.ReturnOnBreakTime?.ToString("HH:mm:ss"),
+                    e.WorkingHours != null ? e.WorkingHours.Value.ToString() : "");
+                sb.AppendLine(line);
+            }
+            var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+            var fname = $"volunteer_clocking_{model.StartDate:yyyyMMdd}_{model.EndDate:yyyyMMdd}.csv";
+            return File(bytes, "text/csv", fname);
+        }
+
+        return StatusCode(501, "PDF export not implemented. Add a PDF library (e.g., QuestPDF) to generate PDFs.");
+    }
+
+    private static string EscapeCsv(string? input)
+    {
+        if (string.IsNullOrEmpty(input)) return string.Empty;
+        if (input.Contains(',') || input.Contains('"') || input.Contains('\n'))
+        {
+            return '"' + input.Replace("\"", "\"\"") + '"';
+        }
+        return input;
+    }
+
     [Produces("application/json")]
     [HttpPost("volunteer-clocking-one")]
     public async Task<ActionResult> VolunteerClockingOne([FromBody] ReportModel model)

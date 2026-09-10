@@ -1,6 +1,6 @@
 @page
 @using Microsoft.AspNetCore.Mvc.TagHelpers
-@using Syncfusion.EJ2.Buttons
+@* Syncfusion removed: replace Syncfusion controls with standard inputs *@
 @model Settings
 @using Microsoft.AspNetCore.Authorization;
 @attribute [Authorize]
@@ -33,21 +33,24 @@
             <div class="col-12">
                 <div class="form-group">
                     <label asp-for="Model!.Name"></label>
-                    <ejs-textbox readonly ejs-for="Model!.Name" id="name" placeholder="Setting Type"></ejs-textbox>
+                    <input readonly asp-for="Model!.Name" id="name" class="form-control" placeholder="Setting Type" />
                 </div>
             </div>
             <div class="col-12">
                 <div class="form-group">
                     <label asp-for="Model!.Duration"></label>
-                    <ejs-numerictextbox ejs-for="Model!.Duration" id="duration" placeholder="Duration"></ejs-numerictextbox>
+                    <input asp-for="Model!.Duration" id="duration" class="form-control" placeholder="Duration" />
                 </div>
             </div>
             <div class="col-12">
-                <ejs-checkbox ejs-for="Model!.Action" id="default" label="Logout After Every Clocking" checked="true"></ejs-checkbox>
+                <div class="form-check">
+                    <input asp-for="Model!.Action" class="form-check-input" id="default" type="checkbox" checked />
+                    <label class="form-check-label" for="default">Logout After Every Clocking</label>
+                </div>
             </div>
 
             <div class="col-12" style="margin-top: 20px;">
-              <ejs-button id="btnEjsOne" class="btn btn-outline-primary" iconCss="fa fa-plus" isPrimary="false" type="submit" cssClass="e-flat" content="Save"></ejs-button>
+              <button id="btnEjsOne" class="btn btn-outline-primary" type="submit"><i class="fa fa-plus"></i> Save</button>
             </div>
           </div>
         </form>
