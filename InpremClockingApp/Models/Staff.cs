@@ -13,7 +13,7 @@ public class Staff
     [DataType(DataType.EmailAddress, ErrorMessage = "Please enter a valid email address")]
     [DisplayName("Email Address")]
     [StringLength(100)]
-    public string? EmailAddress { get; set; }
+    public string EmailAddress { get; set; } = string.Empty;
 
     [Required]
     [DisplayName("First Name")]

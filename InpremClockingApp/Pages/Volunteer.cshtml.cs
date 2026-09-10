@@ -30,18 +30,30 @@ public class Volunteer : PageModel
 
     public async Task<IActionResult> OnPostCreateAsync([FromBody] Models.Volunteer model)
     {
-        if (!ModelState.IsValid)
+        if (string.IsNullOrWhiteSpace(model.EmailAddress))
+        {
+            ModelState.AddModelError("EmailAddress", "Email address is required");
             return RedirectToPage("./Volunteer");
+        }
 
-        var staff = await _service.GetByEmail(model.EmailAddress!).ConfigureAwait(true);
-        if (staff != null!)
+        if (!new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(model.EmailAddress))
+        {
+            ModelState.AddModelError("EmailAddress", "Please enter a valid email address");
             return RedirectToPage("./Volunteer");
+        }
+
+        var staff = await _service.GetByEmail(model.EmailAddress).ConfigureAwait(true);
+        if (staff != null)
+        {
+            ModelState.AddModelError("EmailAddress", "A staff with this email already exists");
+            return RedirectToPage("./Volunteer");
+        }
 
         model.CreatedAt = DateTime.Now;
         model.Type = "Volunteer";
 
         var save = await _service.Create(model).ConfigureAwait(true);
-        if (save != null!)
+        if (save != null)
         {
             return RedirectToPage("./Volunteer");
         }
@@ -51,11 +63,20 @@ public class Volunteer : PageModel
 
     public async Task<IActionResult> OnPostUpdateAsync([FromBody] Models.Volunteer model)
     {
-        if (!ModelState.IsValid)
+        if (string.IsNullOrWhiteSpace(model.EmailAddress))
+        {
+            ModelState.AddModelError("EmailAddress", "Email address is required");
             return RedirectToPage("./Volunteer");
+        }
+
+        if (!new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(model.EmailAddress))
+        {
+            ModelState.AddModelError("EmailAddress", "Please enter a valid email address");
+            return RedirectToPage("./Volunteer");
+        }
 
         var save = await _service.Update(model).ConfigureAwait(true);
-        if (save != null!)
+        if (save != null)
         {
             return RedirectToPage("./Volunteer");
         }

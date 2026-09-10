@@ -32,6 +32,10 @@ public class StaffService
     {
         try
         {
+            // Ensure required fields are present before inserting to avoid DB exceptions
+            if (string.IsNullOrWhiteSpace(model.EmailAddress))
+                throw new ArgumentException("Email address is required", nameof(model.EmailAddress));
+
             await _db.Staffs.AddAsync(model).ConfigureAwait(false);
             await _db.SaveChangesAsync();
 

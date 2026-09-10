@@ -31,18 +31,30 @@ public class Staff : PageModel
 
     public async Task<IActionResult> OnPostCreateAsync([FromBody] Models.Staff model)
     {
-        if (!ModelState.IsValid)
+        if (string.IsNullOrWhiteSpace(model.EmailAddress))
+        {
+            ModelState.AddModelError("EmailAddress", "Email address is required");
             return RedirectToPage("./Staff");
+        }
 
-        var staff = await _service.GetByEmail(model.EmailAddress!).ConfigureAwait(true);
-        if (staff != null!)
+        if (!new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(model.EmailAddress))
+        {
+            ModelState.AddModelError("EmailAddress", "Please enter a valid email address");
             return RedirectToPage("./Staff");
+        }
+
+        var staff = await _service.GetByEmail(model.EmailAddress).ConfigureAwait(true);
+        if (staff != null)
+        {
+            ModelState.AddModelError("EmailAddress", "A staff with this email already exists");
+            return RedirectToPage("./Staff");
+        }
 
         model.CreatedAt = DateTime.Now;
         model.Type = "Staff";
 
         var save = await _service.Create(model).ConfigureAwait(true);
-        if (save != null!)
+        if (save != null)
         {
             return RedirectToPage("./Staff");
         }
