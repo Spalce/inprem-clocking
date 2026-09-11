@@ -30,58 +30,112 @@ public class Volunteer : PageModel
 
     public async Task<IActionResult> OnPostCreateAsync([FromBody] Models.Volunteer model)
     {
+        // Server-side validation
         if (string.IsNullOrWhiteSpace(model.EmailAddress))
         {
             ModelState.AddModelError("EmailAddress", "Email address is required");
-            return RedirectToPage("./Volunteer");
         }
 
         if (!new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(model.EmailAddress))
         {
             ModelState.AddModelError("EmailAddress", "Please enter a valid email address");
-            return RedirectToPage("./Volunteer");
+        }
+
+        if (string.IsNullOrWhiteSpace(model.FirstName))
+        {
+            ModelState.AddModelError("FirstName", "First name is required");
+        }
+
+        if (string.IsNullOrWhiteSpace(model.LastName))
+        {
+            ModelState.AddModelError("LastName", "Last name is required");
         }
 
         var staff = await _service.GetByEmail(model.EmailAddress).ConfigureAwait(true);
         if (staff != null)
         {
             ModelState.AddModelError("EmailAddress", "A staff with this email already exists");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            if (Request?.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                var errors = ModelState.Where(kvp => kvp.Value.Errors.Count > 0)
+                    .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray());
+                return BadRequest(new { errors });
+            }
             return RedirectToPage("./Volunteer");
         }
 
         model.CreatedAt = DateTime.Now;
         model.Type = "Volunteer";
 
-        var save = await _service.Create(model).ConfigureAwait(true);
-        if (save != null)
+        try
         {
+            var save = await _service.Create(model).ConfigureAwait(true);
+            if (Request?.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                return new ObjectResult(save) { StatusCode = StatusCodes.Status201Created };
+            }
             return RedirectToPage("./Volunteer");
         }
-
-        return RedirectToPage("./Volunteer");
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException dbex)
+        {
+            var msg = dbex.InnerException?.Message ?? dbex.Message;
+            if (Request?.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true)
+                return BadRequest(new { error = "Database update failed: " + msg });
+            ModelState.AddModelError(string.Empty, "Database update failed: " + msg);
+            return RedirectToPage("./Volunteer");
+        }
+        catch (ArgumentException ae)
+        {
+            if (Request?.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true)
+                return BadRequest(new { error = ae.Message });
+            ModelState.AddModelError(string.Empty, ae.Message);
+            return RedirectToPage("./Volunteer");
+        }
+        catch (Exception ex)
+        {
+            if (Request?.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true)
+                return StatusCode(500, new { error = ex.Message });
+            throw;
+        }
     }
 
     public async Task<IActionResult> OnPostUpdateAsync([FromBody] Models.Volunteer model)
     {
+        // Server-side validation
         if (string.IsNullOrWhiteSpace(model.EmailAddress))
-        {
             ModelState.AddModelError("EmailAddress", "Email address is required");
-            return RedirectToPage("./Volunteer");
-        }
 
         if (!new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(model.EmailAddress))
-        {
             ModelState.AddModelError("EmailAddress", "Please enter a valid email address");
-            return RedirectToPage("./Volunteer");
-        }
 
-        var save = await _service.Update(model).ConfigureAwait(true);
-        if (save != null)
+        if (!ModelState.IsValid)
         {
+            if (Request?.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                var errors = ModelState.Where(kvp => kvp.Value.Errors.Count > 0)
+                    .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray());
+                return BadRequest(new { errors });
+            }
             return RedirectToPage("./Volunteer");
         }
 
-        return RedirectToPage("./Volunteer");
+        try
+        {
+            var save = await _service.Update(model).ConfigureAwait(true);
+            if (Request?.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true)
+                return new OkObjectResult(save);
+            return RedirectToPage("./Volunteer");
+        }
+        catch (Exception ex)
+        {
+            if (Request?.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true)
+                return StatusCode(500, new { error = ex.Message });
+            throw;
+        }
     }
 
     public async Task<IActionResult> OnPostMoveAsync([FromBody] Models.Volunteer model)

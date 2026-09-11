@@ -31,49 +31,113 @@ public class Staff : PageModel
 
     public async Task<IActionResult> OnPostCreateAsync([FromBody] Models.Staff model)
     {
+        // Server-side validation
         if (string.IsNullOrWhiteSpace(model.EmailAddress))
         {
             ModelState.AddModelError("EmailAddress", "Email address is required");
-            return RedirectToPage("./Staff");
         }
 
         if (!new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(model.EmailAddress))
         {
             ModelState.AddModelError("EmailAddress", "Please enter a valid email address");
-            return RedirectToPage("./Staff");
+        }
+
+        if (string.IsNullOrWhiteSpace(model.FirstName))
+        {
+            ModelState.AddModelError("FirstName", "First name is required");
+        }
+
+        if (string.IsNullOrWhiteSpace(model.LastName))
+        {
+            ModelState.AddModelError("LastName", "Last name is required");
         }
 
         var staff = await _service.GetByEmail(model.EmailAddress).ConfigureAwait(true);
         if (staff != null)
         {
             ModelState.AddModelError("EmailAddress", "A staff with this email already exists");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            if (Request?.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                var errors = ModelState.Where(kvp => kvp.Value.Errors.Count > 0)
+                    .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray());
+                return BadRequest(new { errors });
+            }
             return RedirectToPage("./Staff");
         }
 
         model.CreatedAt = DateTime.Now;
         model.Type = "Staff";
 
-        var save = await _service.Create(model).ConfigureAwait(true);
-        if (save != null)
+        try
         {
+            var save = await _service.Create(model).ConfigureAwait(true);
+            if (Request?.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                return new ObjectResult(save) { StatusCode = StatusCodes.Status201Created };
+            }
             return RedirectToPage("./Staff");
         }
-
-        return RedirectToPage("./Staff");
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException dbex)
+        {
+            // Return meaningful DB error for API clients
+            var msg = dbex.InnerException?.Message ?? dbex.Message;
+            if (Request?.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true)
+                return BadRequest(new { error = "Database update failed: " + msg });
+            ModelState.AddModelError(string.Empty, "Database update failed: " + msg);
+            return RedirectToPage("./Staff");
+        }
+        catch (ArgumentException ae)
+        {
+            if (Request?.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true)
+                return BadRequest(new { error = ae.Message });
+            ModelState.AddModelError(string.Empty, ae.Message);
+            return RedirectToPage("./Staff");
+        }
+        catch (Exception ex)
+        {
+            if (Request?.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true)
+                return StatusCode(500, new { error = ex.Message });
+            throw;
+        }
     }
 
     public async Task<IActionResult> OnPostUpdateAsync([FromBody] Models.Staff model)
     {
-        if (!ModelState.IsValid)
-            return RedirectToPage("./Staff");
+        // Server-side validation
+        if (string.IsNullOrWhiteSpace(model.EmailAddress))
+            ModelState.AddModelError("EmailAddress", "Email address is required");
 
-        var save = await _service.Update(model).ConfigureAwait(true);
-        if (save != null!)
+        if (!new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(model.EmailAddress))
+            ModelState.AddModelError("EmailAddress", "Please enter a valid email address");
+
+        if (!ModelState.IsValid)
         {
+            if (Request?.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                var errors = ModelState.Where(kvp => kvp.Value.Errors.Count > 0)
+                    .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray());
+                return BadRequest(new { errors });
+            }
             return RedirectToPage("./Staff");
         }
 
-        return RedirectToPage("./Staff");
+        try
+        {
+            var save = await _service.Update(model).ConfigureAwait(true);
+            if (Request?.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true)
+                return new OkObjectResult(save);
+            return RedirectToPage("./Staff");
+        }
+        catch (Exception ex)
+        {
+            if (Request?.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true)
+                return StatusCode(500, new { error = ex.Message });
+            throw;
+        }
     }
 
     public async Task<IActionResult> OnPostMoveAsync([FromBody] Models.Staff model)

@@ -32,26 +32,99 @@ public class StaffController : Controller
     {
         try
         {
-            var staff = await _service.GetByEmail(model.EmailAddress!).ConfigureAwait(true);
-            if (staff != null!)
-                return BadRequest("Record already exists");
+            var staff = await _service.GetByEmail(model.EmailAddress!);
 
-            model.CreatedAt = DateTime.Now;
-            model.Type = "Staff";
-
-            var save = await _service.Create(model).ConfigureAwait(true);
-            if (save != null!)
+            if (staff == null)
             {
-                return Ok(save);
+                return NotFound(new
+                {
+                    success = false,
+                    message = "Staff member not found. Please check the email address."
+                });
             }
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
-        }
 
-        return BadRequest(false);
+            var alreadyClockedIn = await _staffClock.CheckToday(new ClockingStaff
+            {
+                StafId = staff.StaffId
+            });
+
+            if (alreadyClockedIn)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Staff member has already clocked in today."
+                });
+            }
+
+            var clocking = new ClockingStaff
+            {
+                StafId = staff.StaffId,
+                CreatedAt = DateTime.Now,
+                ClockInTime = DateTime.Now
+            };
+
+            var save = await _staffClock.Create(clocking);
+
+            if (save == null)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Staff member has already clocked in today."
+                });
+            }
+
+            return Ok(new
+            {
+                success = true,
+                message = "Clock-in successful.",
+                data = save
+            });
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, new
+            {
+                success = false,
+                message = "Unable to process clock-in. Please try again."
+            });
+        }
     }
+
+    //[Produces("application/json")]
+    //[HttpPost("save")]
+    //public async Task<IActionResult> StaffClockIn([FromBody] Staff model)
+    //{
+    //    try
+    //    {
+    //        var staff = await _service.GetByEmail(model.EmailAddress!).ConfigureAwait(true);
+    //        if (staff == null)
+    //        {
+    //            return NotFound(new
+    //            {
+    //                success = false,
+    //                message = "Staff member not found. Please check the email address."
+    //            });
+    //        }
+
+
+    //        //model.CreatedAt = DateTime.Now;
+    //        //model.Type = "Staff";
+
+    //        var save = await _service.Create(model).ConfigureAwait(true);
+    //        if (save != null!)
+    //        {
+    //            return Ok(save);
+    //        }
+    //    }
+    //    catch (Exception e)
+    //    {
+    //        Console.WriteLine(e);
+    //    }
+
+    //    return BadRequest(false);
+    //}
 
     [Produces("application/json")]
     [HttpPost("move")]

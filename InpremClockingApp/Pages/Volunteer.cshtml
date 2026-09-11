@@ -32,25 +32,103 @@
   <div class="container-fluid">
     <div class="row">
         <div class="col-md-12">
-            <ejs-grid id="Grid" dataSource="Model.Volunteers" allowPaging="true" allowSorting="true" allowGrouping="true"
-                      toolbar="@(new List<string> { "Add", "Edit", "Delete", "Search", "PdfExport", "ExcelExport" })"
-                      actionComplete="actionComplete" actionBegin="actionBegin" allowPdfExport="true" allowExcelExport="true"
-                      commandClick="commandClick" toolbarClick="toolbarClick"
-                      contextMenuItems="@(new List<object> { "AutoFit", "AutoFitAll", "SortAscending", "SortDescending","Copy", "Edit", "Delete", "Save", "Cancel","PdfExport", "ExcelExport", "CsvExport", "FirstPage", "PrevPage","LastPage", "NextPage"})"
-                      >
-                <e-grid-editSettings allowAdding="true" allowDeleting="true" allowEditing="true" mode="Dialog" showDeleteConfirmDialog="true"></e-grid-editSettings>
-                <e-grid-pagesettings pageCount="5" pageSize="20" pageSizes="true"></e-grid-pagesettings>
-                <e-grid-columns>
-                    <e-grid-column field="StaffId" headerText="ID" textAlign="Right" isIdentity="true" isPrimaryKey="true" visible="false"></e-grid-column>
-                    <e-grid-column field="FirstName" validationRules="@(new { required = true })" headerText="First Name" width="120"></e-grid-column>
-                    <e-grid-column field="LastName" validationRules="@(new { required = true })" headerText="Last Name" width="150"></e-grid-column>
-                    <e-grid-column field="EmailAddress" validationRules="@(new { required = true })" headerText="Email" width="150"></e-grid-column>
-                    <e-grid-column field="Gender" validationRules="@(new { required = true })" headerText="Gender" width="80"></e-grid-column>
-                    <e-grid-column field="PhoneNumber" headerText="Phone Number" width="150"></e-grid-column>
-                    <e-grid-column field="ZipCode" validationRules="@(new { required = true })" headerText="Zip Code" width="130"></e-grid-column>
-                    <e-grid-column headerText="Actions" width="120" commands=commands></e-grid-column>
-                </e-grid-columns>
-            </ejs-grid>
+            <div class="d-flex justify-content-between mb-2">
+                <div style="flex:1">
+                    <input id="vemailSearch" placeholder="Search by email..." class="form-control" autocomplete="off" />
+                    <div id="vemailHint" class="small text-muted mt-1">Type to search emails (autocomplete)</div>
+                </div>
+                <div class="ml-2">
+                    <button id="vbtnAdd" class="btn btn-primary">Add New</button>
+                </div>
+            </div>
+
+            <table class="table table-striped" id="volunteerTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>First Name</th>
+                        <th>Last Name</th>
+                        <th>Email</th>
+                        <th>Gender</th>
+                        <th>Phone</th>
+                        <th>Zip</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in Model.Volunteers ?? Enumerable.Empty<InpremClockingApp.Models.Volunteer>())
+                    {
+                        <tr data-id="@s.VolunteerId">
+                            <td>@s.VolunteerId</td>
+                            <td>@s.FirstName</td>
+                            <td>@s.LastName</td>
+                            <td>@s.EmailAddress</td>
+                            <td>@s.Gender</td>
+                            <td>@s.PhoneNumber</td>
+                            <td>@s.ZipCode</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-secondary vbtn-edit">Edit</button>
+                                <button class="btn btn-sm btn-outline-danger vbtn-delete">Delete</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <!-- Editor Modal -->
+            <div class="modal fade" id="veditorModal" tabindex="-1" role="dialog" aria-hidden="true">
+              <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title">Edit Volunteer</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  <div class="modal-body">
+                    <div id="veditorErrors"></div>
+                    <form id="veditorForm">
+                        <input type="hidden" name="VolunteerId" id="VolunteerId" />
+                        <div class="form-group">
+                            <label>First Name</label>
+                            <input class="form-control" name="FirstName" id="vFirstName" />
+                        </div>
+                        <div class="form-group">
+                            <label>Last Name</label>
+                            <input class="form-control" name="LastName" id="vLastName" />
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input class="form-control" name="EmailAddress" id="vEmailAddress" />
+                        </div>
+                        <div class="form-group">
+                            <label>Gender</label>
+                            <select class="form-control" name="Gender" id="vGender">
+                                <option value="M">M</option>
+                                <option value="F">F</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Phone</label>
+                            <input class="form-control" name="PhoneNumber" id="vPhoneNumber" />
+                        </div>
+                        <div class="form-group">
+                            <label>Zip</label>
+                            <input class="form-control" name="ZipCode" id="vZipCode" />
+                        </div>
+                        <div class="form-group">
+                            <label>Address</label>
+                            <textarea class="form-control" name="Address" id="vAddress"></textarea>
+                        </div>
+                    </form>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="button" id="vbtnSave" class="btn btn-primary">Save</button>
+                  </div>
+                </div>
+              </div>
+            </div>
         </div>
     </div>
   </div>
@@ -70,6 +148,20 @@
 
     function actionBegin(args) {
         if (args.requestType === 'save') {
+            // Client-side validation: ensure EmailAddress is present and looks like an email.
+            var email = args.data['EmailAddress'];
+            var emailRegex = /\S+@@\S+\.\S+/;
+            var dialogContainer = document.querySelector('.e-dialog');
+            clearValidationErrors(dialogContainer);
+            if (!email || !emailRegex.test(email)) {
+                // show inline validation in the editor dialog
+                showValidationErrors(dialogContainer, { EmailAddress: ['Please enter a valid email address.'] });
+                args.cancel = true; // prevent grid from continuing the save
+                return;
+            }
+            // Ensure first/last names are not null to avoid DB NULL insert errors
+            if (!args.data['FirstName']) args.data['FirstName'] = '';
+            if (!args.data['LastName']) args.data['LastName'] = '';
             if (args.rowData['StaffId']) {
                 $.ajax({
                    type: "PUT",
@@ -85,6 +177,99 @@
                        // alert(xhr.responseText);
                    }
                });
+<script>
+    // Client-side logic for volunteer table-based editor
+    (function () {
+        function clearEditorErrors(containerId) {
+            document.getElementById(containerId).innerHTML = '';
+        }
+
+        function showEditorErrors(containerId, obj) {
+            var container = document.getElementById(containerId);
+            container.innerHTML = '';
+            if (obj.errors) {
+                Object.keys(obj.errors).forEach(function (k) {
+                    var p = document.createElement('div');
+                    p.className = 'text-danger';
+                    p.innerText = k + ': ' + obj.errors[k].join('; ');
+                    container.appendChild(p);
+                });
+            } else if (obj.error) {
+                var p = document.createElement('div');
+                p.className = 'text-danger';
+                p.innerText = obj.error;
+                container.appendChild(p);
+            }
+        }
+
+        document.getElementById('volunteerTable').addEventListener('click', function (e) {
+            if (e.target.classList.contains('vbtn-edit')) {
+                var tr = e.target.closest('tr');
+                var id = tr.getAttribute('data-id');
+                document.getElementById('VolunteerId').value = id;
+                document.getElementById('vFirstName').value = tr.children[1].innerText;
+                document.getElementById('vLastName').value = tr.children[2].innerText;
+                document.getElementById('vEmailAddress').value = tr.children[3].innerText;
+                document.getElementById('vGender').value = tr.children[4].innerText;
+                document.getElementById('vPhoneNumber').value = tr.children[5].innerText;
+                document.getElementById('vZipCode').value = tr.children[6].innerText;
+                $('#veditorModal').modal('show');
+                clearEditorErrors('veditorErrors');
+            }
+
+            if (e.target.classList.contains('vbtn-delete')) {
+                var tr = e.target.closest('tr');
+                var id = tr.getAttribute('data-id');
+                if (!confirm('Delete volunteer ' + id + '?')) return;
+                fetch('/api/volunteers/' + id, { method: 'DELETE' })
+                    .then(function (r) { if (r.ok) tr.parentNode.removeChild(tr); else return r.json().then(function (j) { showEditorErrors('veditorErrors', j); }); })
+                    .catch(function () { alert('Delete failed'); });
+            }
+        });
+
+        document.getElementById('vbtnAdd').addEventListener('click', function () {
+            document.getElementById('VolunteerId').value = '';
+            document.getElementById('vFirstName').value = '';
+            document.getElementById('vLastName').value = '';
+            document.getElementById('vEmailAddress').value = '';
+            document.getElementById('vGender').value = 'M';
+            document.getElementById('vPhoneNumber').value = '';
+            document.getElementById('vZipCode').value = '';
+            $('#veditorModal').modal('show');
+            clearEditorErrors('veditorErrors');
+        });
+
+        document.getElementById('vbtnSave').addEventListener('click', function () {
+            clearEditorErrors('veditorErrors');
+            var id = document.getElementById('VolunteerId').value;
+            var payload = {
+                VolunteerId: id ? parseInt(id) : 0,
+                FirstName: document.getElementById('vFirstName').value,
+                LastName: document.getElementById('vLastName').value,
+                EmailAddress: document.getElementById('vEmailAddress').value,
+                Gender: document.getElementById('vGender').value,
+                PhoneNumber: document.getElementById('vPhoneNumber').value,
+                ZipCode: document.getElementById('vZipCode').value,
+                Address: document.getElementById('vAddress').value
+            };
+
+            var url = id ? '?handler=Update' : '?handler=Create';
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(function (r) {
+                if (r.ok) return r.json().catch(function () { return payload; });
+                return r.json().then(function (j) { throw j; });
+            }).then(function (data) {
+                $('#veditorModal').modal('hide');
+                location.reload();
+            }).catch(function (err) {
+                showEditorErrors('veditorErrors', err);
+            });
+        });
+    })();
+</script>
             } else {
                 args.data['Type'] = 'Staff';
                 $.ajax({
@@ -95,10 +280,20 @@
                    dataType: "json",
                    processData: true,
                    success: function (data, status, jqXHR) {
-                       // alert("success..." + data);
+                       // success - nothing to display
                    },
                    error: function (xhr) {
-                       // alert(xhr.responseText);
+                       var container = document.querySelector('.e-dialog');
+                       clearValidationErrors(container);
+                       var json = null;
+                       try { json = xhr.responseJSON || JSON.parse(xhr.responseText); } catch (e) { }
+                       if (json) {
+                           if (json.errors) showValidationErrors(container, json.errors);
+                           else if (json.error) showGeneralError(container, json.error);
+                           else showGeneralError(container, 'Server error: ' + xhr.statusText);
+                       } else {
+                           showGeneralError(container, 'Server error: ' + xhr.statusText);
+                       }
                    }
                });
             }
@@ -161,6 +356,85 @@
         if (args.item.id === 'Grid_excelexport') {
             gridObj.excelExport();
         }
+    }
+
+    // Debounced AJAX autocomplete for volunteer email search + grid filtering
+    document.addEventListener('DOMContentLoaded', function () {
+        var gridObj = document.getElementById("Grid").ej2_instances[0];
+        var input = document.getElementById('vemailSearch');
+        var timer = null;
+        if (!input) return;
+
+        input.addEventListener('input', function () {
+            var val = this.value || '';
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(function () {
+                if (!val) {
+                    if (gridObj) gridObj.clearFiltering();
+                    return;
+                }
+
+                fetch('/api/people/emails?q=' + encodeURIComponent(val))
+                    .then(function (r) { return r.json(); })
+                    .then(function (list) {
+                        if (gridObj) {
+                            try { gridObj.filterByColumn('EmailAddress', 'startswith', val.toString()); }
+                            catch (e) { gridObj.search(val); }
+                        }
+
+                        var hint = document.getElementById('vemailHint');
+                        if (!hint) return;
+                        hint.innerHTML = '';
+                        list.slice(0,10).forEach(function (it) {
+                            var btn = document.createElement('button');
+                            btn.type = 'button';
+                            btn.className = 'btn btn-link p-0';
+                            btn.textContent = it;
+                            btn.addEventListener('click', function () {
+                                input.value = it;
+                                input.dispatchEvent(new Event('input'));
+                            });
+                            hint.appendChild(btn);
+                            hint.appendChild(document.createTextNode(' '));
+                        });
+                    }).catch(function () { /* ignore */ });
+            }, 250);
+        });
+    });
+
+    // Helper functions to show/clear validation UI in the Syncfusion dialog
+    function clearValidationErrors(dialog) {
+        if (!dialog) return;
+        var list = dialog.querySelectorAll('.field-error');
+        list.forEach(function (n) { n.parentNode.removeChild(n); });
+        var gen = dialog.querySelector('.general-error');
+        if (gen) gen.innerText = '';
+    }
+
+    function showValidationErrors(dialog, errors) {
+        if (!dialog) return;
+        // errors is { fieldName: [messages] }
+        Object.keys(errors).forEach(function (field) {
+            var input = dialog.querySelector('[name="' + field + '"]');
+            var messages = errors[field];
+            var container = input ? input.parentNode : dialog;
+            var span = document.createElement('div');
+            span.className = 'field-error text-danger small';
+            span.innerText = messages.join('; ');
+            container.appendChild(span);
+        });
+    }
+
+    function showGeneralError(dialog, message) {
+        if (!dialog) return;
+        var gen = dialog.querySelector('.general-error');
+        if (!gen) {
+            gen = document.createElement('div');
+            gen.className = 'general-error alert alert-danger mt-2';
+            var header = dialog.querySelector('.e-dlg-content') || dialog;
+            header.appendChild(gen);
+        }
+        gen.innerText = message;
     }
 
 </script>
