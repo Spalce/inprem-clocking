@@ -6,8 +6,6 @@
     ViewData["Title"] = "Staff Clocking Report";
 }
 
-<link href="https://cdn.boldreports.com/4.2.52/content/material/bold.reports.all.min.css" rel="stylesheet" />
-
 <div class="content-wrapper">
     <div class="content-header">
         <div class="container-fluid">
@@ -27,29 +25,32 @@
     <div class="content">
         <div class="container-fluid">
             <div class="row">
-                <div style="height: 100vh; width: 100%;">
-                    <bold-report-viewer
-                        is-responsive="true" id="viewer">
-                    </bold-report-viewer>
+                <div style="width:100%;">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Staff</th>
+                                <th>Date</th>
+                                <th>Clock In</th>
+                                <th>Clock Out</th>
+                                <th>Hours</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in Model.ReportRows)
+                            {
+                                <tr>
+                                    <td>@row.FullName</td>
+                                    <td>@row.CreatedAt?.ToString("yyyy-MM-dd")</td>
+                                    <td>@(row.ClockInTime?.ToString("HH:mm:ss") ?? "")</td>
+                                    <td>@(row.ClockOutTime?.ToString("HH:mm:ss") ?? "")</td>
+                                    <td>@(row.WorkingHours?.ToString() ?? "")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-<script type="text/javascript">
-     $(function () {
-         $("#viewer").boldReportViewer({
-             reportServiceUrl: "/api/ReportViewer",
-             reportPath: 'StaffClockingOne.rdl',
-             parameters: [
-                { name: 'Url', labels: ['Url'], values: ['http://app.inpremclockin.org/api/reports/staff-clocking-one'] },
-                { name: 'StaffUrl', labels: ['StaffUrl'], values: ['http://app.inpremclockin.org/api/staff/all-staff'] },
-                { name: 'Title', labels: ['Title'], values: ['Individual Staff Clocking Report'] },
-                { name: 'StartDate', labels: ['Start Date'], values: ['2022-01-01'] },
-                { name: 'EndDate', labels: ['End Date'], values: ['2022-12-31'] },
-                { name: 'Image', labels: ['Image'], values: ['http://app.inpremclockin.org/img/inprem.png'] },
-             ]
-         });
-     });
-</script>

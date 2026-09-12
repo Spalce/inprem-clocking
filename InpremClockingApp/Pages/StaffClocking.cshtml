@@ -1,19 +1,9 @@
 @page
-@using Newtonsoft.Json
-@* Syncfusion removed: using standard HTML controls and tables instead *@
 @model StaffClocking
 @using Microsoft.AspNetCore.Authorization;
 @attribute [Authorize]
 @{
     ViewData["Title"] = "Staff Clocking";
-}
-
-@{
-    List<object> commands = new List<object>();
-    // commands.Add(new { type = "None", title = "Details", buttonOption = new { content = "Details", cssClass = "e-flat e-details" } }); // custom
-    commands.Add(new { type = "None", title = "ClockOut", buttonOption = new { content = "Clock Out", cssClass = "e-flat e-deleted" } }); // custom
-    commands.Add(new { type = "None", title = "BreakStart", buttonOption = new { content = "Break Start", cssClass = "e-flat e-deleted" } }); // custom
-    commands.Add(new { type = "None", title = "BreakEnd", buttonOption = new { content = "Break End", cssClass = "e-flat e-deleted" } }); // custom
 }
 
 <div class="content-wrapper">
@@ -117,79 +107,6 @@
 </div>
 
 <script>
-
-    /*ej.base.L10n.load({
-        'en-US': {
-            'grid': {
-                'SaveButton': 'Save',
-                'CancelButton': 'Discard'
-            }
-        }
-    });*/
-
-    function actionBegin(args) {
-        if (args.requestType === 'save') {
-            if (args.rowData['StaffId']) {
-                $.ajax({
-                   type: "PUT",
-                   url: "https://localhost:7094/api/staffs/" + args.rowData['StaffId'],
-                   data: JSON.stringify(args.data),
-                   contentType: "application/json; charset=utf-8",
-                   dataType: "json",
-                   processData: true,
-                   success: function (data, status, jqXHR) {
-                       // alert("success..." + data);
-                   },
-                   error: function (xhr) {
-                       // alert(xhr.responseText);
-                   }
-               });
-            } else {
-                args.data['Type'] = 'Staff';
-                $.ajax({
-                   type: "POST",
-                   url: "https://localhost:7094/api/staffs/",
-                   data: JSON.stringify(args.data),
-                   contentType: "application/json; charset=utf-8",
-                   dataType: "json",
-                   processData: true,
-                   success: function (data, status, jqXHR) {
-                       // alert("success..." + data);
-                   },
-                   error: function (xhr) {
-                       // alert(xhr.responseText);
-                   }
-               });
-            }
-        }
-
-        if (args.requestType === 'delete') {
-            $.ajax({
-               type: "DELETE",
-               url: "https://localhost:7094/api/staffs/" + args.rowData['StaffId'],
-               data: JSON.stringify(args.data),
-               contentType: "application/json; charset=utf-8",
-               dataType: "json",
-               processData: true,
-               success: function (data, status, jqXHR) {
-                   // alert("success..." + data);
-               },
-               error: function (xhr) {
-                   // alert(xhr.responseText);
-               }
-           });
-        }
-    }
-
-    function actionComplete(args) {
-        if (args.requestType === 'beginEdit' || args.requestType === 'add') {
-            var dialog = args.dialog;
-            dialog.showCloseIcon = false;
-            // dialog.height = 400;
-            // change the header of the dialog
-            dialog.header = args.requestType === 'beginEdit' ? 'Edit Record of ' + args.rowData['FirstName'] : 'New Staff';
-        }
-    }
 
     async function postAction(action, data) {
         try {

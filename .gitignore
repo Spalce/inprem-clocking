@@ -265,6 +265,9 @@ ServiceFabricBackup/
 *- [Bb]ackup ([0-9]).rdl
 *- [Bb]ackup ([0-9][0-9]).rdl
 
+# Runtime report designer/cache artifacts
+InpremClockingApp/wwwroot/Cache/
+
 # Microsoft Fakes
 FakesAssemblies/
 

@@ -41,15 +41,10 @@ public class Volunteer : PageModel
             ModelState.AddModelError("EmailAddress", "Please enter a valid email address");
         }
 
-        if (string.IsNullOrWhiteSpace(model.FirstName))
-        {
-            ModelState.AddModelError("FirstName", "First name is required");
-        }
-
-        if (string.IsNullOrWhiteSpace(model.LastName))
-        {
-            ModelState.AddModelError("LastName", "Last name is required");
-        }
+        // FirstName / LastName are optional for new registrations (search-by-email workflows).
+        // Normalize missing names to empty strings so DB inserts don't fail with NULL.
+        if (string.IsNullOrWhiteSpace(model.FirstName)) model.FirstName = string.Empty;
+        if (string.IsNullOrWhiteSpace(model.LastName)) model.LastName = string.Empty;
 
         var staff = await _service.GetByEmail(model.EmailAddress).ConfigureAwait(true);
         if (staff != null)

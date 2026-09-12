@@ -6,8 +6,6 @@
     ViewData["Title"] = "Volunteer Clocking Report";
 }
 
-<!-- BoldReports removed: render volunteer clocking report as HTML table -->
-
 <div class="content-wrapper">
     <div class="content-header">
         <div class="container-fluid">
@@ -58,18 +56,3 @@
     </div>
 </div>
 
-<script type="text/javascript">
-     $(function () {
-         $("#viewer").boldReportViewer({
-             reportServiceUrl: "/api/ReportViewer",
-             reportPath: 'StaffVolunteerClocking.rdl',
-             parameters: [
-                { name: 'Url', labels: ['Url'], values: ['http://app.inpremclockin.org/api/reports/volunteer-clocking'] },
-                { name: 'Title', labels: ['Title'], values: ['Volunteer Clocking Report'] },
-                { name: 'StartDate', labels: ['Start Date'], values: ['2022-01-01'] },
-                { name: 'EndDate', labels: ['End Date'], values: ['2022-12-31'] },
-                { name: 'Image', labels: ['Image'], values: ['http://app.inpremclockin.org/img/inprem.png'] },
-             ]
-         });
-     });
-</script>

@@ -6,12 +6,6 @@
     ViewData["Title"] = "Staff List";
 }
 
-@{
-    List<object> commands = new List<object>();
-    commands.Add(new { type = "None", title = "Move", buttonOption = new { content = "Move To Volunteer", cssClass = "e-flat e-details" } }); // custom
-    // commands.Add(new { type = "Delete", title = "Delete", buttonOption = new { content = "Delete", cssClass = "e-flat e-deleted" } }); // custom
-}
-
 <div class="content-wrapper">
 <div class="content-header">
   <div class="container-fluid">
@@ -35,7 +29,7 @@
             <div class="d-flex justify-content-between mb-2">
                 <div style="flex:1">
                     <input id="emailSearch" placeholder="Search by email..." class="form-control" autocomplete="off" />
-                    <div id="emailHint" class="small text-muted mt-1">Type to search emails (autocomplete)</div>
+                    <div id="emailHint" class="small text-muted mt-1">Type to search emails</div>
                 </div>
                 <div class="ml-2">
                     <button id="btnAdd" class="btn btn-primary">Add New</button>
@@ -58,7 +52,7 @@
                 <tbody>
                     @foreach (var s in Model.Staffs ?? Enumerable.Empty<InpremClockingApp.Models.Staff>())
                     {
-                        <tr data-id="@s.StaffId">
+                        <tr data-id="@s.StaffId" data-address="@s.Address" data-created-at="@s.CreatedAt?.ToString("O")">
                             <td>@s.StaffId</td>
                             <td>@s.FirstName</td>
                             <td>@s.LastName</td>
@@ -67,15 +61,14 @@
                             <td>@s.PhoneNumber</td>
                             <td>@s.ZipCode</td>
                             <td>
-                                <button class="btn btn-sm btn-outline-secondary btn-edit">Edit</button>
-                                <button class="btn btn-sm btn-outline-danger btn-delete">Delete</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary btn-edit">Edit</button>
+                                <button type="button" class="btn btn-sm btn-outline-info btn-move">Move To Volunteer</button>
                             </td>
                         </tr>
                     }
                 </tbody>
             </table>
 
-            <!-- Editor Modal -->
             <div class="modal fade" id="editorModal" tabindex="-1" role="dialog" aria-hidden="true">
               <div class="modal-dialog" role="document">
                 <div class="modal-content">
@@ -136,231 +129,24 @@
 </div>
 
 <script>
-
-    /*ej.base.L10n.load({
-        'en-US': {
-            'grid': {
-                'SaveButton': 'Save',
-                'CancelButton': 'Discard'
-            }
-        }
-    });*/
-
-    function actionBegin(args) {
-        if (args.requestType === 'save') {
-            // Client-side validation: ensure EmailAddress is present and looks like an email.
-            var email = args.data['EmailAddress'];
-            var emailRegex = /\S+@@\S+\.\S+/;
-            var dialogContainer = document.querySelector('.e-dialog');
-            clearValidationErrors(dialogContainer);
-            if (!email || !emailRegex.test(email)) {
-                // show inline validation in the editor dialog
-                showValidationErrors(dialogContainer, { EmailAddress: ['Please enter a valid email address.'] });
-                args.cancel = true; // prevent grid from continuing the save
-                return;
-            }
-            // Ensure first/last names are not null to avoid DB NULL insert errors
-            if (!args.data['FirstName']) args.data['FirstName'] = '';
-            if (!args.data['LastName']) args.data['LastName'] = '';
-            if (args.rowData['StaffId']) {
-                $.ajax({
-                   type: "POST",
-                   url: "?handler=Update",
-                   data: JSON.stringify(args.data),
-                   contentType: "application/json; charset=utf-8",
-                   dataType: "json",
-                   processData: true,
-                   success: function (data, status, jqXHR) {
-                       // alert("success..." + data);
-                   },
-                   error: function (xhr) {
-                       // alert(xhr.responseText);
-                       document.location.reload(true);
-                   }
-               });
-            } else {
-                $.ajax({
-                   type: "POST",
-                   url: "?handler=Create",
-                   data: JSON.stringify(args.data),
-                   contentType: "application/json; charset=utf-8",
-                   dataType: "json",
-                   processData: true,
-                   success: function (data, status, jqXHR) {
-                       // success - nothing to display, grid will update
-                   },
-                   error: function (xhr) {
-                       var container = document.querySelector('.e-dialog');
-                       clearValidationErrors(container);
-                       var json = null;
-                       try { json = xhr.responseJSON || JSON.parse(xhr.responseText); } catch (e) { }
-                       if (json) {
-                           if (json.errors) showValidationErrors(container, json.errors);
-                           else if (json.error) showGeneralError(container, json.error);
-                           else showGeneralError(container, 'Server error: ' + xhr.statusText);
-                       } else {
-                           showGeneralError(container, 'Server error: ' + xhr.statusText);
-                       }
-                   }
-               });
-            }
-        }
-
-        if (args.requestType === 'delete') {
-            $.ajax({
-               type: "DELETE",
-               url: "https://localhost:7094/api/staffs/" + args.data['StaffId'],
-               data: JSON.stringify(args.data),
-               contentType: "application/json; charset=utf-8",
-               dataType: "json",
-               processData: true,
-               success: function (data, status, jqXHR) {
-                   // alert("success..." + data);
-               },
-               error: function (xhr) {
-                   // alert(xhr.responseText);
-               }
-           });
-        }
-    }
-
-    function actionComplete(args) {
-        if (args.requestType === 'beginEdit' || args.requestType === 'add') {
-            var dialog = args.dialog;
-            dialog.showCloseIcon = false;
-            // dialog.height = 400;
-            // change the header of the dialog
-            dialog.header = args.requestType === 'beginEdit' ? 'Edit Record of ' + args.rowData['FirstName'] : 'New Staff';
-        }
-    }
-
-    function commandClick(args) {
-        if (args.target.title === 'Move') {
-            console.log(JSON.stringify(args.rowData));
-            $.ajax({
-               type: "POST",
-               url: "?handler=Move",
-               data: JSON.stringify(args.rowData),
-               contentType: "application/json; charset=utf-8",
-               dataType: "json",
-               processData: true,
-               success: function (data, status, jqXHR) {
-                   // alert("success...");
-               },
-               error: function (xhr) {
-                   document.location.reload(true);
-               }
-           });
-        }
-    }
-
-    function toolbarClick(args) {
-        var gridObj = document.getElementById("Grid").ej2_instances[0];
-        if (args.item.id === 'Grid_pdfexport') {
-            gridObj.pdfExport();
-        }
-        if (args.item.id === 'Grid_excelexport') {
-            gridObj.excelExport();
-        }
-    }
-
-    // Debounced AJAX autocomplete for email search + grid filtering
-    document.addEventListener('DOMContentLoaded', function () {
-        var gridObj = document.getElementById("Grid").ej2_instances[0];
-        var input = document.getElementById('emailSearch');
-        var timer = null;
-        if (!input) return;
-
-        input.addEventListener('input', function () {
-            var val = this.value || '';
-            if (timer) clearTimeout(timer);
-            timer = setTimeout(function () {
-                if (!val) {
-                    if (gridObj) gridObj.clearFiltering();
-                    return;
-                }
-
-                // Call API for suggestions
-                fetch('/api/people/emails?q=' + encodeURIComponent(val))
-                    .then(function (r) { return r.json(); })
-                    .then(function (list) {
-                        // If grid present, filter by entered value prefix
-                        if (gridObj) {
-                            try { gridObj.filterByColumn('EmailAddress', 'startswith', val.toString()); }
-                            catch (e) { gridObj.search(val); }
-                        }
-
-                        // Show minimal suggestion dropdown (browser datalist-like)
-                        var hint = document.getElementById('emailHint');
-                        if (!hint) return;
-                        hint.innerHTML = '';
-                        list.slice(0,10).forEach(function (it) {
-                            var btn = document.createElement('button');
-                            btn.type = 'button';
-                            btn.className = 'btn btn-link p-0';
-                            btn.textContent = it;
-                            btn.addEventListener('click', function () {
-                                input.value = it;
-                                input.dispatchEvent(new Event('input'));
-                            });
-                            hint.appendChild(btn);
-                            hint.appendChild(document.createTextNode(' '));
-                        });
-                    }).catch(function () { /* ignore */ });
-            }, 250);
-        });
-    });
-
-    // Helper functions to show/clear validation UI in the Syncfusion dialog
-    function clearValidationErrors(dialog) {
-        if (!dialog) return;
-        var list = dialog.querySelectorAll('.field-error');
-        list.forEach(function (n) { n.parentNode.removeChild(n); });
-        var gen = dialog.querySelector('.general-error');
-        if (gen) gen.innerText = '';
-    }
-
-    function showValidationErrors(dialog, errors) {
-        if (!dialog) return;
-        // errors is { fieldName: [messages] }
-        Object.keys(errors).forEach(function (field) {
-            var input = dialog.querySelector('[name="' + field + '"]');
-            var messages = errors[field];
-            var container = input ? input.parentNode : dialog;
-            var span = document.createElement('div');
-            span.className = 'field-error text-danger small';
-            span.innerText = messages.join('; ');
-            container.appendChild(span);
-        });
-    }
-
-    function showGeneralError(dialog, message) {
-        if (!dialog) return;
-        var gen = dialog.querySelector('.general-error');
-        if (!gen) {
-            gen = document.createElement('div');
-            gen.className = 'general-error alert alert-danger mt-2';
-            var header = dialog.querySelector('.e-dlg-content') || dialog;
-            header.appendChild(gen);
-        }
-        gen.innerText = message;
-    }
-
-</script>
-<script>
-    // Client-side logic for table-based editor
     (function () {
-        function buildRow(data) {
-            return '<tr data-id="' + data.StaffId + '">'
-                + '<td>' + data.StaffId + '</td>'
-                + '<td>' + (data.FirstName || '') + '</td>'
-                + '<td>' + (data.LastName || '') + '</td>'
-                + '<td>' + (data.EmailAddress || '') + '</td>'
-                + '<td>' + (data.Gender || '') + '</td>'
-                + '<td>' + (data.PhoneNumber || '') + '</td>'
-                + '<td>' + (data.ZipCode || '') + '</td>'
-                + '<td><button class="btn btn-sm btn-outline-secondary btn-edit">Edit</button> <button class="btn btn-sm btn-outline-danger btn-delete">Delete</button></td>'
-                + '</tr>';
+        var table = document.getElementById('staffTable');
+        var searchInput = document.getElementById('emailSearch');
+        var hint = document.getElementById('emailHint');
+        var timer = null;
+
+        function rowToPayload(tr) {
+            return {
+                StaffId: parseInt(tr.getAttribute('data-id') || '0'),
+                FirstName: tr.children[1].innerText,
+                LastName: tr.children[2].innerText,
+                EmailAddress: tr.children[3].innerText,
+                Gender: tr.children[4].innerText,
+                PhoneNumber: tr.children[5].innerText,
+                ZipCode: tr.children[6].innerText,
+                Address: tr.getAttribute('data-address') || '',
+                CreatedAt: tr.getAttribute('data-created-at') || null
+            };
         }
 
         function clearEditorErrors() {
@@ -370,57 +156,87 @@
         function showEditorErrors(obj) {
             var container = document.getElementById('editorErrors');
             container.innerHTML = '';
-            if (obj.errors) {
-                Object.keys(obj.errors).forEach(function (k) {
+            if (obj && obj.errors) {
+                Object.keys(obj.errors).forEach(function (key) {
                     var p = document.createElement('div');
                     p.className = 'text-danger';
-                    p.innerText = k + ': ' + obj.errors[k].join('; ');
+                    p.innerText = key + ': ' + obj.errors[key].join('; ');
                     container.appendChild(p);
                 });
-            } else if (obj.error) {
+            } else {
                 var p = document.createElement('div');
                 p.className = 'text-danger';
-                p.innerText = obj.error;
+                p.innerText = obj && obj.error ? obj.error : 'Request failed.';
                 container.appendChild(p);
             }
         }
 
-        document.getElementById('staffTable').addEventListener('click', function (e) {
-            if (e.target.classList.contains('btn-edit')) {
-                var tr = e.target.closest('tr');
-                var id = tr.getAttribute('data-id');
-                // populate modal
-                document.getElementById('StaffId').value = id;
-                document.getElementById('FirstName').value = tr.children[1].innerText;
-                document.getElementById('LastName').value = tr.children[2].innerText;
-                document.getElementById('EmailAddress').value = tr.children[3].innerText;
-                document.getElementById('Gender').value = tr.children[4].innerText;
-                document.getElementById('PhoneNumber').value = tr.children[5].innerText;
-                document.getElementById('ZipCode').value = tr.children[6].innerText;
-                $('#editorModal').modal('show');
-                clearEditorErrors();
+        function setModalTitle(text) {
+            document.querySelector('#editorModal .modal-title').innerText = text;
+        }
+
+        function openEditor(payload) {
+            document.getElementById('StaffId').value = payload.StaffId || '';
+            document.getElementById('FirstName').value = payload.FirstName || '';
+            document.getElementById('LastName').value = payload.LastName || '';
+            document.getElementById('EmailAddress').value = payload.EmailAddress || '';
+            document.getElementById('Gender').value = payload.Gender || 'M';
+            document.getElementById('PhoneNumber').value = payload.PhoneNumber || '';
+            document.getElementById('ZipCode').value = payload.ZipCode || '';
+            document.getElementById('Address').value = payload.Address || '';
+            clearEditorErrors();
+            setModalTitle(payload.StaffId ? 'Edit Staff' : 'New Staff');
+            $('#editorModal').modal('show');
+        }
+
+        function filterRows(value) {
+            var term = value.toLowerCase();
+            Array.prototype.forEach.call(table.tBodies[0].rows, function (row) {
+                row.style.display = !term || row.children[3].innerText.toLowerCase().indexOf(term) !== -1 ? '' : 'none';
+            });
+        }
+
+        function showHints(list) {
+            hint.innerHTML = '';
+            list.slice(0, 10).forEach(function (email) {
+                var button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'btn btn-link p-0 mr-2';
+                button.textContent = email;
+                button.addEventListener('click', function () {
+                    searchInput.value = email;
+                    filterRows(email);
+                    hint.innerHTML = '';
+                });
+                hint.appendChild(button);
+            });
+        }
+
+        table.addEventListener('click', function (event) {
+            var tr = event.target.closest('tr');
+            if (!tr) return;
+
+            if (event.target.classList.contains('btn-edit')) {
+                openEditor(rowToPayload(tr));
             }
 
-            if (e.target.classList.contains('btn-delete')) {
-                var tr = e.target.closest('tr');
-                var id = tr.getAttribute('data-id');
-                if (!confirm('Delete staff ' + id + '?')) return;
-                fetch('/api/staffs/' + id, { method: 'DELETE' })
-                    .then(function (r) { if (r.ok) tr.parentNode.removeChild(tr); else return r.json().then(showEditorErrors); })
-                    .catch(function () { alert('Delete failed'); });
+            if (event.target.classList.contains('btn-move')) {
+                if (!confirm('Move staff member to volunteers?')) return;
+                fetch('?handler=Move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(rowToPayload(tr))
+                }).then(function (response) {
+                    if (response.ok || response.redirected) location.reload();
+                    else return response.json().then(showEditorErrors);
+                }).catch(function () {
+                    showEditorErrors({ error: 'Move failed.' });
+                });
             }
         });
 
         document.getElementById('btnAdd').addEventListener('click', function () {
-            document.getElementById('StaffId').value = '';
-            document.getElementById('FirstName').value = '';
-            document.getElementById('LastName').value = '';
-            document.getElementById('EmailAddress').value = '';
-            document.getElementById('Gender').value = 'M';
-            document.getElementById('PhoneNumber').value = '';
-            document.getElementById('ZipCode').value = '';
-            $('#editorModal').modal('show');
-            clearEditorErrors();
+            openEditor({ Gender: 'M' });
         });
 
         document.getElementById('btnSave').addEventListener('click', function () {
@@ -437,21 +253,34 @@
                 Address: document.getElementById('Address').value
             };
 
-            var url = id ? '?handler=Update' : '?handler=Create';
-            fetch(url, {
+            fetch(id ? '?handler=Update' : '?handler=Create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
-            }).then(function (r) {
-                if (r.ok) return r.json().catch(function () { return payload; });
-                return r.json().then(function (j) { throw j; });
-            }).then(function (data) {
-                $('#editorModal').modal('hide');
-                // refresh page or update row in-place
-                location.reload();
-            }).catch(function (err) {
-                showEditorErrors(err);
-            });
+            }).then(function (response) {
+                if (response.ok || response.redirected) {
+                    $('#editorModal').modal('hide');
+                    location.reload();
+                    return;
+                }
+                return response.json().then(function (json) { throw json; });
+            }).catch(showEditorErrors);
+        });
+
+        searchInput.addEventListener('input', function () {
+            var value = searchInput.value || '';
+            filterRows(value);
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(function () {
+                if (!value) {
+                    hint.innerText = 'Type to search emails';
+                    return;
+                }
+                fetch('/api/people/emails?q=' + encodeURIComponent(value))
+                    .then(function (response) { return response.ok ? response.json() : []; })
+                    .then(showHints)
+                    .catch(function () { hint.innerHTML = ''; });
+            }, 250);
         });
     })();
 </script>

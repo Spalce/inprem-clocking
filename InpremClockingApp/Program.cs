@@ -1,10 +1,8 @@
-// BoldReports removed: no BoldReports license or report designer registration
 using InpremClockingApp.Data;
 using InpremClockingApp.Models.Identity;
 using InpremClockingApp.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-// Syncfusion removed: no Syncfusion licensing or scripts required
 using System;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -37,7 +35,6 @@ builder.Services.AddRazorPages()
     .AddMvcOptions(option => option.EnableEndpointRouting = false);
 
 var app = builder.Build();
-// BoldReports and Syncfusion removed: no license registration or report designer registration
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

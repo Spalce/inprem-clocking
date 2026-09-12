@@ -29,6 +29,102 @@ public class Staff : PageModel
         return Page();
     }
 
+    //public async Task<IActionResult> OnPostCreateAsync([FromBody] Models.Staff model)
+    //{
+    //    // 1. Validate required fields
+    //    if (string.IsNullOrWhiteSpace(model.EmailAddress))
+    //    {
+    //        ModelState.AddModelError("EmailAddress", "Email address is required");
+    //    }
+    //    else if (!new System.ComponentModel.DataAnnotations.EmailAddressAttribute()
+    //                 .IsValid(model.EmailAddress))
+    //    {
+    //        ModelState.AddModelError("EmailAddress", "Please enter a valid email address");
+    //    }
+
+    //    if (string.IsNullOrWhiteSpace(model.FirstName))
+    //    {
+    //        ModelState.AddModelError("FirstName", "First name is required");
+    //    }
+
+    //    if (string.IsNullOrWhiteSpace(model.LastName))
+    //    {
+    //        ModelState.AddModelError("LastName", "Last name is required");
+    //    }
+
+    //    // 2. Stop here if validation failed
+    //    if (!ModelState.IsValid)
+    //    {
+    //        var errors = ModelState
+    //            .Where(kvp => kvp.Value.Errors.Count > 0)
+    //            .ToDictionary(
+    //                kvp => kvp.Key,
+    //                kvp => kvp.Value.Errors
+    //                    .Select(e => e.ErrorMessage)
+    //                    .ToArray());
+
+    //        return BadRequest(new { errors });
+    //    }
+
+    //    // 3. Now check whether the email already exists
+    //    var staff = await _service.GetByEmail(model.EmailAddress);
+
+    //    if (staff != null)
+    //    {
+    //        ModelState.AddModelError(
+    //            "EmailAddress",
+    //            "A staff with this email already exists");
+
+    //        var errors = ModelState
+    //            .Where(kvp => kvp.Value.Errors.Count > 0)
+    //            .ToDictionary(
+    //                kvp => kvp.Key,
+    //                kvp => kvp.Value.Errors
+    //                    .Select(e => e.ErrorMessage)
+    //                    .ToArray());
+
+    //        return BadRequest(new { errors });
+    //    }
+
+    //    // 4. Set system-generated values
+    //    model.CreatedAt = DateTime.Now;
+    //    model.Type = "Staff";
+
+    //    // 5. Save the new staff
+    //    try
+    //    {
+    //        var save = await _service.Create(model);
+
+    //        return new ObjectResult(save)
+    //        {
+    //            StatusCode = StatusCodes.Status201Created
+    //        };
+    //    }
+    //    catch (Microsoft.EntityFrameworkCore.DbUpdateException dbex)
+    //    {
+    //        var msg = dbex.InnerException?.Message ?? dbex.Message;
+
+    //        return BadRequest(new
+    //        {
+    //            error = "Database update failed: " + msg
+    //        });
+    //    }
+    //    catch (ArgumentException ae)
+    //    {
+    //        return BadRequest(new
+    //        {
+    //            error = ae.Message
+    //        });
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        return StatusCode(500, new
+    //        {
+    //            error = ex.Message
+    //        });
+    //    }
+    //}
+
     public async Task<IActionResult> OnPostCreateAsync([FromBody] Models.Staff model)
     {
         // Server-side validation
@@ -42,15 +138,10 @@ public class Staff : PageModel
             ModelState.AddModelError("EmailAddress", "Please enter a valid email address");
         }
 
-        if (string.IsNullOrWhiteSpace(model.FirstName))
-        {
-            ModelState.AddModelError("FirstName", "First name is required");
-        }
-
-        if (string.IsNullOrWhiteSpace(model.LastName))
-        {
-            ModelState.AddModelError("LastName", "Last name is required");
-        }
+        // FirstName / LastName are optional for new registrations (search-by-email workflows).
+        // Normalize missing names to empty strings so DB inserts don't fail with NULL.
+        if (string.IsNullOrWhiteSpace(model.FirstName)) model.FirstName = string.Empty;
+        if (string.IsNullOrWhiteSpace(model.LastName)) model.LastName = string.Empty;
 
         var staff = await _service.GetByEmail(model.EmailAddress).ConfigureAwait(true);
         if (staff != null)

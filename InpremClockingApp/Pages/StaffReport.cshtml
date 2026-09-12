@@ -6,8 +6,6 @@
     ViewData["Title"] = "Staff Report";
 }
 
-<!-- BoldReports removed: render staff list as HTML table -->
-
 <div class="content-wrapper">
 <div class="content-header">
   <div class="container-fluid">
@@ -55,18 +53,3 @@
 </div>
 </div>
 
-<script type="text/javascript">
-     $(function () {
-         $("#viewer").boldReportViewer({
-             reportServiceUrl: "/api/ReportViewer",
-             reportPath: 'StaffVolunteer.rdl',
-             parameters: [
-                { name: 'Url', labels: ['Url'], values: ['http://app.inpremclockin.org/api/reports/staff'] },
-                { name: 'Title', labels: ['Title'], values: ['Staff List'] },
-                { name: 'StartDate', labels: ['Start Date'], values: ['2022-01-01'] },
-                { name: 'EndDate', labels: ['End Date'], values: ['2022-12-31'] },
-                { name: 'Image', labels: ['Image'], values: ['http://app.inpremclockin.org/img/inprem.png'] },
-             ]
-         });
-     });
-</script>
