@@ -18,10 +18,25 @@ public class StaffClocking : PageModel
 
     public StaffClockingVm Model = new();
 
+    // pagination parameters
+    [BindProperty(SupportsGet = true)]
+    public int Page { get; set; } = 1;
+
+    [BindProperty(SupportsGet = true)]
+    public int PageSize { get; set; } = 20;
+
     public async Task<IActionResult> OnGetAsync()
     {
-        Model!.Clocking = await _service.GetAll().ConfigureAwait(true);
+        var paged = await _service.GetPaged(Page, PageSize).ConfigureAwait(true);
+        Model!.Clocking = paged.Items;
         Model.Staff = await _staff.GetAll().ConfigureAwait(true);
+
+        // expose paging info via ViewData
+        ViewData["TotalCount"] = paged.TotalCount;
+        ViewData["Page"] = paged.Page;
+        ViewData["PageSize"] = paged.PageSize;
+        ViewData["TotalPages"] = paged.TotalPages;
+
         return Page();
     }
 

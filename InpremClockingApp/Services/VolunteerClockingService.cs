@@ -47,6 +47,24 @@ public class VolunteerClockingService
         return await _db.Clockings.ToListAsync().ConfigureAwait(false);
     }
 
+    public async Task<PagedResult<Clocking>> GetPaged(int page, int pageSize)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+
+        var query = _db.Clockings.OrderByDescending(e => e.CreatedAt!.Value);
+        var total = await query.CountAsync().ConfigureAwait(false);
+        var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync().ConfigureAwait(false);
+
+        return new PagedResult<Clocking>
+        {
+            Items = items,
+            TotalCount = total,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
+
     public async Task<IEnumerable<Clocking>> GetAllToday()
     {
         return await _db.Clockings.Where(e => e.CreatedAt!.Value.Date == DateTime.Today.Date).ToListAsync().ConfigureAwait(false);
