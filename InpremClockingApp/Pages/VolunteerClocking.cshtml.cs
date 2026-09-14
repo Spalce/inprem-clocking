@@ -24,18 +24,13 @@ public class VolunteerClocking : PageModel
     [BindProperty(SupportsGet = true)]
     public int PageSize { get; set; } = 20;
 
-    [BindProperty(SupportsGet = true)]
-    public int? VolunteerId { get; set; }
-
-    [BindProperty(SupportsGet = true)]
-    public DateTime? Start { get; set; }
-
-    [BindProperty(SupportsGet = true)]
-    public DateTime? End { get; set; }
+    [BindProperty]
+    public Clocking? ClockingVolunteer { get; set; }
 
     public async Task<IActionResult> OnGetAsync()
     {
-        var paged = await _service.GetPaged(Page, PageSize, VolunteerId, Start, End).ConfigureAwait(true);
+        // restore initial behavior: paging only
+        var paged = await _service.GetPaged(Page, PageSize).ConfigureAwait(true);
         Model!.Clocking = paged.Items;
         Model.Volunteer = await _volunteer.GetAll().ConfigureAwait(true);
 
@@ -43,36 +38,31 @@ public class VolunteerClocking : PageModel
         ViewData["Page"] = paged.Page;
         ViewData["PageSize"] = paged.PageSize;
         ViewData["TotalPages"] = paged.TotalPages;
-        ViewData["VolunteerId"] = VolunteerId;
-        ViewData["Start"] = Start?.ToString("yyyy-MM-ddTHH:mm");
-        ViewData["End"] = End?.ToString("yyyy-MM-ddTHH:mm");
 
         return Page();
     }
 
-    public async Task<IActionResult> OnPostAsync([FromForm] VolunteerClockingVm model)
+    public async Task<IActionResult> OnPostAsync()
     {
-        if (!ModelState.IsValid)
+        if (ClockingVolunteer == null || ClockingVolunteer.VoluntId == 0)
             return RedirectToPage("./VolunteerClocking");
 
-        var staff = await _volunteer.GetById(model.ClockingVolunteer!.VoluntId).ConfigureAwait(true);
-        if (staff == null!)
+        var volunteer = await _volunteer.GetById(ClockingVolunteer.VoluntId).ConfigureAwait(true);
+        if (volunteer == null)
             return RedirectToPage("./VolunteerClocking");
 
-        var clocking = await _service.CheckToday(model.ClockingVolunteer).ConfigureAwait(true);
-        if (clocking)
-            return RedirectToPage("./StaffClocking");
-
-        model.ClockingVolunteer!.FullName = staff.FirstName + " " + staff.LastName;
-        model.ClockingVolunteer!.CreatedAt = DateTime.Now;
-        if (model.ClockingVolunteer.ClockOutTime != null)
-            model.ClockingVolunteer.WorkingHours = model.ClockingVolunteer.ClockOutTime - model.ClockingVolunteer.ClockInTime;
-
-        var save = await _service.Create(model.ClockingVolunteer!).ConfigureAwait(true);
-        if (save != null!)
-        {
+        var alreadyClockedIn = await _service.CheckToday(ClockingVolunteer).ConfigureAwait(true);
+        if (alreadyClockedIn)
             return RedirectToPage("./VolunteerClocking");
-        }
+
+        ClockingVolunteer.FullName = volunteer.FirstName + " " + volunteer.LastName;
+        ClockingVolunteer.CreatedAt = DateTime.Now;
+        if (ClockingVolunteer.ClockInTime == null)
+            ClockingVolunteer.ClockInTime = DateTime.Now;
+        if (ClockingVolunteer.ClockOutTime != null)
+            ClockingVolunteer.WorkingHours = ClockingVolunteer.ClockOutTime - ClockingVolunteer.ClockInTime;
+
+        await _service.Create(ClockingVolunteer).ConfigureAwait(true);
 
         return RedirectToPage("./VolunteerClocking");
     }

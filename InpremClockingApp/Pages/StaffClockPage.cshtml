@@ -1,11 +1,11 @@
-@page "/staff-clockin/{id:int}"
+@page "/staff-clockin/{id:long}"
 @model StaffClockPage
 @using Microsoft.AspNetCore.Authorization;
 @attribute [Authorize]
 @{
   Layout = "Shared/_MainLayout";
   ViewData["Title"] = "Staff Clocking Controls";
-  var id = ViewData["id"];
+  var id = (long?)ViewData["id"] ?? 0;
 }
 
 <div class="content-wrapper">

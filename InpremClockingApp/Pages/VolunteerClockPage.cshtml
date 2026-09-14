@@ -1,4 +1,4 @@
-@page "/volunteer-clockin/{id:int}"
+@page "/volunteer-clockin/{id:long}"
 @model VolunteerClockPage
 @using Microsoft.AspNetCore.Authorization;
 @attribute [Authorize]
@@ -6,7 +6,7 @@
 @{
   Layout = "Shared/_MainLayout";
   ViewData["Title"] = "Volunteer Clocking Controls";
-  var id = ViewData["id"];
+  var id = (long?)ViewData["id"] ?? 0;
 }
 
 <div class="content-wrapper">

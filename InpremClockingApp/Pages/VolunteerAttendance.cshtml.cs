@@ -17,42 +17,37 @@ public class VolunteerAttendance : PageModel
     public int TimeOut { get; set; }
     [BindProperty] public Models.Volunteer? Input { get; set; }
 
-    public async void OnGet()
+    public Task OnGetAsync()
     {
-
+        return Task.CompletedTask;
     }
 
     public async Task<IActionResult> OnPostAsync()
     {
+        if (!ModelState.IsValid)
+            return Page();
+
         if (Input == null)
             return RedirectToPage("./VolunteerAttendance");
 
-        var volunteer = await _db.Volunteers.FirstOrDefaultAsync(e =>
-                e.EmailAddress == Input.EmailAddress && 
-                e.FirstName == Input.FirstName && 
-                e.LastName == Input.LastName);
+        // Check if a volunteer with the same email already exists
+        var existing = await _db.Volunteers
+            .FirstOrDefaultAsync(e => e.EmailAddress == Input.EmailAddress)
+            .ConfigureAwait(false);
 
-        if (volunteer == null)
+        if (existing != null)
         {
-            TempData["Message"] = "Invalid volunteer details.";
+            TempData["Message"] = "A volunteer with this email address is already registered.";
             return RedirectToPage("./VolunteerAttendance");
         }
 
-        // Staff exists — continue with your attendance operation here.
+        Input.CreatedAt = DateTime.Now;
+        Input.Type = "Volunteer";
 
+        await _db.Volunteers.AddAsync(Input).ConfigureAwait(false);
+        await _db.SaveChangesAsync().ConfigureAwait(false);
+
+        TempData["Message"] = "Volunteer registered successfully!";
         return RedirectToPage("./VolunteerAttendance");
     }
-
-    //if (staff != null!)
-    //    return RedirectToPage("./VolunteerAttendance");
-
-    //Input.CreatedAt = DateTime.Now;
-    //Input.Type = "Volunteer";
-
-    //await _db.Volunteers.AddAsync(Input).ConfigureAwait(false);
-    //await _db.SaveChangesAsync();
-    //TempData["Message"] = "Record saved successfully!";
-
-    //return RedirectToPage("./VolunteerAttendance");
 }
-
