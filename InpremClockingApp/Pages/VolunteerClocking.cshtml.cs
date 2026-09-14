@@ -18,18 +18,18 @@ public class VolunteerClocking : PageModel
 
     public VolunteerClockingVm Model = new();
 
+    // bind simple clocking inputs directly for the manual clocking form
+    [BindProperty]
+    public Clocking ClockingVolunteerProp { get; set; } = new();
+
     [BindProperty(SupportsGet = true)]
     public int Page { get; set; } = 1;
 
     [BindProperty(SupportsGet = true)]
     public int PageSize { get; set; } = 20;
 
-    [BindProperty]
-    public Clocking? ClockingVolunteer { get; set; }
-
     public async Task<IActionResult> OnGetAsync()
     {
-        // restore initial behavior: paging only
         var paged = await _service.GetPaged(Page, PageSize).ConfigureAwait(true);
         Model!.Clocking = paged.Items;
         Model.Volunteer = await _volunteer.GetAll().ConfigureAwait(true);
@@ -44,36 +44,40 @@ public class VolunteerClocking : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
-        if (ClockingVolunteer == null || ClockingVolunteer.VoluntId == 0)
+        var volunteer = await _volunteer.GetById(ClockingVolunteerProp.VoluntId).ConfigureAwait(true);
+        if (volunteer == null!)
             return RedirectToPage("./VolunteerClocking");
 
-        var volunteer = await _volunteer.GetById(ClockingVolunteer.VoluntId).ConfigureAwait(true);
-        if (volunteer == null)
+        var clocking = await _service.CheckToday(ClockingVolunteerProp).ConfigureAwait(true);
+        if (clocking)
             return RedirectToPage("./VolunteerClocking");
 
-        var alreadyClockedIn = await _service.CheckToday(ClockingVolunteer).ConfigureAwait(true);
-        if (alreadyClockedIn)
-            return RedirectToPage("./VolunteerClocking");
+        ClockingVolunteerProp.FullName = volunteer.FirstName + " " + volunteer.LastName;
+        ClockingVolunteerProp.CreatedAt = DateTime.Now;
+        if (ClockingVolunteerProp.ClockInTime == null)
+            ClockingVolunteerProp.ClockInTime = DateTime.Now;
+        if (ClockingVolunteerProp.ClockOutTime != null)
+            ClockingVolunteerProp.WorkingHours = ClockingVolunteerProp.ClockOutTime - ClockingVolunteerProp.ClockInTime;
 
-        ClockingVolunteer.FullName = volunteer.FirstName + " " + volunteer.LastName;
-        ClockingVolunteer.CreatedAt = DateTime.Now;
-        if (ClockingVolunteer.ClockInTime == null)
-            ClockingVolunteer.ClockInTime = DateTime.Now;
-        if (ClockingVolunteer.ClockOutTime != null)
-            ClockingVolunteer.WorkingHours = ClockingVolunteer.ClockOutTime - ClockingVolunteer.ClockInTime;
+        var save = await _service.Create(ClockingVolunteerProp).ConfigureAwait(true);
+        // repopulate list so the newly created clocking shows immediately
+        var paged = await _service.GetPaged(Page, PageSize).ConfigureAwait(true);
+        Model!.Clocking = paged.Items;
+        Model.Volunteer = await _volunteer.GetAll().ConfigureAwait(true);
 
-        await _service.Create(ClockingVolunteer).ConfigureAwait(true);
+        ViewData["TotalCount"] = paged.TotalCount;
+        ViewData["Page"] = paged.Page;
+        ViewData["PageSize"] = paged.PageSize;
+        ViewData["TotalPages"] = paged.TotalPages;
 
-        return RedirectToPage("./VolunteerClocking");
+        return Page();
     }
 
     public async Task<IActionResult> OnPostClockOutAsync([FromBody] Clocking model)
     {
         var result = await _service.ClockOut(model).ConfigureAwait(true);
         if (result)
-        {
             return RedirectToPage("./VolunteerClocking");
-        }
 
         return RedirectToPage("./VolunteerClocking");
     }
@@ -82,9 +86,7 @@ public class VolunteerClocking : PageModel
     {
         var result = await _service.BreakStart(model).ConfigureAwait(true);
         if (result)
-        {
             return RedirectToPage("./VolunteerClocking");
-        }
 
         return RedirectToPage("./VolunteerClocking");
     }
@@ -93,9 +95,7 @@ public class VolunteerClocking : PageModel
     {
         var result = await _service.BreakEnd(model).ConfigureAwait(true);
         if (result)
-        {
             return RedirectToPage("./VolunteerClocking");
-        }
 
         return RedirectToPage("./VolunteerClocking");
     }

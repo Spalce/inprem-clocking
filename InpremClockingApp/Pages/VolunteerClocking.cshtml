@@ -3,7 +3,7 @@
 @using Microsoft.AspNetCore.Authorization;
 @attribute [Authorize]
 @{
-    ViewData["Title"] = "Staff Clocking";
+    ViewData["Title"] = "Volunteers Clocking";
 }
 
 <div class="content-wrapper">
@@ -11,7 +11,7 @@
   <div class="container-fluid">
     <div class="row mb-2">
       <div class="col-sm-6">
-        <h1 class="m-0">Voulnteers Clocking</h1>
+        <h1 class="m-0">Volunteers Clocking</h1>
       </div>
       <div class="col-sm-6">
         <ol class="breadcrumb float-sm-right">
@@ -35,7 +35,7 @@
                           <div class="row">
                               <div class="col-md-6">
                                   <label for="volunteerSelect">Select Volunteer</label>
-                                  <select id="volunteerSelect" name="ClockingVolunteer.VoluntId" class="form-control" required>
+                                  <select id="volunteerSelect" asp-for="ClockingVolunteerProp.VoluntId" class="form-control" required>
                                       <option value="">-- Select volunteer --</option>
                                       @foreach (var s in Model.Model.Volunteer ?? Enumerable.Empty<InpremClockingApp.Models.Volunteer>())
                                       {
@@ -45,11 +45,11 @@
                               </div>
                               <div class="col-md-2">
                                   <label for="vclockIn">Clock In</label>
-                                  <input id="vclockIn" name="ClockingVolunteer.ClockInTime" class="form-control" type="datetime-local" />
+                                  <input id="vclockIn" asp-for="ClockingVolunteerProp.ClockInTime" class="form-control" type="datetime-local" />
                               </div>
                               <div class="col-md-2">
                                   <label for="vclockOut">Clock Out</label>
-                                  <input id="vclockOut" name="ClockingVolunteer.ClockOutTime" class="form-control" type="datetime-local" />
+                                  <input id="vclockOut" asp-for="ClockingVolunteerProp.ClockOutTime" class="form-control" type="datetime-local" />
                               </div>
                               <div class="col-md-2 d-flex align-items-end">
                                   <button id="btnVClockIn" type="submit" class="btn btn-primary">Clock In</button>
@@ -67,7 +67,6 @@
                 <table class="table table-striped" id="vclockingTable">
                     <thead>
                         <tr>
-                            <th>ID</th>
                             <th>Full Name</th>
                             <th>Date</th>
                             <th>Clock In</th>
@@ -82,7 +81,7 @@
                         @foreach (var c in Model.Model?.Clocking ?? Enumerable.Empty<InpremClockingApp.Models.Clocking>())
                         {
                             <tr>
-                                <td>@c.ClockingId</td>
+                                @* <td>@c.ClockingId</td> *@
                                 <td>@c.FullName</td>
                                 <td>@c.CreatedAt?.ToString("yyyy-MM-dd")</td>
                                 <td>@(c.ClockInTime?.ToString("HH:mm:ss") ?? "")</td>
@@ -99,6 +98,19 @@
                         }
                     </tbody>
                 </table>
+                <div>
+                    <form id="vpageSizeForm" method="get" class="form-inline">
+                        <label class="mr-2">Page size</label>
+                        @{ var currentSize = (int)(ViewData["PageSize"] ?? 20); var vsel10 = currentSize==10; var vsel20 = currentSize==20; var vsel50 = currentSize==50; var vsel100 = currentSize==100; }
+                        <select name="pageSize" id="vpageSizeSelect" class="form-control" onchange="document.getElementById('vpageSizeForm').submit();">
+                            <option value="10" selected="@(vsel10 ? "selected" : null)">10</option>
+                            <option value="20" selected="@(vsel20 ? "selected" : null)">20</option>
+                            <option value="50" selected="@(vsel50 ? "selected" : null)">50</option>
+                            <option value="100" selected="@(vsel100 ? "selected" : null)">100</option>
+                        </select>
+                        <input type="hidden" name="page" value="1" />
+                    </form>
+                </div>
                 <nav aria-label="Page navigation">
                   <ul class="pagination justify-content-center">
                     @{ var current = (int)(ViewData["Page"] ?? 1); var total = (int)(ViewData["TotalPages"] ?? 1); var size = (int)(ViewData["PageSize"] ?? 20); }
@@ -153,7 +165,7 @@
     document.addEventListener('DOMContentLoaded', function () {
         const now = new Date();
         const isoLocal = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0,16);
-        if(document.getElementById('vclockIn')) document.getElementById('vclockIn').value = isoLocal;
+        if (document.getElementById('vclockIn')) document.getElementById('vclockIn').value = isoLocal;
     });
 
 </script>

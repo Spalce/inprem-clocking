@@ -18,6 +18,10 @@ public class StaffClocking : PageModel
 
     public StaffClockingVm Model = new();
 
+    // bind simple clocking inputs directly for the manual clocking form
+    [BindProperty]
+    public ClockingStaff ClockingStaff { get; set; } = new();
+
     // pagination parameters
     [BindProperty(SupportsGet = true)]
     public int Page { get; set; } = 1;
@@ -25,17 +29,12 @@ public class StaffClocking : PageModel
     [BindProperty(SupportsGet = true)]
     public int PageSize { get; set; } = 20;
 
-    [BindProperty]
-    public ClockingStaff? ClockingStaff { get; set; }
-
     public async Task<IActionResult> OnGetAsync()
     {
-        // restore initial behavior: paging only
         var paged = await _service.GetPaged(Page, PageSize).ConfigureAwait(true);
         Model!.Clocking = paged.Items;
         Model.Staff = await _staff.GetAll().ConfigureAwait(true);
 
-        // expose paging info via ViewData
         ViewData["TotalCount"] = paged.TotalCount;
         ViewData["Page"] = paged.Page;
         ViewData["PageSize"] = paged.PageSize;
@@ -46,15 +45,12 @@ public class StaffClocking : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
-        if (ClockingStaff == null || ClockingStaff.StafId == 0)
-            return RedirectToPage("./StaffClocking");
-
         var staff = await _staff.GetById(ClockingStaff.StafId).ConfigureAwait(true);
-        if (staff == null)
+        if (staff == null!)
             return RedirectToPage("./StaffClocking");
 
-        var alreadyClockedIn = await _service.CheckToday(ClockingStaff).ConfigureAwait(true);
-        if (alreadyClockedIn)
+        var clocking = await _service.CheckToday(ClockingStaff).ConfigureAwait(true);
+        if (clocking)
             return RedirectToPage("./StaffClocking");
 
         ClockingStaff.FullName = staff.FirstName + " " + staff.LastName;
@@ -66,16 +62,24 @@ public class StaffClocking : PageModel
 
         await _service.Create(ClockingStaff).ConfigureAwait(true);
 
-        return RedirectToPage("./StaffClocking");
+        // repopulate list so the newly created clocking shows immediately
+        var paged = await _service.GetPaged(Page, PageSize).ConfigureAwait(true);
+        Model!.Clocking = paged.Items;
+        Model.Staff = await _staff.GetAll().ConfigureAwait(true);
+
+        ViewData["TotalCount"] = paged.TotalCount;
+        ViewData["Page"] = paged.Page;
+        ViewData["PageSize"] = paged.PageSize;
+        ViewData["TotalPages"] = paged.TotalPages;
+
+        return Page();
     }
 
     public async Task<IActionResult> OnPostClockOutAsync([FromBody] ClockingStaff model)
     {
         var result = await _service.ClockOut(model).ConfigureAwait(true);
         if (result)
-        {
             return RedirectToPage("./StaffClocking");
-        }
 
         return RedirectToPage("./StaffClocking");
     }
@@ -84,9 +88,7 @@ public class StaffClocking : PageModel
     {
         var result = await _service.BreakStart(model).ConfigureAwait(true);
         if (result)
-        {
             return RedirectToPage("./StaffClocking");
-        }
 
         return RedirectToPage("./StaffClocking");
     }
@@ -95,9 +97,7 @@ public class StaffClocking : PageModel
     {
         var result = await _service.BreakEnd(model).ConfigureAwait(true);
         if (result)
-        {
             return RedirectToPage("./StaffClocking");
-        }
 
         return RedirectToPage("./StaffClocking");
     }
