@@ -17,7 +17,7 @@ public class VolunteerClockingService
     public async Task<List<VolunteerClockingVm>> GetClockingReport(DateTime start, DateTime end)
     {
         var record = await _db.Clockings
-            .Where(e => e.CreatedAt!.Value.Date >= start && e.CreatedAt.Value.Date <= end)
+            .Where(e => (e.ClockInTime >= start && e.ClockInTime <= end) || (e.ClockOutTime != null && e.ClockOutTime >= start && e.ClockOutTime <= end))
             .ToListAsync().ConfigureAwait(false);
 
         var list = record.Select(e => new VolunteerClockingVm
@@ -31,7 +31,7 @@ public class VolunteerClockingService
     public async Task<List<VolunteerClockingVm>> GetClockingReportForVolunteer(int volunteerId, DateTime start, DateTime end)
     {
         var record = await _db.Clockings
-            .Where(e => e.VoluntId == volunteerId && e.CreatedAt!.Value.Date >= start && e.CreatedAt.Value.Date <= end)
+            .Where(e => e.VoluntId == volunteerId && ((e.ClockInTime >= start && e.ClockInTime <= end) || (e.ClockOutTime != null && e.ClockOutTime >= start && e.ClockOutTime <= end)))
             .ToListAsync().ConfigureAwait(false);
 
         var list = record.Select(e => new VolunteerClockingVm
@@ -47,12 +47,24 @@ public class VolunteerClockingService
         return await _db.Clockings.ToListAsync().ConfigureAwait(false);
     }
 
-    public async Task<PagedResult<Clocking>> GetPaged(int page, int pageSize)
+    public async Task<PagedResult<Clocking>> GetPaged(int page, int pageSize, int? volunteerId = null, DateTime? start = null, DateTime? end = null)
     {
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 20;
 
-        var query = _db.Clockings.OrderByDescending(e => e.CreatedAt!.Value);
+        var query = _db.Clockings.AsQueryable();
+
+        if (volunteerId.HasValue)
+            query = query.Where(e => e.VoluntId == volunteerId.Value);
+
+        if (start.HasValue)
+            query = query.Where(e => e.CreatedAt.HasValue && e.CreatedAt.Value >= start.Value);
+
+        if (end.HasValue)
+            query = query.Where(e => e.CreatedAt.HasValue && e.CreatedAt.Value <= end.Value);
+
+        query = query.OrderByDescending(e => e.CreatedAt!.Value);
+
         var total = await query.CountAsync().ConfigureAwait(false);
         var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync().ConfigureAwait(false);
 

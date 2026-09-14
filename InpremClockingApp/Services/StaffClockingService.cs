@@ -16,8 +16,18 @@ public class StaffClockingService
     // New helper to return report rows for staff clocking
     public async Task<List<ClockingStaff>> GetClockingReport(DateTime start, DateTime end)
     {
+        // include records where clock-in or clock-out falls within the range
         var record = await _db.ClockingsStaff
-            .Where(e => e.CreatedAt!.Value.Date >= start && e.CreatedAt.Value.Date <= end)
+            .Where(e => (e.ClockInTime >= start && e.ClockInTime <= end) || (e.ClockOutTime != null && e.ClockOutTime >= start && e.ClockOutTime <= end))
+            .ToListAsync().ConfigureAwait(false);
+
+        return record;
+    }
+
+    public async Task<List<ClockingStaff>> GetClockingReportForStaff(int staffId, DateTime start, DateTime end)
+    {
+        var record = await _db.ClockingsStaff
+            .Where(e => e.StafId == staffId && ((e.ClockInTime >= start && e.ClockInTime <= end) || (e.ClockOutTime != null && e.ClockOutTime >= start && e.ClockOutTime <= end)))
             .ToListAsync().ConfigureAwait(false);
 
         return record;
@@ -28,12 +38,24 @@ public class StaffClockingService
         return await _db.ClockingsStaff.ToListAsync().ConfigureAwait(false);
     }
 
-    public async Task<PagedResult<ClockingStaff>> GetPaged(int page, int pageSize)
+    public async Task<PagedResult<ClockingStaff>> GetPaged(int page, int pageSize, int? staffId = null, DateTime? start = null, DateTime? end = null)
     {
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 20;
 
-        var query = _db.ClockingsStaff.OrderByDescending(e => e.CreatedAt!.Value);
+        var query = _db.ClockingsStaff.AsQueryable();
+
+        if (staffId.HasValue)
+            query = query.Where(e => e.StafId == staffId.Value);
+
+        if (start.HasValue)
+            query = query.Where(e => e.CreatedAt.HasValue && e.CreatedAt.Value >= start.Value);
+
+        if (end.HasValue)
+            query = query.Where(e => e.CreatedAt.HasValue && e.CreatedAt.Value <= end.Value);
+
+        query = query.OrderByDescending(e => e.CreatedAt!.Value);
+
         var total = await query.CountAsync().ConfigureAwait(false);
         var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync().ConfigureAwait(false);
 

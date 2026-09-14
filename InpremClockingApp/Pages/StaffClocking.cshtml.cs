@@ -25,9 +25,18 @@ public class StaffClocking : PageModel
     [BindProperty(SupportsGet = true)]
     public int PageSize { get; set; } = 20;
 
+    [BindProperty(SupportsGet = true)]
+    public int? StaffId { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public DateTime? Start { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public DateTime? End { get; set; }
+
     public async Task<IActionResult> OnGetAsync()
     {
-        var paged = await _service.GetPaged(Page, PageSize).ConfigureAwait(true);
+        var paged = await _service.GetPaged(Page, PageSize, StaffId, Start, End).ConfigureAwait(true);
         Model!.Clocking = paged.Items;
         Model.Staff = await _staff.GetAll().ConfigureAwait(true);
 
@@ -36,6 +45,9 @@ public class StaffClocking : PageModel
         ViewData["Page"] = paged.Page;
         ViewData["PageSize"] = paged.PageSize;
         ViewData["TotalPages"] = paged.TotalPages;
+        ViewData["StaffId"] = StaffId;
+        ViewData["Start"] = Start?.ToString("yyyy-MM-ddTHH:mm");
+        ViewData["End"] = End?.ToString("yyyy-MM-ddTHH:mm");
 
         return Page();
     }

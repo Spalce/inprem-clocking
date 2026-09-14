@@ -24,9 +24,18 @@ public class VolunteerClocking : PageModel
     [BindProperty(SupportsGet = true)]
     public int PageSize { get; set; } = 20;
 
+    [BindProperty(SupportsGet = true)]
+    public int? VolunteerId { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public DateTime? Start { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public DateTime? End { get; set; }
+
     public async Task<IActionResult> OnGetAsync()
     {
-        var paged = await _service.GetPaged(Page, PageSize).ConfigureAwait(true);
+        var paged = await _service.GetPaged(Page, PageSize, VolunteerId, Start, End).ConfigureAwait(true);
         Model!.Clocking = paged.Items;
         Model.Volunteer = await _volunteer.GetAll().ConfigureAwait(true);
 
@@ -34,6 +43,9 @@ public class VolunteerClocking : PageModel
         ViewData["Page"] = paged.Page;
         ViewData["PageSize"] = paged.PageSize;
         ViewData["TotalPages"] = paged.TotalPages;
+        ViewData["VolunteerId"] = VolunteerId;
+        ViewData["Start"] = Start?.ToString("yyyy-MM-ddTHH:mm");
+        ViewData["End"] = End?.ToString("yyyy-MM-ddTHH:mm");
 
         return Page();
     }

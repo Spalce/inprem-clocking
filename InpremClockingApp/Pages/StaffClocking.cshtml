@@ -60,6 +60,34 @@
               </div>
           </div>
           <div class="col-md-12">
+              <form method="get" class="form-inline mb-3">
+                <div class="form-row w-100">
+                  <div class="col-md-3">
+                    <label>Select Staff</label>
+                    <select name="StaffId" class="form-control">
+                      <option value="">-- All --</option>
+                      @foreach (var s in Model.Model.Staff ?? Enumerable.Empty<InpremClockingApp.Models.Staff>())
+                      {
+                        var isSelected = ViewData["StaffId"] != null && ViewData["StaffId"].ToString() == s.StaffId.ToString();
+                        <option value="@s.StaffId" selected="@(isSelected ? "selected" : null)">@s.FullName</option>
+                      }
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label>Start</label>
+                    <input name="Start" type="datetime-local" class="form-control" value="@(ViewData["Start"] ?? "")" />
+                  </div>
+                  <div class="col-md-3">
+                    <label>End</label>
+                    <input name="End" type="datetime-local" class="form-control" value="@(ViewData["End"] ?? "")" />
+                  </div>
+                  <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-primary">Filter</button>
+                  </div>
+                </div>
+              </form>
+          </div>
+          <div class="col-md-12">
               <div class="table-responsive">
                 <div class="mb-3">
                   <input id="searchBox" class="form-control" placeholder="Search by name..." />
@@ -103,14 +131,14 @@
                   <ul class="pagination justify-content-center">
                     @{ var current = (int)(ViewData["Page"] ?? 1); var total = (int)(ViewData["TotalPages"] ?? 1); var size = (int)(ViewData["PageSize"] ?? 20); }
                     <li class="page-item @(current == 1 ? "disabled" : "")">
-                      <a class="page-link" href="?page=@(current-1)&pageSize=@size">Previous</a>
+                      <a class="page-link" asp-page="./StaffClocking" asp-route-page="@(current-1)" asp-route-pageSize="@size" asp-route-StaffId="@(ViewData["StaffId"])" asp-route-Start="@(ViewData["Start"])" asp-route-End="@(ViewData["End"])">Previous</a>
                     </li>
                     @for (int i = 1; i <= total; i++)
                     {
-                        <li class="page-item @(i == current ? "active" : "")"><a class="page-link" href="?page=@i&pageSize=@size">@i</a></li>
+                        <li class="page-item @(i == current ? "active" : "")"><a class="page-link" asp-page="./StaffClocking" asp-route-page="@i" asp-route-pageSize="@size" asp-route-StaffId="@(ViewData["StaffId"])" asp-route-Start="@(ViewData["Start"])" asp-route-End="@(ViewData["End"])">@i</a></li>
                     }
                     <li class="page-item @(current == total ? "disabled" : "")">
-                      <a class="page-link" href="?page=@(current+1)&pageSize=@size">Next</a>
+                      <a class="page-link" asp-page="./StaffClocking" asp-route-page="@(current+1)" asp-route-pageSize="@size" asp-route-StaffId="@(ViewData["StaffId"])" asp-route-Start="@(ViewData["Start"])" asp-route-End="@(ViewData["End"])">Next</a>
                     </li>
                   </ul>
                 </nav>

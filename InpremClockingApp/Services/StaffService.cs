@@ -18,6 +18,31 @@ public class StaffService
         return await _db.Staffs.OrderBy(e => e.FirstName).ToListAsync().ConfigureAwait(false);
     }
 
+    public async Task<PagedResult<Staff>> SearchByName(string? q, int page = 1, int pageSize = 20)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+
+        var query = _db.Staffs.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var pattern = "%" + q.Replace("%", "\\%") + "%";
+            query = query.Where(e => EF.Functions.Like((e.FirstName ?? "") + " " + (e.LastName ?? ""), pattern)
+                                     || EF.Functions.Like(e.EmailAddress ?? "", pattern));
+        }
+
+        var total = await query.CountAsync().ConfigureAwait(false);
+        var items = await query.OrderBy(e => e.FirstName).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync().ConfigureAwait(false);
+
+        return new PagedResult<Staff>
+        {
+            Items = items,
+            TotalCount = total,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
+
     public async Task<Staff> GetById(long id)
     {
         return await _db.Staffs.FindAsync(id).ConfigureAwait(false)!;

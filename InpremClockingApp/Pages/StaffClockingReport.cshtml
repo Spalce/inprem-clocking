@@ -26,6 +26,38 @@
         <div class="container-fluid">
             <div class="row">
                     <div style="width:100%;">
+                        <form method="get" class="mb-3">
+                          @if (ViewData["Error"] != null)
+                          {
+                              <div class="alert alert-danger">@ViewData["Error"]</div>
+                          }
+                          <div class="form-row">
+                            <div class="col-md-3">
+                              <label>Select Staff</label>
+                              <select class="form-control d-none" id="staffSelect">
+                                <option value="">-- All --</option>
+                                @foreach (var s in Model.Staffs ?? Enumerable.Empty<InpremClockingApp.Models.Staff>())
+                                {
+                                    var isSelected = ViewData["StaffId"] != null && ViewData["StaffId"].ToString() == s.StaffId.ToString();
+                                    <option value="@s.StaffId" selected="@(isSelected ? "selected" : null)">@s.FullName</option>
+                                }
+                              </select>
+                              <input type="text" id="staffLookup" class="form-control" placeholder="Search staff..." />
+                              <input type="hidden" name="StaffId" id="StaffIdHidden" value="@(ViewData["StaffId"] ?? "")" />
+                            </div>
+                            <div class="col-md-3">
+                              <label>Start</label>
+                              <input name="Start" type="datetime-local" class="form-control" value="@(ViewData["Start"] ?? "")" />
+                            </div>
+                            <div class="col-md-3">
+                              <label>End</label>
+                              <input name="End" type="datetime-local" class="form-control" value="@(ViewData["End"] ?? "")" />
+                            </div>
+                            <div class="col-md-3 d-flex align-items-end">
+                              <button class="btn btn-primary">Filter</button>
+                            </div>
+                          </div>
+                        </form>
                         <table class="table table-striped" id="reportTable">
                             <thead>
                                 <tr>
@@ -54,4 +86,121 @@
         </div>
     </div>
 </div>
+
+<script>
+  (function(){
+    const input = document.getElementById('staffLookup');
+    const hidden = document.getElementById('StaffIdHidden');
+    let timer = null;
+
+    function renderSuggestions(items){
+      let container = document.getElementById('staff-suggestions');
+      if(!container){
+        container = document.createElement('div');
+        container.id = 'staff-suggestions';
+        container.className = 'list-group position-absolute';
+        input.parentNode.appendChild(container);
+      }
+      container.innerHTML = '';
+        items.forEach(i => {
+        const el = document.createElement('button');
+        el.type = 'button';
+        el.className = 'list-group-item list-group-item-action';
+        el.textContent = i.text;
+        el.addEventListener('click', function(){
+          // set hidden id and navigate using querystring to ensure server receives the StaffId
+          input.value = i.text;
+          hidden.value = i.id;
+          container.innerHTML = '';
+          try {
+            const params = new URLSearchParams(window.location.search);
+            params.set('StaffId', i.id);
+            // preserve Start/End values if present in the form
+            const startEl = document.querySelector('input[name="Start"]');
+            const endEl = document.querySelector('input[name="End"]');
+            if (startEl && startEl.value) params.set('Start', startEl.value);
+            if (endEl && endEl.value) params.set('End', endEl.value);
+            // navigate explicitly to the same path with updated querystring
+            window.location.href = window.location.pathname + '?' + params.toString();
+          } catch (e) {
+            const form = input.closest('form');
+            if (form) form.submit();
+          }
+        });
+
+    // If user types a name but doesn't pick a suggestion, resolve it on submit to the first match
+    (function(){
+      const form = input.closest('form');
+      if(!form) return;
+      form.addEventListener('submit', function(e){
+        try {
+          if(!hidden.value && input.value && input.value.trim()){
+            e.preventDefault();
+            // find best match server-side, use first result
+            fetch(`/api/people/staff?q=${encodeURIComponent(input.value)}&page=1&pageSize=1`)
+              .then(r => r.json())
+              .then(json => {
+                const items = json.items || [];
+                if(items.length){
+                  const id = items[0].id;
+                  const params = new URLSearchParams(window.location.search);
+                  params.set('StaffId', id);
+                  const startEl = document.querySelector('input[name="Start"]');
+                  const endEl = document.querySelector('input[name="End"]');
+                  if (startEl && startEl.value) params.set('Start', startEl.value);
+                  if (endEl && endEl.value) params.set('End', endEl.value);
+                  window.location.href = window.location.pathname + '?' + params.toString();
+                } else {
+                  // no match, allow submit to show empty report
+                  form.submit();
+                }
+              })
+              .catch(()=> form.submit());
+          }
+        } catch {}
+      });
+    })();
+        container.appendChild(el);
+      });
+    }
+
+    input.addEventListener('input', function(e){
+      const q = e.target.value;
+      hidden.value = ''; // clear selection when typing
+      if(timer) clearTimeout(timer);
+      if(!q) { renderSuggestions([]); return; }
+      timer = setTimeout(()=>{
+        fetch(`/api/people/staff?q=${encodeURIComponent(q)}&page=1&pageSize=10`)
+          .then(r=>r.json())
+          .then(json=> renderSuggestions(json.items || []))
+          .catch(()=> renderSuggestions([]));
+      }, 250);
+    });
+
+    // prefill input from selected hidden id or from querystring on load
+    (function(){
+      try {
+        // prefer hidden value (set server-side), otherwise check URL
+        if(hidden.value){
+          const select = document.getElementById('staffSelect');
+          if(select){
+            const opt = Array.from(select.options).find(o => o.value === hidden.value);
+            if(opt) input.value = opt.text;
+          }
+        } else {
+          const params = new URLSearchParams(window.location.search);
+          const sid = params.get('StaffId');
+          if(sid){
+            hidden.value = sid;
+            const select = document.getElementById('staffSelect');
+            if(select){
+              const opt = Array.from(select.options).find(o => o.value === sid);
+              if(opt) input.value = opt.text;
+            }
+          }
+        }
+      } catch {}
+    })();
+  })();
+</script>
 
