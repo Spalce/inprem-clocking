@@ -1,3 +1,4 @@
+using InpremClockingApp.Models;
 using InpremClockingApp.Services;
 using Microsoft.AspNetCore.Mvc;
 using QuestPDF.Fluent;
@@ -7,29 +8,29 @@ namespace InpremClockingApp.Controllers.Api;
 
 [ApiController]
 [Route("api/people")]
-public class VolunteerReportsController : ControllerBase
+public class StaffReportsController : ControllerBase
 {
-    private readonly VolunteerClockingService _clocking;
-    private readonly VolunteerService _volunteer;
+    private readonly StaffClockingService _clocking;
+    private readonly StaffService _staff;
 
-    public VolunteerReportsController(VolunteerClockingService clocking, VolunteerService volunteer)
+    public StaffReportsController(StaffClockingService clocking, StaffService staff)
     {
         _clocking = clocking;
-        _volunteer = volunteer;
+        _staff = staff;
     }
 
-    [HttpGet("volunteer-hours")]
-    public async Task<IActionResult> GetVolunteerHours([FromQuery] int id, [FromQuery] DateTime? start, [FromQuery] DateTime? end)
+    [HttpGet("staff-hours")]
+    public async Task<IActionResult> GetStaffHours([FromQuery] int id, [FromQuery] DateTime? start, [FromQuery] DateTime? end)
     {
         if (id <= 0) return BadRequest(new { error = "Invalid id" });
         var s = start ?? DateTime.Now.Date.AddDays(-30);
         var e = end ?? DateTime.Now.Date.AddDays(1).AddTicks(-1);
-        var rows = await _clocking.GetClockingReportForVolunteer(id, s, e);
+        var rows = await _clocking.GetClockingReportForStaff(id, s, e);
         // compute total hours from returned rows
         double totalHours = 0;
         foreach (var vm in rows)
         {
-            var item = vm.Clocking?.FirstOrDefault();
+            var item = vm;
             if (item?.WorkingHours != null)
             {
                 totalHours += item.WorkingHours.Value.TotalHours;
@@ -48,16 +49,16 @@ public class VolunteerReportsController : ControllerBase
 
         return Ok(new
         {
-            volunteerId = id,
+            staffId = id,
             start = s.ToString("o"),
             end = e.ToString("o"),
             totalHours = Math.Round(totalHours, 2),
             totalDisplay
-        });            
+        });        
     }
 
-    [HttpGet("volunteer-hours-pdf")]
-    public async Task<IActionResult> GetVolunteerHoursPdf(
+    [HttpGet("staff-hours-pdf")]
+    public async Task<IActionResult> GetStaffHoursPdf(
     [FromQuery] int id,
     [FromQuery] DateTime? start,
     [FromQuery] DateTime? end)
@@ -68,25 +69,25 @@ public class VolunteerReportsController : ControllerBase
         var s = start ?? DateTime.Now.Date.AddDays(-30);
         var e = end ?? DateTime.Now.Date.AddDays(1).AddTicks(-1);
 
-        // Get volunteer
-        var volunteer = await _volunteer.GetById(id);
+        // Get staff
+        var staff = await _staff.GetById(id);
 
-        if (volunteer == null)
-            return NotFound(new { error = "Volunteer not found" });
+        if (staff == null)
+            return NotFound(new { error = "Staff not found" });
 
-        var volunteerName = volunteer.FullName?.Trim();
+        var staffName = staff.FullName?.Trim();
 
-        if (string.IsNullOrWhiteSpace(volunteerName))
-            volunteerName = "Volunteer";
+        if (string.IsNullOrWhiteSpace(staffName))
+            staffName = "Staff";
 
         // Get clocking records
-        var rows = await _clocking.GetClockingReportForVolunteer(id, s, e);
+        var rows = await _clocking.GetClockingReportForStaff(id, s, e);
 
         double totalHours = 0;
 
         foreach (var vm in rows)
         {
-            var item = vm.Clocking?.FirstOrDefault();
+            var item = vm;
 
             if (item?.WorkingHours != null)
             {
@@ -142,10 +143,10 @@ public class VolunteerReportsController : ControllerBase
                         column.Item()
                             .Text(text =>
                             {
-                                text.Span("This is a confirmation of volunteer hours worked by ")
+                                text.Span("This is a confirmation of staff hours worked by ")
                                     .FontSize(11);
 
-                                text.Span(volunteerName)
+                                text.Span(staffName)
                                     .Bold()
                                     .FontSize(11);
 
@@ -157,12 +158,12 @@ public class VolunteerReportsController : ControllerBase
 
                         column.Item()
                             .PaddingTop(10)
-                            .Text("Volunteer Hours Report")
+                            .Text("Staff Hours Report")
                             .FontSize(15)
                             .Bold();
 
                         column.Item()
-                            .Text($"Volunteer: {volunteerName}")
+                            .Text($"Staff: {staffName}")
                             .FontSize(11);
 
                         column.Item()
@@ -200,93 +201,7 @@ public class VolunteerReportsController : ControllerBase
         return File(
             pdfBytes,
             "application/pdf",
-            $"volunteer-{id}-hours.pdf");
+            $"staff-{id}-hours.pdf");
     }
-
-    //[HttpGet("volunteer-hours-pdf")]
-    //public async Task<IActionResult> GetVolunteerHoursPdf(
-    //[FromQuery] int id,
-    //[FromQuery] DateTime? start,
-    //[FromQuery] DateTime? end)
-    //{
-    //    if (id <= 0)
-    //        return BadRequest(new { error = "Invalid id" });
-
-    //    var s = start ?? DateTime.Now.Date.AddDays(-30);
-    //    var e = end ?? DateTime.Now.Date.AddDays(1).AddTicks(-1);
-
-    //    var rows = await _clocking.GetClockingReportForVolunteer(id, s, e);
-
-    //    double totalHours = 0;
-
-    //    foreach (var vm in rows)
-    //    {
-    //        var item = vm.Clocking?.FirstOrDefault();
-
-    //        if (item?.WorkingHours != null)
-    //        {
-    //            totalHours += item.WorkingHours.Value.TotalHours;
-    //        }
-    //        else if (item?.ClockInTime != null && item?.ClockOutTime != null)
-    //        {
-    //            totalHours +=
-    //                (item.ClockOutTime.Value - item.ClockInTime.Value).TotalHours;
-    //        }
-    //    }
-
-    //    totalHours = Math.Round(totalHours, 2);
-
-    //    var pdfBytes = Document.Create(container =>
-    //    {
-    //        container.Page(page =>
-    //        {
-    //            page.Size(PageSizes.A4);
-    //            page.Margin(40);
-
-    //            page.Header()
-    //                .Text("Volunteer Hours Report")
-    //                .FontSize(20)
-    //                .Bold();
-
-    //            page.Content()
-    //                .PaddingTop(20)
-    //                .Column(column =>
-    //                {
-    //                    column.Spacing(12);
-
-    //                    column.Item()
-    //                        .Text($"Volunteer ID: {id}")
-    //                        .FontSize(12);
-
-    //                    column.Item()
-    //                        .Text($"Start Date: {s:dd MMM yyyy}")
-    //                        .FontSize(12);
-
-    //                    column.Item()
-    //                        .Text($"End Date: {e:dd MMM yyyy}")
-    //                        .FontSize(12);
-
-    //                    column.Item()
-    //                        .PaddingTop(15)
-    //                        .Text($"Total Hours: {totalHours:F2}")
-    //                        .FontSize(16)
-    //                        .Bold();
-    //                });
-
-    //            page.Footer()
-    //                .AlignCenter()
-    //                .Text(text =>
-    //                {
-    //                    text.Span("Generated on ");
-    //                    text.Span(DateTime.Now.ToString("dd MMM yyyy HH:mm"));
-    //                });
-    //        });
-    //    }).GeneratePdf();
-
-    //    return File(
-    //        pdfBytes,
-    //        "application/pdf",
-    //        $"volunteer-{id}-hours.pdf");
-    //}
 
 }

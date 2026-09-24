@@ -21,37 +21,37 @@
       </div>
     </div>
   </div>
-          <div class="modal fade" id="vhoursModal" tabindex="-1" role="dialog" aria-hidden="true">
-            <div class="modal-dialog" role="document">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <h5 class="modal-title">Volunteer Hours</h5>
-                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                  </button>
-                </div>
-                <div class="modal-body">
-                  <form id="vhoursForm">
-                    <input type="hidden" id="vhVolunteerId" name="VolunteerId" />
-                    <div class="form-group">
-                      <label>Start</label>
-                      <input type="date" id="vhStart" name="Start" class="form-control" />
-                    </div>
-                    <div class="form-group">
-                      <label>End</label>
-                      <input type="date" id="vhEnd" name="End" class="form-control" />
-                    </div>
-                    <div id="vhoursResult" class="mt-3"></div>
-                  </form>
-                </div>
-                <div class="modal-footer">
-                  <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                  <button type="button" id="vbtnDownloadPdf" class="btn btn-primary">Download PDF</button>
-                  <button type="button" id="vbtnCalculate" class="btn btn-info">Calculate</button>
-                </div>
-              </div>
+        <div class="modal fade" id="vhoursModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Volunteer Hours</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+                </button>
             </div>
-          </div>
+            <div class="modal-body">
+                <form id="vhoursForm">
+                <input type="hidden" id="vhVolunteerId" name="VolunteerId" />
+                <div class="form-group">
+                    <label>Start</label>
+                    <input type="date" id="vhStart" name="Start" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label>End</label>
+                    <input type="date" id="vhEnd" name="End" class="form-control" />
+                </div>
+                <div id="vhoursResult" class="mt-3"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" id="vbtnDownloadPdf" class="btn btn-primary">Download PDF</button>
+                <button type="button" id="vbtnCalculate" class="btn btn-info">Calculate</button>
+            </div>
+            </div>
+        </div>
+        </div>
 </div>
 <div class="content">
   <div class="container-fluid">
@@ -292,7 +292,9 @@
             fetch(`/api/people/volunteer-hours?id=${encodeURIComponent(id)}&start=${encodeURIComponent(s)}&end=${encodeURIComponent(e)}`)
                 .then(r => r.json())
                 .then(json => {
-                    document.getElementById('vhoursResult').innerHTML = `<div class="alert alert-info">Total hours: ${json.totalHours}</div>`;
+                    document.getElementById('vhoursResult').innerHTML =
+                        `<div class="alert alert-info">Total hours: ${json.totalDisplay}</div>`;
+                    
                     // store last result for PDF
                     document.getElementById('vhoursResult').dataset.last = JSON.stringify(json);
                 }).catch(()=> document.getElementById('vhoursResult').innerHTML = '<div class="text-danger">Failed to calculate hours.</div>');
