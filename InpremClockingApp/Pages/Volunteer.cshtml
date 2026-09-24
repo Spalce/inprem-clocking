@@ -21,6 +21,37 @@
       </div>
     </div>
   </div>
+          <div class="modal fade" id="vhoursModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Volunteer Hours</h5>
+                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div>
+                <div class="modal-body">
+                  <form id="vhoursForm">
+                    <input type="hidden" id="vhVolunteerId" name="VolunteerId" />
+                    <div class="form-group">
+                      <label>Start</label>
+                      <input type="date" id="vhStart" name="Start" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                      <label>End</label>
+                      <input type="date" id="vhEnd" name="End" class="form-control" />
+                    </div>
+                    <div id="vhoursResult" class="mt-3"></div>
+                  </form>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                  <button type="button" id="vbtnDownloadPdf" class="btn btn-primary">Download PDF</button>
+                  <button type="button" id="vbtnCalculate" class="btn btn-info">Calculate</button>
+                </div>
+              </div>
+            </div>
+          </div>
 </div>
 <div class="content">
   <div class="container-fluid">
@@ -63,6 +94,7 @@
                             <td>
                                 <button type="button" class="btn btn-sm btn-outline-secondary vbtn-edit">Edit</button>
                                 <button type="button" class="btn btn-sm btn-outline-info vbtn-move">Move To Staff</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary vbtn-hours">Hours</button>
                             </td>
                         </tr>
                     }
@@ -233,10 +265,51 @@
                     showEditorErrors({ error: 'Move failed.' });
                 });
             }
+
+            if (event.target.classList.contains('vbtn-hours')) {
+                var payload = rowToPayload(tr);
+                document.getElementById('vhVolunteerId').value = payload.VolunteerId;
+                // default dates: last 30 days
+                var end = new Date();
+                var start = new Date(); start.setDate(end.getDate() - 30);
+                document.getElementById('vhStart').value = start.toISOString().slice(0,10);
+                document.getElementById('vhEnd').value = end.toISOString().slice(0,10);
+                document.getElementById('vhoursResult').innerHTML = '';
+                $('#vhoursModal').modal('show');
+            }
         });
 
         document.getElementById('vbtnAdd').addEventListener('click', function () {
             openEditor({ Gender: 'M' });
+        });
+
+        // Hours modal actions
+        document.getElementById('vbtnCalculate').addEventListener('click', function () {
+            var id = document.getElementById('vhVolunteerId').value;
+            var s = document.getElementById('vhStart').value;
+            var e = document.getElementById('vhEnd').value;
+            if (!id) return;
+            fetch(`/api/people/volunteer-hours?id=${encodeURIComponent(id)}&start=${encodeURIComponent(s)}&end=${encodeURIComponent(e)}`)
+                .then(r => r.json())
+                .then(json => {
+                    document.getElementById('vhoursResult').innerHTML = `<div class="alert alert-info">Total hours: ${json.totalHours}</div>`;
+                    // store last result for PDF
+                    document.getElementById('vhoursResult').dataset.last = JSON.stringify(json);
+                }).catch(()=> document.getElementById('vhoursResult').innerHTML = '<div class="text-danger">Failed to calculate hours.</div>');
+        });
+
+        document.getElementById('vbtnDownloadPdf').addEventListener('click', function () {
+            var data = document.getElementById('vhoursResult').dataset.last;
+            if (!data) {
+                alert('Please calculate hours first');
+                return;
+            }
+            var json = JSON.parse(data);
+            // request server PDF generation endpoint
+            fetch(`/api/people/volunteer-hours-pdf?id=${encodeURIComponent(json.volunteerId)}&start=${encodeURIComponent(json.start)}&end=${encodeURIComponent(json.end)}`)
+                .then(function (res) { if (!res.ok) throw new Error('PDF failed'); return res.blob(); })
+                .then(function (blob) { var url = URL.createObjectURL(blob); var a = document.createElement('a'); a.href = url; a.download = `volunteer-${json.volunteerId}-hours.pdf`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); })
+                .catch(function () { alert('Failed to download PDF'); });
         });
 
         document.getElementById('vbtnSave').addEventListener('click', function () {
