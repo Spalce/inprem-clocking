@@ -92,8 +92,10 @@ public class VolunteerClockingService
 
         if (item.ClockOutTime == null)
         {
-            item!.ClockOutTime = DateTime.Now;
-            if (item.LeaveOnBreakTime != null)
+            item.ClockOutTime = DateTime.Now;
+
+            if (item.LeaveOnBreakTime != null &&
+                item.ReturnOnBreakTime == null)
             {
                 item.ReturnOnBreakTime = DateTime.Now;
             }

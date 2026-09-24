@@ -23,38 +23,57 @@ public class StaffReportsController : ControllerBase
     public async Task<IActionResult> GetStaffHours([FromQuery] int id, [FromQuery] DateTime? start, [FromQuery] DateTime? end)
     {
         if (id <= 0) return BadRequest(new { error = "Invalid id" });
-        var s = start ?? DateTime.Now.Date.AddDays(-30);
-        var e = end ?? DateTime.Now.Date.AddDays(1).AddTicks(-1);
+        var s = start?.Date ?? DateTime.Now.Date.AddDays(-30);
+        var e = end?.Date.AddDays(1).AddTicks(-1)
+                ?? DateTime.Now.Date.AddDays(1).AddTicks(-1);
         var rows = await _clocking.GetClockingReportForStaff(id, s, e);
         // compute total hours from returned rows
-        double totalHours = 0;
-        foreach (var vm in rows)
+        double totalClockedHours = 0;
+        double totalBreakHours = 0;
+
+        foreach (var item in rows)
         {
-            var item = vm;
-            if (item?.WorkingHours != null)
+            if (item.ClockInTime != null && item.ClockOutTime != null)
             {
-                totalHours += item.WorkingHours.Value.TotalHours;
+                totalClockedHours +=
+                    (item.ClockOutTime.Value - item.ClockInTime.Value).TotalHours;
             }
-            else if (item?.ClockInTime != null && item?.ClockOutTime != null)
+
+            if (item.LeaveOnBreakTime != null && item.ReturnOnBreakTime != null)
             {
-                totalHours += (item.ClockOutTime.Value - item.ClockInTime.Value).TotalHours;
+                totalBreakHours +=
+                    (item.ReturnOnBreakTime.Value - item.LeaveOnBreakTime.Value).TotalHours;
             }
         }
 
-        var totalMinutes = (int)Math.Round(totalHours * 60);
-        var hours = totalMinutes / 60;
-        var minutes = totalMinutes % 60;
+        double actualHoursWorked = totalClockedHours - totalBreakHours;
 
-        var totalDisplay = $"{hours:D2} hour(s) {minutes:D2} minutes";
+        var clockedMinutes = (int)Math.Round(totalClockedHours * 60);
+        var clockedHours = clockedMinutes / 60;
+        var clockedRemainingMinutes = clockedMinutes % 60;
+
+        var breakMinutes = (int)Math.Round(totalBreakHours * 60);
+        var breakHours = breakMinutes / 60;
+        var breakRemainingMinutes = breakMinutes % 60;
+
+        var actualMinutes = (int)Math.Round(actualHoursWorked * 60);
+        var actualHours = actualMinutes / 60;
+        var actualRemainingMinutes = actualMinutes % 60;
 
         return Ok(new
         {
             staffId = id,
             start = s.ToString("o"),
             end = e.ToString("o"),
-            totalHours = Math.Round(totalHours, 2),
-            totalDisplay
-        });        
+
+            totalClockedHours = Math.Round(totalClockedHours, 2),
+            totalBreakHours = Math.Round(totalBreakHours, 2),
+            actualHoursWorked = Math.Round(actualHoursWorked, 2),
+
+            totalClockedDisplay = $"{clockedHours:D2} hour(s) {clockedRemainingMinutes:D2} minutes",
+            totalBreakDisplay = $"{breakHours:D2} hour(s) {breakRemainingMinutes:D2} minutes",
+            actualWorkedDisplay = $"{actualHours:D2} hour(s) {actualRemainingMinutes:D2} minutes"
+        });              
     }
 
     [HttpGet("staff-hours-pdf")]
@@ -83,29 +102,49 @@ public class StaffReportsController : ControllerBase
         // Get clocking records
         var rows = await _clocking.GetClockingReportForStaff(id, s, e);
 
-        double totalHours = 0;
+        double totalClockedHours = 0;
+        double totalBreakHours = 0;
 
-        foreach (var vm in rows)
+        foreach (var item in rows)
         {
-            var item = vm;
-
-            if (item?.WorkingHours != null)
+            if (item.ClockInTime != null && item.ClockOutTime != null)
             {
-                totalHours += item.WorkingHours.Value.TotalHours;
-            }
-            else if (item?.ClockInTime != null && item?.ClockOutTime != null)
-            {
-                totalHours +=
+                totalClockedHours +=
                     (item.ClockOutTime.Value - item.ClockInTime.Value).TotalHours;
+            }
+
+            if (item.LeaveOnBreakTime != null && item.ReturnOnBreakTime != null)
+            {
+                totalBreakHours +=
+                    (item.ReturnOnBreakTime.Value - item.LeaveOnBreakTime.Value).TotalHours;
             }
         }
 
-        // Convert decimal hours to hours and minutes
-        var totalMinutes = (int)Math.Round(totalHours * 60);
-        var hours = totalMinutes / 60;
-        var minutes = totalMinutes % 60;
+        double actualHoursWorked = totalClockedHours - totalBreakHours;
 
-        var totalDisplay = $"{hours:D2} hour(s) {minutes:D2} minutes";
+        // Convert decimal hours to hours and minutes
+        var clockedMinutes = (int)Math.Round(totalClockedHours * 60);
+        var clockedHours = clockedMinutes / 60;
+        var clockedRemainingMinutes = clockedMinutes % 60;
+
+        var breakMinutes = (int)Math.Round(totalBreakHours * 60);
+        var breakHours = breakMinutes / 60;
+        var breakRemainingMinutes = breakMinutes % 60;
+
+        var actualMinutes = (int)Math.Round(actualHoursWorked * 60);
+        var actualHours = actualMinutes / 60;
+        var actualRemainingMinutes = actualMinutes % 60;
+
+        var totalClockedDisplay =
+            $"{clockedHours:D2} hour(s) {clockedRemainingMinutes:D2} minutes";
+
+        var totalBreakDisplay =
+            $"{breakHours:D2} hour(s) {breakRemainingMinutes:D2} minutes";
+
+        var actualWorkedDisplay =
+            $"{actualHours:D2} hour(s) {actualRemainingMinutes:D2} minutes";
+
+        
 
         var pdfBytes = Document.Create(container =>
         {
@@ -174,10 +213,24 @@ public class StaffReportsController : ControllerBase
                             .PaddingTop(15)
                             .Border(1)
                             .Padding(15)
-                            .AlignCenter()
-                            .Text($"Total : {totalDisplay}")
-                            .FontSize(16)
-                            .Bold();
+                            .Column(summary =>
+                            {
+                                summary.Spacing(8);
+
+                                summary.Item()
+                                    .Text($"Total Hours Clocked: {totalClockedDisplay}")
+                                    .FontSize(11);
+
+                                summary.Item()
+                                    .Text($"Total Hours for Break: {totalBreakDisplay}")
+                                    .FontSize(11);
+
+                                summary.Item()
+                                    .PaddingTop(5)
+                                    .Text($"Actual Hours Worked: {actualWorkedDisplay}")
+                                    .FontSize(13)
+                                    .Bold();
+                            });
                     });
 
                 // FOOTER

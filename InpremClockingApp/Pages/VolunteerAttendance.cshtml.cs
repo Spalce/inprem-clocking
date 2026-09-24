@@ -48,6 +48,6 @@ public class VolunteerAttendance : PageModel
         await _db.SaveChangesAsync().ConfigureAwait(false);
 
         TempData["Message"] = "Volunteer registered successfully!";
-        return RedirectToPage("./VolunteerAttendance");
+        return Redirect($"/volunteer-clockin/{Input.VolunteerId}");
     }
 }

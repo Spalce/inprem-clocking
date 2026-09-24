@@ -48,6 +48,6 @@ public class StaffAttendance : PageModel
         await _db.SaveChangesAsync().ConfigureAwait(false);
 
         TempData["Message"] = "Staff registered successfully!";
-        return RedirectToPage("./StaffAttendance");
+        return Redirect($"/staff-clockin/{Input.StaffId}");
     }
 }
