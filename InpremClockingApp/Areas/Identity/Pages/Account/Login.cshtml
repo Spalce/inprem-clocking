@@ -13,7 +13,7 @@
     <div class="card-body login-card-body">
         <p class="login-box-msg">Sign in to start your session</p>
 
-        <form asp-page="Login" method="post">
+        <form asp-page="Login" method="post" asp-route-returnUrl="@Model.ReturnUrl">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <div class="input-group mb-3">
                 <input asp-for="Input.Email" type="email" class="form-control" placeholder="Email">

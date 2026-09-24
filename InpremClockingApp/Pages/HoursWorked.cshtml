@@ -1,0 +1,468 @@
+﻿@page "/HoursWorked"
+@model InpremClockingApp.Pages.HoursWorkedModel
+
+@{
+    ViewData["Title"] = "Hours Worked";
+}
+
+<div class="content-wrapper">
+
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-sm-6">
+                    <h1>Hours Worked</h1>
+                </div>
+
+                <div class="col-sm-6 text-right">
+                    <a href="javascript:history.back()" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+
+            <!-- Person -->
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="mb-0">
+                        @(Model.Type.Equals("staff", StringComparison.OrdinalIgnoreCase)
+                            ? $"{Model.Staff?.FirstName} {Model.Staff?.LastName}"
+                            : Model.Volunteer?.FullName)
+                    </h4>
+                </div>
+            </div>
+
+            <!-- Intro Text -->
+            <div class="mb-3">
+                <p class="mb-0">
+                    This is a confirmation of volunteer hours worked by
+                    <strong>
+                        @(Model.Type.Equals("staff", StringComparison.OrdinalIgnoreCase)
+                            ? $"{Model.Staff?.FirstName} {Model.Staff?.LastName}"
+                            : Model.Volunteer?.FullName)
+                    </strong>
+                    at Inprem Holistic Community Resource Center,
+                    5757 Karl Rd, Columbus Ohio.
+                </p>
+            </div>
+
+            <!-- Filters -->
+            <div class="card">
+                <div class="card-body">
+
+                    <form method="get" class="row align-items-end">
+
+                        <input type="hidden" name="type" value="@Model.Type" />
+                        <input type="hidden" name="id" value="@Model.Id" />
+
+                        <div class="col-md-3">
+                            <label for="start">Start Date</label>
+                            <input type="date"
+                                   id="start"
+                                   name="start"
+                                   value="@Model.Start?.ToString("yyyy-MM-dd")"
+                                   class="form-control" />
+                        </div>
+
+                        <div class="col-md-3">
+                            <label for="end">End Date</label>
+                            <input type="date"
+                                   id="end"
+                                   name="end"
+                                   value="@Model.End?.ToString("yyyy-MM-dd")"
+                                   class="form-control" />
+                        </div>
+
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-filter"></i> Apply
+                            </button>
+
+                            <a href="@Url.Page("/HoursWorked",
+                                                                                                                                  new { type = Model.Type, id = Model.Id })"
+                               class="btn btn-secondary">
+                                Clear
+                            </a>
+                        </div>
+
+                        <div class="col-md-4 text-md-right mt-3 mt-md-0">
+                            <button type="button"
+                                    id="btnDownloadPdf"
+                                    class="btn btn-danger">
+                                <i class="fas fa-file-pdf"></i> Download PDF
+                            </button>
+                        </div>
+
+                    </form>
+
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="card">
+
+                <div class="card-header">
+                    <div class="row align-items-center">
+
+                        <div class="col-md-6">
+                            <h3 class="card-title">Clocking History</h3>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="d-flex justify-content-md-end">
+                                <input type="text"
+                                       id="searchBox"
+                                       class="form-control"
+                                       style="max-width: 300px;"
+                                       placeholder="Search..." />
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="card-body p-0">
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover mb-0"
+                               id="hoursTable">
+
+                            <thead>
+                                <tr>
+                                    <th>Full Name</th>
+                                    <th>Clock In Time</th>
+                                    <th>Clock Out Time</th>
+                                    <th>Leave On Break Time</th>
+                                    <th>Return from Break Time</th>
+                                    <th>Working Hours (h:m)</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                @if (Model.Type.Equals("staff", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    if (Model.StaffClockingRecords?.Items != null &&
+                                        Model.StaffClockingRecords.Items.Any())
+                                    {
+                                        foreach (var item in Model.StaffClockingRecords.Items)
+                                        {
+                                            double workingHours = 0;
+
+                                            if (item.ClockInTime.HasValue &&
+                                                item.ClockOutTime.HasValue)
+                                            {
+                                                workingHours =
+                                                    (item.ClockOutTime.Value - item.ClockInTime.Value).TotalHours;
+
+                                                if (item.LeaveOnBreakTime.HasValue &&
+                                                    item.ReturnOnBreakTime.HasValue)
+                                                {
+                                                    workingHours -=
+                                                        (item.ReturnOnBreakTime.Value -
+                                                         item.LeaveOnBreakTime.Value).TotalHours;
+                                                }
+                                            }
+
+                                            <tr>
+                                                <td>
+                                                    @(Model.Staff == null
+                                                        ? ""
+                                                        : $"{Model.Staff.FirstName} {Model.Staff.LastName}")
+                                                </td>
+                                                <td>@Model.FormatDateTime(item.ClockInTime)</td>
+                                                <td>@Model.FormatDateTime(item.ClockOutTime)</td>
+                                                <td>@Model.FormatDateTime(item.LeaveOnBreakTime)</td>
+                                                <td>@Model.FormatDateTime(item.ReturnOnBreakTime)</td>
+                                                <td>@Model.FormatHours(workingHours)</td>
+                                            </tr>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <tr>
+                                            <td colspan="6" class="text-center py-4">
+                                                No clocking records found.
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    if (Model.ClockingRecords?.Items != null &&
+                                        Model.ClockingRecords.Items.Any())
+                                    {
+                                        foreach (var item in Model.ClockingRecords.Items)
+                                        {
+                                            double workingHours = 0;
+
+                                            if (item.ClockInTime.HasValue &&
+                                                item.ClockOutTime.HasValue)
+                                            {
+                                                workingHours =
+                                                    (item.ClockOutTime.Value - item.ClockInTime.Value).TotalHours;
+
+                                                if (item.LeaveOnBreakTime.HasValue &&
+                                                    item.ReturnOnBreakTime.HasValue)
+                                                {
+                                                    workingHours -=
+                                                        (item.ReturnOnBreakTime.Value -
+                                                         item.LeaveOnBreakTime.Value).TotalHours;
+                                                }
+                                            }
+
+                                            <tr>
+                                                <td>@Model.Volunteer?.FullName</td>
+                                                <td>@Model.FormatDateTime(item.ClockInTime)</td>
+                                                <td>@Model.FormatDateTime(item.ClockOutTime)</td>
+                                                <td>@Model.FormatDateTime(item.LeaveOnBreakTime)</td>
+                                                <td>@Model.FormatDateTime(item.ReturnOnBreakTime)</td>
+                                                <td>@Model.FormatHours(workingHours)</td>
+                                            </tr>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <tr>
+                                            <td colspan="6" class="text-center py-4">
+                                                No clocking records found.
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+
+                        </table>
+                    </div>
+
+                </div>
+
+                <!-- Pagination -->
+                <div class="card-footer">
+
+                    @{
+                        var totalCount = Model.Type.Equals("staff", StringComparison.OrdinalIgnoreCase)
+                            ? Model.StaffClockingRecords?.TotalCount ?? 0
+                            : Model.ClockingRecords?.TotalCount ?? 0;
+
+                        var totalPages = (int)Math.Ceiling(
+                            (double)totalCount / Model.PageSize);
+
+                        var firstItem = totalCount == 0
+                            ? 0
+                            : ((Model.Page - 1) * Model.PageSize) + 1;
+
+                        var lastItem = Math.Min(
+                            Model.Page * Model.PageSize,
+                            totalCount);
+                    }
+
+                    <div class="row align-items-center">
+
+                        <div class="col-md-6">
+                            <span>
+                                Showing @firstItem - @lastItem of @totalCount
+                            </span>
+                        </div>
+
+                        <div class="col-md-6 text-md-right">
+
+                            @if (totalCount > 0)
+                            {
+                                <nav>
+                                    <ul class="pagination justify-content-md-end mb-0">
+
+                                        <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                                            <a class="page-link"
+                                               asp-page="/HoursWorked"
+                                               asp-route-type="@Model.Type"
+                                               asp-route-id="@Model.Id"
+                                               asp-route-start="@Model.Start?.ToString("yyyy-MM-dd")"
+                                               asp-route-end="@Model.End?.ToString("yyyy-MM-dd")"
+                                               asp-route-page="@(Model.Page - 1)"
+                                               asp-route-pageSize="@Model.PageSize">
+                                                Previous
+                                            </a>
+                                        </li>
+
+                                        @for (int i = 1; i <= totalPages; i++)
+                                        {
+                                            <li class="page-item @(i == Model.Page ? "active" : "")">
+                                                <a class="page-link"
+                                                   asp-page="/HoursWorked"
+                                                   asp-route-type="@Model.Type"
+                                                   asp-route-id="@Model.Id"
+                                                   asp-route-start="@Model.Start?.ToString("yyyy-MM-dd")"
+                                                   asp-route-end="@Model.End?.ToString("yyyy-MM-dd")"
+                                                   asp-route-page="@i"
+                                                   asp-route-pageSize="@Model.PageSize">
+                                                    @i
+                                                </a>
+                                            </li>
+                                        }
+
+                                        <li class="page-item @(Model.Page >= totalPages ? "disabled" : "")">
+                                            <a class="page-link"
+                                               asp-page="/HoursWorked"
+                                               asp-route-type="@Model.Type"
+                                               asp-route-id="@Model.Id"
+                                               asp-route-start="@Model.Start?.ToString("yyyy-MM-dd")"
+                                               asp-route-end="@Model.End?.ToString("yyyy-MM-dd")"
+                                               asp-route-page="@(Model.Page + 1)"
+                                               asp-route-pageSize="@Model.PageSize">
+                                                Next
+                                            </a>
+                                        </li>
+
+                                    </ul>
+                                </nav>
+                            }
+
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Page size -->
+            <div class="card">
+                <div class="card-body">
+
+                    <form method="get" class="form-inline">
+
+                        <input type="hidden" name="type" value="@Model.Type" />
+                        <input type="hidden" name="id" value="@Model.Id" />
+
+                        @if (Model.Start.HasValue)
+                        {
+                            <input type="hidden"
+                                   name="start"
+                                   value="@Model.Start.Value.ToString("yyyy-MM-dd")" />
+                        }
+
+                        @if (Model.End.HasValue)
+                        {
+                            <input type="hidden"
+                                   name="end"
+                                   value="@Model.End.Value.ToString("yyyy-MM-dd")" />
+                        }
+
+                        <label class="mr-2">Items per page:</label>
+
+                        <select name="pageSize"
+                                class="form-control"
+                                onchange="this.form.submit()">
+
+                            <option value="10" selected="@(Model.PageSize == 10)">10</option>
+                            <option value="20" selected="@(Model.PageSize == 20)">20</option>
+                            <option value="50" selected="@(Model.PageSize == 50)">50</option>
+                            <option value="100" selected="@(Model.PageSize == 100)">100</option>
+
+                        </select>
+
+                        <input type="hidden" name="page" value="1" />
+
+                    </form>
+
+                </div>
+            </div>
+
+            <!-- Totals -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Hours Summary</h3>
+                </div>
+
+                <div class="card-body">
+                    <table class="table table-sm table-bordered mb-0" style="max-width: 500px;">
+                        <tbody>
+                            <tr>
+                                <th style="width: 65%;">Total Hours Clocked</th>
+                                <td>@Model.FormatHours(Model.TotalClockedHours)</td>
+                            </tr>
+                            <tr>
+                                <th>Total Hours for Break</th>
+                                <td>@Model.FormatHours(Model.TotalBreakHours)</td>
+                            </tr>
+                            <tr>
+                                <th>Actual Hours Worked</th>
+                                <td><strong>@Model.FormatHours(Model.ActualHoursWorked)</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+
+    <script>
+        document.getElementById('searchBox').addEventListener('keyup', function () {
+
+            var searchValue = this.value.toLowerCase();
+
+            document.querySelectorAll('#hoursTable tbody tr').forEach(function (row) {
+
+                var text = row.textContent.toLowerCase();
+
+                row.style.display =
+                    text.includes(searchValue) ? '' : 'none';
+            });
+        });
+
+        document.getElementById('btnDownloadPdf').addEventListener('click', function () {
+
+            var id = '@Model.Id';
+
+            var start = '@(Model.Start?.ToString("o") ?? "")';
+            var end = '@(Model.End?.ToString("o") ?? "")';
+
+            var type = '@Model.Type';
+
+            var pdfEndpoint =
+                type.toLowerCase() === 'staff'
+                    ? '/api/people/staff-hours-pdf'
+                    : '/api/people/volunteer-hours-pdf';
+
+            var url =
+                `${pdfEndpoint}?id=${encodeURIComponent(id)}` +
+                `&start=${encodeURIComponent(start)}` +
+                `&end=${encodeURIComponent(end)}`;
+
+            fetch(url)
+                .then(function (response) {
+
+                    if (!response.ok) {
+                        throw new Error('Failed to generate PDF.');
+                    }
+
+                    return response.blob();
+                })
+                .then(function (blob) {
+
+                    var downloadUrl = window.URL.createObjectURL(blob);
+
+                    var a = document.createElement('a');
+
+                    a.href = downloadUrl;
+                    a.download = `${type}-${id}-hours.pdf`;
+
+                    document.body.appendChild(a);
+                    a.click();
+
+                    a.remove();
+                    window.URL.revokeObjectURL(downloadUrl);
+                })
+                .catch(function (error) {
+                    alert(error.message);
+                });
+        });
+    </script>
+}

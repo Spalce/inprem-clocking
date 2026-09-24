@@ -95,7 +95,7 @@ namespace InpremClockingApp.Areas.Identity.Pages.Account
                 ModelState.AddModelError(string.Empty, ErrorMessage);
             }
 
-            returnUrl ??= Url.Content("~/");
+            returnUrl ??= Url.Content("~/VolunteerAttendance");
 
             // Clear the existing external cookie to ensure a clean login process
             await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
@@ -110,7 +110,15 @@ namespace InpremClockingApp.Areas.Identity.Pages.Account
             // check if return url is not null and it is BackOffice then use the BackOffice return url
             // else if return url is null then use the default return url or not BackOffice return url
             // then use VolunteerAttendance return url
-            returnUrl = Return == "/BackOffice" ? Url.Content("~/BackOffice") : Url.Content("~/VolunteerAttendance");
+
+            //returnUrl = Return == "/BackOffice" ? Url.Content("~/BackOffice") : Url.Content("~/VolunteerAttendance");
+
+            if (string.IsNullOrEmpty(returnUrl) || returnUrl == "/")
+            {
+                returnUrl = string.Equals(Return, "/backoffice", StringComparison.OrdinalIgnoreCase)
+                    ? Url.Content("~/backoffice")
+                    : Url.Content("~/VolunteerAttendance");
+            }
 
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
 

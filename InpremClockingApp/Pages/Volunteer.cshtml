@@ -94,7 +94,11 @@
                             <td>
                                 <button type="button" class="btn btn-sm btn-outline-secondary vbtn-edit">Edit</button>
                                 <button type="button" class="btn btn-sm btn-outline-info vbtn-move">Move To Staff</button>
-                                <button type="button" class="btn btn-sm btn-outline-primary vbtn-hours">Hours</button>
+                                @* <button type="button" class="btn btn-sm btn-outline-primary vbtn-hours">Hours</button> *@
+                                <a href="/HoursWorked?type=volunteer&id=@v.VolunteerId"
+                                    class="btn btn-sm btn-outline-primary">
+                                    Hours
+                                </a>
                             </td>
                         </tr>
                     }

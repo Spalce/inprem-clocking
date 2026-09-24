@@ -49,10 +49,10 @@ public class StaffClockingService
             query = query.Where(e => e.StafId == staffId.Value);
 
         if (start.HasValue)
-            query = query.Where(e => e.CreatedAt.HasValue && e.CreatedAt.Value >= start.Value);
+            query = query.Where(e => e.ClockInTime >= start.Value);
 
         if (end.HasValue)
-            query = query.Where(e => e.CreatedAt.HasValue && e.CreatedAt.Value <= end.Value);
+            query = query.Where(e => e.ClockInTime <= end.Value);
 
         query = query.OrderByDescending(e => e.CreatedAt!.Value);
 

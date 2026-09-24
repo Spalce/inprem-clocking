@@ -58,10 +58,10 @@ public class VolunteerClockingService
             query = query.Where(e => e.VoluntId == volunteerId.Value);
 
         if (start.HasValue)
-            query = query.Where(e => e.CreatedAt.HasValue && e.CreatedAt.Value >= start.Value);
+            query = query.Where(e => e.ClockInTime >= start.Value);
 
         if (end.HasValue)
-            query = query.Where(e => e.CreatedAt.HasValue && e.CreatedAt.Value <= end.Value);
+            query = query.Where(e => e.ClockInTime <= end.Value);
 
         query = query.OrderByDescending(e => e.CreatedAt!.Value);
 
