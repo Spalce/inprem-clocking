@@ -1,7 +1,7 @@
 
 using InpremClockingApp.Data;
-using InpremClockingApp.Helpers;
 using InpremClockingApp.Models;
+using InpremClockingApp.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,10 +11,14 @@ namespace InpremClockingApp.Controllers;
 public class ControlsController : Controller
 {
     private readonly ApplicationDbContext _db;
+    private readonly StaffClockingService _staffClock;
+    private readonly VolunteerClockingService _volunteerClock;
 
-    public ControlsController(ApplicationDbContext db)
+    public ControlsController(ApplicationDbContext db, StaffClockingService staffClock, VolunteerClockingService volunteerClock)
     {
         _db = db;
+        _staffClock = staffClock;
+        _volunteerClock = volunteerClock;
     }
 
     [Produces("application/json")]
@@ -26,14 +30,12 @@ public class ControlsController : Controller
             var staff = await _db.Staffs.FindAsync(id).ConfigureAwait(false);
             if (staff != null)
             {
-                var (dayStart, dayEnd) = OrgClock.TodayRangeUtc();
-                var isExists = await _db.ClockingsStaff
-                    .FirstOrDefaultAsync(e => e.StafId == id && e.CreatedAt >= dayStart && e.CreatedAt < dayEnd)
-                    .ConfigureAwait(false);
-
-                if (isExists != null)
+                var existing = await _staffClock.GetTodayRecord(id).ConfigureAwait(false);
+                if (existing != null)
                 {
-                    return Ok("You have already clocked in");
+                    return Conflict(existing.ClockOutTime != null
+                        ? "You have already clocked in and out today. If you need to step away, use Leave for Break / Return from Break instead."
+                        : "You have already clocked in today.");
                 }
 
                 var now = DateTime.UtcNow;
@@ -49,12 +51,14 @@ public class ControlsController : Controller
                     CreatedAt = now
                 };
 
-                await _db.ClockingsStaff.AddAsync(model).ConfigureAwait(false);
-                var result = await _db.SaveChangesAsync();
-                if (result > 0)
+                var saved = await _staffClock.Create(model).ConfigureAwait(false);
+                if (saved == null)
                 {
-                    return Ok("You have successfully clocked in");
+                    // Lost a race with a concurrent clock-in for the same staff member/day.
+                    return Conflict("You have already clocked in today.");
                 }
+
+                return Ok("You have successfully clocked in");
             }
             else
             {
@@ -76,13 +80,9 @@ public class ControlsController : Controller
         try
         {
             var staff = await _db.Staffs.FindAsync(id).ConfigureAwait(false);
-            Console.WriteLine(staff);
             if (staff != null)
             {
-                var (dayStart, dayEnd) = OrgClock.TodayRangeUtc();
-                var record = await _db.ClockingsStaff
-                    .FirstOrDefaultAsync(e => e.StafId == id && e.CreatedAt >= dayStart && e.CreatedAt < dayEnd)
-                    .ConfigureAwait(false);
+                var record = await _staffClock.GetTodayRecord(id).ConfigureAwait(false);
 
                 if (record != null)
                 {
@@ -91,30 +91,8 @@ public class ControlsController : Controller
                         return Ok("You have already clocked out");
                     }
 
-                    var now = DateTime.UtcNow;
-
-                    if (record is { LeaveOnBreakTime: { }, ReturnOnBreakTime: null })
-                    {
-                        record.ReturnOnBreakTime = now;
-                    }
-
-                    record.ClockOutTime = now;
-                    TimeSpan? main = now - record.ClockInTime;
-                    TimeSpan? difference = null;
-                    if (record is { LeaveOnBreakTime: { }, ReturnOnBreakTime: { } })
-                    {
-                        var leave = record.ReturnOnBreakTime - record.LeaveOnBreakTime;
-                        difference = main - leave;
-                    }
-                    else
-                    {
-                        difference = main;
-                    }
-                    record.WorkingHours = difference;
-
-                    _db.ClockingsStaff.Update(record);
-                    var result = await _db.SaveChangesAsync();
-                    if (result > 0)
+                    var success = await _staffClock.ClockOut(record).ConfigureAwait(false);
+                    if (success)
                     {
                         return Ok("You have successfully clocked out");
                     }
@@ -143,10 +121,7 @@ public class ControlsController : Controller
     {
         try
         {
-            var (dayStart, dayEnd) = OrgClock.TodayRangeUtc();
-            var record = await _db.ClockingsStaff
-                .FirstOrDefaultAsync(e => e.StafId == id && e.CreatedAt >= dayStart && e.CreatedAt < dayEnd)
-                .ConfigureAwait(false);
+            var record = await _staffClock.GetTodayRecord(id).ConfigureAwait(false);
 
             if (record != null)
             {
@@ -160,11 +135,8 @@ public class ControlsController : Controller
                     return Ok("You cannot take leave since you have already clocked out");
                 }
 
-                record.LeaveOnBreakTime = DateTime.UtcNow;
-
-                _db.ClockingsStaff.Update(record);
-                var result = await _db.SaveChangesAsync();
-                if (result > 0)
+                var success = await _staffClock.BreakStart(record).ConfigureAwait(false);
+                if (success)
                 {
                     return Ok("You have successfully clocked for a leave out");
                 }
@@ -188,10 +160,7 @@ public class ControlsController : Controller
     {
         try
         {
-            var (dayStart, dayEnd) = OrgClock.TodayRangeUtc();
-            var record = await _db.ClockingsStaff
-                .FirstOrDefaultAsync(e => e.StafId == id && e.CreatedAt >= dayStart && e.CreatedAt < dayEnd)
-                .ConfigureAwait(false);
+            var record = await _staffClock.GetTodayRecord(id).ConfigureAwait(false);
 
             if (record != null)
             {
@@ -205,11 +174,8 @@ public class ControlsController : Controller
                     return Ok("You have already clocked to have returned from break");
                 }
 
-                record.ReturnOnBreakTime = DateTime.UtcNow;
-
-                _db.ClockingsStaff.Update(record);
-                var result = await _db.SaveChangesAsync();
-                if (result > 0)
+                var success = await _staffClock.BreakEnd(record).ConfigureAwait(false);
+                if (success)
                 {
                     return Ok("You have successfully clocked to have returned fom break");
                 }
@@ -236,14 +202,12 @@ public class ControlsController : Controller
             var staff = await _db.Volunteers.FindAsync(id).ConfigureAwait(false);
             if (staff != null)
             {
-                var (dayStart, dayEnd) = OrgClock.TodayRangeUtc();
-                var isExists = await _db.Clockings
-                    .FirstOrDefaultAsync(e => e.VoluntId == id && e.CreatedAt >= dayStart && e.CreatedAt < dayEnd)
-                    .ConfigureAwait(false);
-
-                if (isExists != null)
+                var existing = await _volunteerClock.GetTodayRecord(id).ConfigureAwait(false);
+                if (existing != null)
                 {
-                    return Ok("You have already clocked in");
+                    return Conflict(existing.ClockOutTime != null
+                        ? "You have already clocked in and out today. If you need to step away, use Leave for Break / Return from Break instead."
+                        : "You have already clocked in today.");
                 }
 
                 var now = DateTime.UtcNow;
@@ -259,12 +223,14 @@ public class ControlsController : Controller
                     CreatedAt = now
                 };
 
-                await _db.Clockings.AddAsync(model).ConfigureAwait(false);
-                var result = await _db.SaveChangesAsync();
-                if (result > 0)
+                var saved = await _volunteerClock.Create(model).ConfigureAwait(false);
+                if (saved == null)
                 {
-                    return Ok("You have successfully clocked in");
+                    // Lost a race with a concurrent clock-in for the same volunteer/day.
+                    return Conflict("You have already clocked in today.");
                 }
+
+                return Ok("You have successfully clocked in");
             }
             else
             {
@@ -286,13 +252,9 @@ public class ControlsController : Controller
         try
         {
             var staff = await _db.Volunteers.FindAsync(id).ConfigureAwait(false);
-            Console.WriteLine(staff);
             if (staff != null)
             {
-                var (dayStart, dayEnd) = OrgClock.TodayRangeUtc();
-                var record = await _db.Clockings
-                    .FirstOrDefaultAsync(e => e.VoluntId == id && e.CreatedAt >= dayStart && e.CreatedAt < dayEnd)
-                    .ConfigureAwait(false);
+                var record = await _volunteerClock.GetTodayRecord(id).ConfigureAwait(false);
 
                 if (record != null)
                 {
@@ -301,30 +263,8 @@ public class ControlsController : Controller
                         return Ok("You have already clocked out");
                     }
 
-                    var now = DateTime.UtcNow;
-
-                    if (record is { LeaveOnBreakTime: { }, ReturnOnBreakTime: null })
-                    {
-                        record.ReturnOnBreakTime = now;
-                    }
-
-                    record.ClockOutTime = now;
-                    TimeSpan? main = now - record.ClockInTime;
-                    TimeSpan? difference = null;
-                    if (record is { LeaveOnBreakTime: { }, ReturnOnBreakTime: { } })
-                    {
-                        var leave = record.ReturnOnBreakTime - record.LeaveOnBreakTime;
-                        difference = main - leave;
-                    }
-                    else
-                    {
-                        difference = main;
-                    }
-                    record.WorkingHours = difference;
-
-                    _db.Clockings.Update(record);
-                    var result = await _db.SaveChangesAsync();
-                    if (result > 0)
+                    var success = await _volunteerClock.ClockOut(record).ConfigureAwait(false);
+                    if (success)
                     {
                         return Ok("You have successfully clocked out");
                     }
@@ -353,10 +293,7 @@ public class ControlsController : Controller
     {
         try
         {
-            var (dayStart, dayEnd) = OrgClock.TodayRangeUtc();
-            var record = await _db.Clockings
-                .FirstOrDefaultAsync(e => e.VoluntId == id && e.CreatedAt >= dayStart && e.CreatedAt < dayEnd)
-                .ConfigureAwait(false);
+            var record = await _volunteerClock.GetTodayRecord(id).ConfigureAwait(false);
 
             if (record != null)
             {
@@ -370,11 +307,8 @@ public class ControlsController : Controller
                     return Ok("You cannot take leave since you have already clocked out");
                 }
 
-                record.LeaveOnBreakTime = DateTime.UtcNow;
-
-                _db.Clockings.Update(record);
-                var result = await _db.SaveChangesAsync();
-                if (result > 0)
+                var success = await _volunteerClock.BreakStart(record).ConfigureAwait(false);
+                if (success)
                 {
                     return Ok("You have successfully clocked for a leave out");
                 }
@@ -398,10 +332,7 @@ public class ControlsController : Controller
     {
         try
         {
-            var (dayStart, dayEnd) = OrgClock.TodayRangeUtc();
-            var record = await _db.Clockings
-                .FirstOrDefaultAsync(e => e.VoluntId == id && e.CreatedAt >= dayStart && e.CreatedAt < dayEnd)
-                .ConfigureAwait(false);
+            var record = await _volunteerClock.GetTodayRecord(id).ConfigureAwait(false);
 
             if (record != null)
             {
@@ -415,11 +346,8 @@ public class ControlsController : Controller
                     return Ok("You have already clocked to have returned from break");
                 }
 
-                record.ReturnOnBreakTime = DateTime.UtcNow;
-
-                _db.Clockings.Update(record);
-                var result = await _db.SaveChangesAsync();
-                if (result > 0)
+                var success = await _volunteerClock.BreakEnd(record).ConfigureAwait(false);
+                if (success)
                 {
                     return Ok("You have successfully clocked to have returned fom break");
                 }

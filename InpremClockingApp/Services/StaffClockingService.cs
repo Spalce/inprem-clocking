@@ -1,6 +1,7 @@
 using InpremClockingApp.Data;
 using InpremClockingApp.Helpers;
 using InpremClockingApp.Models;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace InpremClockingApp.Services;
@@ -85,8 +86,8 @@ public class StaffClockingService
 
     public async Task<IEnumerable<ClockingStaff>> GetAllToday()
     {
-        var (dayStart, dayEnd) = OrgClock.TodayRangeUtc();
-        return await _db.ClockingsStaff.Where(e => e.CreatedAt >= dayStart && e.CreatedAt < dayEnd).ToListAsync().ConfigureAwait(false);
+        var today = OrgClock.TodayLocalDate();
+        return await _db.ClockingsStaff.Where(e => e.ClockDate == today).ToListAsync().ConfigureAwait(false);
     }
 
     public async Task<IEnumerable<ClockingStaff>> GetAllById(long id)
@@ -94,6 +95,17 @@ public class StaffClockingService
         return await _db.ClockingsStaff
             .AsNoTrackingWithIdentityResolution()
             .Where(e => e.StafId == id).ToListAsync().ConfigureAwait(false);
+    }
+
+    // Single canonical lookup for "this staff member's session for today, if any" - used both to
+    // decide whether a new clock-in is allowed and to find the record clock-out/break actions
+    // should mutate, so there's exactly one place that defines what "today's session" means.
+    public async Task<ClockingStaff?> GetTodayRecord(long staffId)
+    {
+        var today = OrgClock.TodayLocalDate();
+        return await _db.ClockingsStaff
+            .FirstOrDefaultAsync(e => e.StafId == staffId && e.ClockDate == today)
+            .ConfigureAwait(false);
     }
 
     public async Task<bool> ClockOut(ClockingStaff model)
@@ -107,13 +119,26 @@ public class StaffClockingService
         if (item.ClockOutTime == null)
         {
             var now = DateTime.UtcNow;
-            item.ClockOutTime = now;
 
             if (item.LeaveOnBreakTime != null &&
                 item.ReturnOnBreakTime == null)
             {
                 item.ReturnOnBreakTime = now;
             }
+
+            item.ClockOutTime = now;
+            TimeSpan? main = now - item.ClockInTime;
+            TimeSpan? difference;
+            if (item is { LeaveOnBreakTime: { }, ReturnOnBreakTime: { } })
+            {
+                var leave = item.ReturnOnBreakTime - item.LeaveOnBreakTime;
+                difference = main - leave;
+            }
+            else
+            {
+                difference = main;
+            }
+            item.WorkingHours = difference;
         }
         else
         {
@@ -188,26 +213,22 @@ public class StaffClockingService
 
     public async Task<bool> CheckToday(ClockingStaff model)
     {
-        var (dayStart, dayEnd) = OrgClock.TodayRangeUtc();
-        var item = await _db.ClockingsStaff
-            .FirstOrDefaultAsync(e => e.StafId == model.StafId && e.CreatedAt >= dayStart && e.CreatedAt < dayEnd).ConfigureAwait(false);
-        if (item == null!)
-        {
-            return false;
-        }
-
-        return true;
+        var today = OrgClock.TodayLocalDate();
+        return await _db.ClockingsStaff
+            .AnyAsync(e => e.StafId == model.StafId && e.ClockDate == today)
+            .ConfigureAwait(false);
     }
 
     public async Task<ClockingStaff> Create(ClockingStaff model)
     {
         try
         {
-            var (dayStart, dayEnd) = OrgClock.TodayRangeUtc();
-            var check = await _db.ClockingsStaff
-                .FirstOrDefaultAsync(e => e.StafId == model.StafId && e.CreatedAt >= dayStart && e.CreatedAt < dayEnd)
+            model.ClockDate = OrgClock.TodayLocalDate();
+
+            var exists = await _db.ClockingsStaff
+                .AnyAsync(e => e.StafId == model.StafId && e.ClockDate == model.ClockDate)
                 .ConfigureAwait(false);
-            if (check != null!)
+            if (exists)
             {
                 return null!;
             }
@@ -217,11 +238,24 @@ public class StaffClockingService
 
             return model;
         }
+        catch (DbUpdateException ex) when (IsDuplicateClockingViolation(ex))
+        {
+            // Lost a race with a concurrent clock-in for the same staff member/day. The unique
+            // index on (StafId, ClockDate) is the real guarantee here; the check above is just
+            // the fast path that avoids hitting the constraint in the common, non-racing case.
+            return null!;
+        }
         catch (Exception e)
         {
             Console.WriteLine(e);
             throw;
         }
+    }
+
+    private static bool IsDuplicateClockingViolation(DbUpdateException ex)
+    {
+        // SQL Server: 2601 = duplicate key on a unique index, 2627 = unique constraint violation.
+        return ex.InnerException is SqlException sqlEx && (sqlEx.Number == 2601 || sqlEx.Number == 2627);
     }
 
     public async Task<bool> CreateBatch(List<ClockingStaff> model)

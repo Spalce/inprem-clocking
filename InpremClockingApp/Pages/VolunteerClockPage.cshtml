@@ -86,7 +86,12 @@
                 });
             },
             error: function (xhr) {
-               showToast('Oops! An error occured. Try again', 5000, 'danger');
+                if (xhr.status === 409) {
+                    // Rejected on purpose (already clocked in/out today) - not an error.
+                    showToast(xhr.responseJSON || 'You have already clocked in today.', 5000, 'warning');
+                } else {
+                    showToast('Oops! An error occured. Try again', 5000, 'danger');
+                }
             }
         });
     });
