@@ -34,14 +34,14 @@
                   <form asp-page="StaffClocking" method="post">
                         <div class="row">
                             <div class="col-md-6">
-                                <label for="staffSelect">Select Staff</label>
-                                <select id="staffSelect" asp-for="ClockingStaff.StafId" class="form-control" required>
-                                    <option value="">-- Select staff --</option>
-                                    @foreach (var s in Model.Model.Staff ?? Enumerable.Empty<InpremClockingApp.Models.Staff>())
-                                    {
-                                        <option value="@s.StaffId">@s.FullName</option>
-                                    }
-                                </select>
+                                <label for="staffLookup">Search Staff (name or email)</label>
+                                @{
+                                    var selectedStaff = Model.ClockingStaff?.StafId > 0
+                                        ? (Model.Model.Staff ?? Enumerable.Empty<InpremClockingApp.Models.Staff>()).FirstOrDefault(s => s.StaffId == Model.ClockingStaff.StafId)
+                                        : null;
+                                }
+                                <input type="text" id="staffLookup" class="form-control" placeholder="Search by name or email..." autocomplete="off" value="@selectedStaff?.FullName" required />
+                                <input type="hidden" asp-for="ClockingStaff.StafId" id="staffIdHidden" />
                             </div>
                             <div class="col-md-2">
                                 <label for="clockIn">Clock In</label>
@@ -61,9 +61,6 @@
           </div>
           <div class="col-md-12">
               <div class="table-responsive">
-                <div class="mb-3">
-                  <input id="searchBox" class="form-control" placeholder="Search by name..." />
-                </div>
                 <table class="table table-striped" id="clockingTable">
                     <thead>
                         <tr>
@@ -161,14 +158,73 @@
         }
     }
 
-    // Simple client-side search
-    document.getElementById('searchBox').addEventListener('input', function (e) {
-        const q = e.target.value.toLowerCase();
-        document.querySelectorAll('#clockingTable tbody tr').forEach(function (tr) {
-            const name = tr.children[1].textContent.toLowerCase();
-            tr.style.display = name.indexOf(q) === -1 ? 'none' : '';
+    // Staff search-and-select (name or email) for the manual clocking form
+    (function () {
+        const input = document.getElementById('staffLookup');
+        const hidden = document.getElementById('staffIdHidden');
+        let timer = null;
+        let container = null;
+
+        function ensureContainer() {
+            if (!container) {
+                container = document.createElement('div');
+                container.className = 'list-group position-absolute';
+                container.style.zIndex = '1000';
+                container.style.width = '100%';
+                input.parentNode.appendChild(container);
+            }
+            return container;
+        }
+
+        function renderSuggestions(items) {
+            const c = ensureContainer();
+            c.innerHTML = '';
+            items.forEach(function (i) {
+                const el = document.createElement('button');
+                el.type = 'button';
+                el.className = 'list-group-item list-group-item-action';
+                el.textContent = i.email ? `${i.text} (${i.email})` : i.text;
+                el.addEventListener('click', function () {
+                    input.value = i.text;
+                    hidden.value = i.id;
+                    input.setCustomValidity('');
+                    c.innerHTML = '';
+                });
+                c.appendChild(el);
+            });
+        }
+
+        input.addEventListener('input', function (e) {
+            hidden.value = '';
+            input.setCustomValidity('');
+            const q = e.target.value;
+            if (timer) clearTimeout(timer);
+            if (!q) { renderSuggestions([]); return; }
+            timer = setTimeout(function () {
+                fetch(`/api/people/staff?q=${encodeURIComponent(q)}&page=1&pageSize=10`)
+                    .then(function (r) { return r.json(); })
+                    .then(function (json) { renderSuggestions(json.items || []); })
+                    .catch(function () { renderSuggestions([]); });
+            }, 250);
         });
-    });
+
+        document.addEventListener('click', function (evt) {
+            if (container && !container.contains(evt.target) && evt.target !== input) {
+                container.innerHTML = '';
+            }
+        });
+
+        const form = input.closest('form');
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                if (!hidden.value) {
+                    e.preventDefault();
+                    input.setCustomValidity('Please pick a staff member from the search results.');
+                    input.reportValidity();
+                }
+            });
+        }
+    })();
 
     // Prefill clock-in with current local time when opening the page
     document.addEventListener('DOMContentLoaded', function () {

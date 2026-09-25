@@ -20,7 +20,7 @@ public class PeopleController : ControllerBase
     public async Task<IActionResult> SearchStaff([FromQuery] string q, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         var result = await _staff.SearchByName(q, page, pageSize);
-        var simplified = result.Items.Select(s => new { id = s.StaffId, text = s.FirstName + " " + s.LastName });
+        var simplified = result.Items.Select(s => new { id = s.StaffId, text = s.FirstName + " " + s.LastName, email = s.EmailAddress });
         return Ok(new { items = simplified, total = result.TotalCount });
     }
 
@@ -28,7 +28,7 @@ public class PeopleController : ControllerBase
     public async Task<IActionResult> SearchVolunteers([FromQuery] string q, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         var result = await _volunteer.SearchByName(q, page, pageSize);
-        var simplified = result.Items.Select(v => new { id = v.VolunteerId, text = v.FirstName + " " + v.LastName });
+        var simplified = result.Items.Select(v => new { id = v.VolunteerId, text = v.FirstName + " " + v.LastName, email = v.EmailAddress });
         return Ok(new { items = simplified, total = result.TotalCount });
     }
 }

@@ -34,14 +34,14 @@
                     <form asp-page="VolunteerClocking" method="post">
                           <div class="row">
                               <div class="col-md-6">
-                                  <label for="volunteerSelect">Select Volunteer</label>
-                                  <select id="volunteerSelect" asp-for="ClockingVolunteerProp.VoluntId" class="form-control" required>
-                                      <option value="">-- Select volunteer --</option>
-                                      @foreach (var s in Model.Model.Volunteer ?? Enumerable.Empty<InpremClockingApp.Models.Volunteer>())
-                                      {
-                                          <option value="@s.VolunteerId">@s.FullName</option>
-                                      }
-                                  </select>
+                                  <label for="volunteerLookup">Search Volunteer (name or email)</label>
+                                  @{
+                                      var selectedVolunteer = Model.ClockingVolunteerProp?.VoluntId > 0
+                                          ? (Model.Model.Volunteer ?? Enumerable.Empty<InpremClockingApp.Models.Volunteer>()).FirstOrDefault(v => v.VolunteerId == Model.ClockingVolunteerProp.VoluntId)
+                                          : null;
+                                  }
+                                  <input type="text" id="volunteerLookup" class="form-control" placeholder="Search by name or email..." autocomplete="off" value="@selectedVolunteer?.FullName" required />
+                                  <input type="hidden" asp-for="ClockingVolunteerProp.VoluntId" id="volunteerIdHidden" />
                               </div>
                               <div class="col-md-2">
                                   <label for="vclockIn">Clock In</label>
@@ -61,9 +61,6 @@
             </div>
           <div class="col-md-12">
               <div class="table-responsive">
-                <div class="mb-3">
-                  <input id="vsearchBox" class="form-control" placeholder="Search by name..." />
-                </div>
                 <table class="table table-striped" id="vclockingTable">
                     <thead>
                         <tr>
@@ -154,13 +151,73 @@
         }
     }
 
-    document.getElementById('vsearchBox').addEventListener('input', function (e) {
-        const q = e.target.value.toLowerCase();
-        document.querySelectorAll('#vclockingTable tbody tr').forEach(function (tr) {
-            const name = tr.children[1].textContent.toLowerCase();
-            tr.style.display = name.indexOf(q) === -1 ? 'none' : '';
+    // Volunteer search-and-select (name or email) for the manual clocking form
+    (function () {
+        const input = document.getElementById('volunteerLookup');
+        const hidden = document.getElementById('volunteerIdHidden');
+        let timer = null;
+        let container = null;
+
+        function ensureContainer() {
+            if (!container) {
+                container = document.createElement('div');
+                container.className = 'list-group position-absolute';
+                container.style.zIndex = '1000';
+                container.style.width = '100%';
+                input.parentNode.appendChild(container);
+            }
+            return container;
+        }
+
+        function renderSuggestions(items) {
+            const c = ensureContainer();
+            c.innerHTML = '';
+            items.forEach(function (i) {
+                const el = document.createElement('button');
+                el.type = 'button';
+                el.className = 'list-group-item list-group-item-action';
+                el.textContent = i.email ? `${i.text} (${i.email})` : i.text;
+                el.addEventListener('click', function () {
+                    input.value = i.text;
+                    hidden.value = i.id;
+                    input.setCustomValidity('');
+                    c.innerHTML = '';
+                });
+                c.appendChild(el);
+            });
+        }
+
+        input.addEventListener('input', function (e) {
+            hidden.value = '';
+            input.setCustomValidity('');
+            const q = e.target.value;
+            if (timer) clearTimeout(timer);
+            if (!q) { renderSuggestions([]); return; }
+            timer = setTimeout(function () {
+                fetch(`/api/people/volunteers?q=${encodeURIComponent(q)}&page=1&pageSize=10`)
+                    .then(function (r) { return r.json(); })
+                    .then(function (json) { renderSuggestions(json.items || []); })
+                    .catch(function () { renderSuggestions([]); });
+            }, 250);
         });
-    });
+
+        document.addEventListener('click', function (evt) {
+            if (container && !container.contains(evt.target) && evt.target !== input) {
+                container.innerHTML = '';
+            }
+        });
+
+        const form = input.closest('form');
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                if (!hidden.value) {
+                    e.preventDefault();
+                    input.setCustomValidity('Please pick a volunteer from the search results.');
+                    input.reportValidity();
+                }
+            });
+        }
+    })();
 
     document.addEventListener('DOMContentLoaded', function () {
         const now = new Date();
