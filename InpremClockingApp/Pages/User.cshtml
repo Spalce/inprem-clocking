@@ -1,7 +1,5 @@
 @page
 @model User
-@using Microsoft.AspNetCore.Authorization;
-@attribute [Authorize]
 @{
     ViewData["Title"] = "Admins";
 }
@@ -25,6 +23,43 @@
   <div class="content">
     <div class="container-fluid">
       <div class="row">
+        <div class="col-md-12" style="margin-bottom: 30px;">
+          <div class="card card-primary card-outline">
+            <div class="card-header">
+              <h5 class="m-0">Create Admin Account</h5>
+            </div>
+            <div class="card-body">
+              @if (TempData["Message"] != null)
+              {
+                <div class="alert alert-success">@TempData["Message"]</div>
+              }
+              <div asp-validation-summary="All" class="text-danger"></div>
+              <form method="post">
+                <div class="row">
+                  <div class="col-md-3">
+                    <label asp-for="Input.FirstName">First Name</label>
+                    <input asp-for="Input.FirstName" class="form-control" />
+                  </div>
+                  <div class="col-md-3">
+                    <label asp-for="Input.LastName">Last Name</label>
+                    <input asp-for="Input.LastName" class="form-control" />
+                  </div>
+                  <div class="col-md-3">
+                    <label asp-for="Input.Email">Email</label>
+                    <input asp-for="Input.Email" class="form-control" />
+                  </div>
+                  <div class="col-md-2">
+                    <label asp-for="Input.Password">Password</label>
+                    <input asp-for="Input.Password" class="form-control" />
+                  </div>
+                  <div class="col-md-1 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary">Create</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
         <div class="col-md-12">
           <table class="table table-striped">
             <thead>

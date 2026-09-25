@@ -107,16 +107,13 @@ namespace InpremClockingApp.Areas.Identity.Pages.Account
 
         public async Task<IActionResult> OnPostAsync(string returnUrl = null)
         {
-            // check if return url is not null and it is BackOffice then use the BackOffice return url
-            // else if return url is null then use the default return url or not BackOffice return url
-            // then use VolunteerAttendance return url
-
-            //returnUrl = Return == "/BackOffice" ? Url.Content("~/BackOffice") : Url.Content("~/VolunteerAttendance");
-
+            // Fall back to a sensible default only when there's no real destination to return to
+            // (e.g. landing on Login directly, or being challenged from the root "/" page).
+            // Otherwise honor whatever protected page originally triggered the login challenge.
             if (string.IsNullOrEmpty(returnUrl) || returnUrl == "/")
             {
-                returnUrl = string.Equals(Return, "/backoffice", StringComparison.OrdinalIgnoreCase)
-                    ? Url.Content("~/backoffice")
+                returnUrl = !string.IsNullOrEmpty(Return) && Return != "/" && Url.IsLocalUrl(Return)
+                    ? Return
                     : Url.Content("~/VolunteerAttendance");
             }
 
