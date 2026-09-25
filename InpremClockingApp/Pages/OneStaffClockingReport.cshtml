@@ -41,9 +41,9 @@
                             {
                                 <tr>
                                     <td>@row.FullName</td>
-                                    <td>@row.CreatedAt?.ToString("yyyy-MM-dd")</td>
-                                    <td>@(row.ClockInTime?.ToString("HH:mm:ss") ?? "")</td>
-                                    <td>@(row.ClockOutTime?.ToString("HH:mm:ss") ?? "")</td>
+                                    <td>@OrgClock.ToLocal(row.CreatedAt)?.ToString("yyyy-MM-dd")</td>
+                                    <td>@(OrgClock.ToLocal(row.ClockInTime)?.ToString("HH:mm:ss") ?? "")</td>
+                                    <td>@(OrgClock.ToLocal(row.ClockOutTime)?.ToString("HH:mm:ss") ?? "")</td>
                                     <td>@(row.WorkingHours?.ToString() ?? "")</td>
                                 </tr>
                             }

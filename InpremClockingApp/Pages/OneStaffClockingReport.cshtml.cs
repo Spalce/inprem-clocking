@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using InpremClockingApp.Helpers;
 using InpremClockingApp.Services;
 using InpremClockingApp.Models;
 using System.Threading.Tasks;
@@ -18,8 +19,8 @@ public class OneStaffClockingReport : PageModel
 
     public async Task OnGetAsync(int staffId)
     {
-        var start = DateTime.Now.Date.AddDays(-30);
-        var end = DateTime.Now.Date;
+        var start = OrgClock.NowLocal().Date.AddDays(-30);
+        var end = OrgClock.NowLocal().Date;
         var rows = await _service.GetClockingReport(start, end).ConfigureAwait(false);
         ReportRows = rows.Where(r => r.StafId == staffId).ToList();
     }

@@ -1,4 +1,5 @@
 using InpremClockingApp.Data;
+using InpremClockingApp.Helpers;
 using InpremClockingApp.Models.Identity;
 using InpremClockingApp.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -10,6 +11,7 @@ using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+OrgClock.Configure(builder.Configuration);
 
 // var connection = "Server=.\SQLEXPRESS;Initial Catalog=DB_A65635_inpremdb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True";
 // var connection = "Server=VMI1066750\\SQLEXPRESS;initial catalog=InpemTestDb;";

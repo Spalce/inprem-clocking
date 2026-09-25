@@ -39,23 +39,6 @@ public class Clocking
     [DisplayName("Date")]
     public DateTime? CreatedAt { get; set; }
 
-    public DateTime GetUserDateTime(DateTime? utcTime = null, string? timeZone = "Eastern Standard Time")
-    {
-        if (utcTime == null)
-            utcTime = DateTime.UtcNow;
-
-        TimeZoneInfo userTz = TimeZoneInfo.FindSystemTimeZoneById(timeZone!);
-
-        return TimeZoneInfo.ConvertTimeFromUtc(utcTime.Value, userTz);
-    }
-
-    public DateTime Convert(DateTime date, string fromZone, string toZone)
-    {
-        TimeZoneInfo to = TimeZoneInfo.FindSystemTimeZoneById(toZone);
-        TimeZoneInfo from = TimeZoneInfo.FindSystemTimeZoneById(fromZone);
-        return new DateTime(TimeZoneInfo.ConvertTime(date, from, to).Ticks, DateTimeKind.Unspecified);
-    }
-
     public TimeSpan CalculateWorkHours(Clocking clockingObj)
     {
         //Calculate Working hours

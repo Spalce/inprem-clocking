@@ -1,5 +1,6 @@
 
 using InpremClockingApp.Data;
+using InpremClockingApp.Helpers;
 using InpremClockingApp.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,14 +18,24 @@ public class ReportsController : Controller
         _db = db;
     }
 
+    // model.StartDate/EndDate are org-local calendar-day boundaries picked by the user;
+    // convert to UTC before querying since CreatedAt/clock times are stored in UTC.
+    private static (DateTime? StartUtc, DateTime? EndUtcExclusive) LocalRangeToUtc(ReportModel model)
+    {
+        var startUtc = OrgClock.ToUtc(model.StartDate?.Date);
+        var endUtc = OrgClock.ToUtc(model.EndDate?.Date.AddDays(1));
+        return (startUtc, endUtc);
+    }
+
     [Produces("application/json")]
     [HttpPost("staff")]
     public async Task<ActionResult<ReportDataSet<Content>>> GetStaff([FromBody] ReportModel model)
     {
         try
         {
+            var (startUtc, endUtc) = LocalRangeToUtc(model);
             var record = await _db.Staffs.Where(e =>
-                    e.CreatedAt!.Value.Date >= model.StartDate && e.CreatedAt.Value.Date <= model.EndDate)
+                    e.CreatedAt >= startUtc && e.CreatedAt < endUtc)
                 .ToListAsync();
             if (record != null!)
             {
@@ -35,7 +46,7 @@ public class ReportsController : Controller
                     Phone = e.PhoneNumber,
                     Email = e.EmailAddress,
                     Gender = e.Gender.ToString(),
-                    Date = e.CreatedAt!.Value.Date.ToString("dd-MM-yyyy"),
+                    Date = OrgClock.ToLocal(e.CreatedAt)?.ToString("dd-MM-yyyy"),
                     Zip = e.ZipCode,
                     Address = e.Address
                 }).ToList();
@@ -75,8 +86,9 @@ public class ReportsController : Controller
     {
         try
         {
+            var (startUtc, endUtc) = LocalRangeToUtc(model);
             var record = await _db.Volunteers.Where(e =>
-                    e.CreatedAt!.Value.Date >= model.StartDate && e.CreatedAt.Value.Date <= model.EndDate)
+                    e.CreatedAt >= startUtc && e.CreatedAt < endUtc)
                 .ToListAsync();
             if (record != null!)
             {
@@ -87,7 +99,7 @@ public class ReportsController : Controller
                     Phone = e.PhoneNumber,
                     Email = e.EmailAddress,
                     Gender = e.Gender.ToString(),
-                    Date = e.CreatedAt!.Value.Date.ToString("dd-MM-yyyy")
+                    Date = OrgClock.ToLocal(e.CreatedAt)?.ToString("dd-MM-yyyy")
                 }).ToList();
 
                 return Ok(new ReportDataSet<Content>
@@ -125,8 +137,9 @@ public class ReportsController : Controller
     {
         try
         {
+            var (startUtc, endUtc) = LocalRangeToUtc(model);
             var record = await _db.ClockingsStaff
-                .Where(e => e.CreatedAt!.Value.Date >= model.StartDate && e.CreatedAt.Value.Date <= model.EndDate)
+                .Where(e => e.CreatedAt >= startUtc && e.CreatedAt < endUtc)
                 .ToListAsync();
             if (record != null!)
             {
@@ -134,11 +147,11 @@ public class ReportsController : Controller
                 var list = record.Select(e => new Clockings
                 {
                     Name = e.FullName,
-                    Date = e.CreatedAt!.Value.Date.ToString("dd-MM-yyyy"),
-                    ClockIn = e.ClockInTime != null ? e.ClockInTime!.Value.ToString("HH:mm:ss") : null,
-                    ClockOut = e.ClockOutTime != null ? e.ClockOutTime!.Value.ToString("HH:mm:ss") : null,
-                    BreakStart = e.LeaveOnBreakTime != null ? e.LeaveOnBreakTime!.Value.ToString("HH:mm:ss") : null,
-                    BreakEnd = e.ReturnOnBreakTime != null ? e.ReturnOnBreakTime!.Value.ToString("HH:mm:ss") : null,
+                    Date = OrgClock.ToLocal(e.CreatedAt)?.ToString("dd-MM-yyyy"),
+                    ClockIn = OrgClock.ToLocal(e.ClockInTime)?.ToString("HH:mm:ss"),
+                    ClockOut = OrgClock.ToLocal(e.ClockOutTime)?.ToString("HH:mm:ss"),
+                    BreakStart = OrgClock.ToLocal(e.LeaveOnBreakTime)?.ToString("HH:mm:ss"),
+                    BreakEnd = OrgClock.ToLocal(e.ReturnOnBreakTime)?.ToString("HH:mm:ss"),
                     Hours = e.WorkingHours != null ? $"{e.WorkingHours!.Value.Hours} hours {e.WorkingHours.Value.Minutes} minutes" : null
                 }).ToList();
 
@@ -181,8 +194,9 @@ public class ReportsController : Controller
     {
         try
         {
+            var (startUtc, endUtc) = LocalRangeToUtc(model);
             var record = await _db.ClockingsStaff
-                .Where(e => e.StafId == model.Id && e.CreatedAt!.Value.Date >= model.StartDate && e.CreatedAt.Value.Date <= model.EndDate)
+                .Where(e => e.StafId == model.Id && e.CreatedAt >= startUtc && e.CreatedAt < endUtc)
                 .ToListAsync();
             if (record != null!)
             {
@@ -190,11 +204,11 @@ public class ReportsController : Controller
                 var list = record.Select(e => new Clockings
                 {
                     Name = e.FullName,
-                    Date = e.CreatedAt!.Value.Date.ToString("dd-MM-yyyy"),
-                    ClockIn = e.ClockInTime != null ? e.ClockInTime!.Value.ToString("HH:mm:ss") : null,
-                    ClockOut = e.ClockOutTime != null ? e.ClockOutTime!.Value.ToString("HH:mm:ss") : null,
-                    BreakStart = e.LeaveOnBreakTime != null ? e.LeaveOnBreakTime!.Value.ToString("HH:mm:ss") : null,
-                    BreakEnd = e.ReturnOnBreakTime != null ? e.ReturnOnBreakTime!.Value.ToString("HH:mm:ss") : null,
+                    Date = OrgClock.ToLocal(e.CreatedAt)?.ToString("dd-MM-yyyy"),
+                    ClockIn = OrgClock.ToLocal(e.ClockInTime)?.ToString("HH:mm:ss"),
+                    ClockOut = OrgClock.ToLocal(e.ClockOutTime)?.ToString("HH:mm:ss"),
+                    BreakStart = OrgClock.ToLocal(e.LeaveOnBreakTime)?.ToString("HH:mm:ss"),
+                    BreakEnd = OrgClock.ToLocal(e.ReturnOnBreakTime)?.ToString("HH:mm:ss"),
                     Hours = e.WorkingHours != null ? $"{e.WorkingHours!.Value.Hours} hours {e.WorkingHours.Value.Minutes} minutes" : null
                 }).ToList();
 
@@ -237,8 +251,9 @@ public class ReportsController : Controller
     {
         try
         {
+            var (startUtc, endUtc) = LocalRangeToUtc(model);
             var record = await _db.Clockings.Where(e =>
-                    e.CreatedAt!.Value.Date >= model.StartDate && e.CreatedAt.Value.Date <= model.EndDate)
+                    e.CreatedAt >= startUtc && e.CreatedAt < endUtc)
                 .ToListAsync();
             if (record != null!)
             {
@@ -246,11 +261,11 @@ public class ReportsController : Controller
                 var list = record.Select(e => new Clockings
                 {
                     Name = e.FullName,
-                    Date = e.CreatedAt!.Value.Date.ToString("dd-MM-yyyy"),
-                    ClockIn = e.ClockInTime != null ? e.ClockInTime!.Value.ToString("HH:mm:ss") : null,
-                    ClockOut = e.ClockOutTime != null ? e.ClockOutTime!.Value.ToString("HH:mm:ss") : null,
-                    BreakStart = e.LeaveOnBreakTime != null ? e.LeaveOnBreakTime!.Value.ToString("HH:mm:ss") : null,
-                    BreakEnd = e.ReturnOnBreakTime != null ? e.ReturnOnBreakTime!.Value.ToString("HH:mm:ss") : null,
+                    Date = OrgClock.ToLocal(e.CreatedAt)?.ToString("dd-MM-yyyy"),
+                    ClockIn = OrgClock.ToLocal(e.ClockInTime)?.ToString("HH:mm:ss"),
+                    ClockOut = OrgClock.ToLocal(e.ClockOutTime)?.ToString("HH:mm:ss"),
+                    BreakStart = OrgClock.ToLocal(e.LeaveOnBreakTime)?.ToString("HH:mm:ss"),
+                    BreakEnd = OrgClock.ToLocal(e.ReturnOnBreakTime)?.ToString("HH:mm:ss"),
                     Hours = e.WorkingHours != null ? $"{e.WorkingHours!.Value.Hours} hours {e.WorkingHours.Value.Minutes} minutes" : null
                 }).ToList();
 
@@ -291,8 +306,9 @@ public class ReportsController : Controller
     [HttpPost("export/staff-clocking")]
     public async Task<IActionResult> ExportStaffClocking([FromBody] ReportModel model, [FromQuery] string format = "csv")
     {
+        var (startUtc, endUtc) = LocalRangeToUtc(model);
         var record = await _db.ClockingsStaff
-            .Where(e => e.CreatedAt!.Value.Date >= model.StartDate && e.CreatedAt.Value.Date <= model.EndDate)
+            .Where(e => e.CreatedAt >= startUtc && e.CreatedAt < endUtc)
             .ToListAsync();
 
         if (format?.ToLower() == "csv")
@@ -303,11 +319,11 @@ public class ReportsController : Controller
             {
                 var line = string.Join(",",
                     EscapeCsv(e.FullName),
-                    e.CreatedAt?.ToString("yyyy-MM-dd"),
-                    e.ClockInTime?.ToString("HH:mm:ss"),
-                    e.ClockOutTime?.ToString("HH:mm:ss"),
-                    e.LeaveOnBreakTime?.ToString("HH:mm:ss"),
-                    e.ReturnOnBreakTime?.ToString("HH:mm:ss"),
+                    OrgClock.ToLocal(e.CreatedAt)?.ToString("yyyy-MM-dd"),
+                    OrgClock.ToLocal(e.ClockInTime)?.ToString("HH:mm:ss"),
+                    OrgClock.ToLocal(e.ClockOutTime)?.ToString("HH:mm:ss"),
+                    OrgClock.ToLocal(e.LeaveOnBreakTime)?.ToString("HH:mm:ss"),
+                    OrgClock.ToLocal(e.ReturnOnBreakTime)?.ToString("HH:mm:ss"),
                     e.WorkingHours != null ? e.WorkingHours.Value.ToString() : "");
                 sb.AppendLine(line);
             }
@@ -323,8 +339,9 @@ public class ReportsController : Controller
     [HttpPost("export/volunteer-clocking")]
     public async Task<IActionResult> ExportVolunteerClocking([FromBody] ReportModel model, [FromQuery] string format = "csv")
     {
+        var (startUtc, endUtc) = LocalRangeToUtc(model);
         var record = await _db.Clockings
-            .Where(e => e.CreatedAt!.Value.Date >= model.StartDate && e.CreatedAt.Value.Date <= model.EndDate)
+            .Where(e => e.CreatedAt >= startUtc && e.CreatedAt < endUtc)
             .ToListAsync();
 
         if (format?.ToLower() == "csv")
@@ -335,11 +352,11 @@ public class ReportsController : Controller
             {
                 var line = string.Join(",",
                     EscapeCsv(e.FullName),
-                    e.CreatedAt?.ToString("yyyy-MM-dd"),
-                    e.ClockInTime?.ToString("HH:mm:ss"),
-                    e.ClockOutTime?.ToString("HH:mm:ss"),
-                    e.LeaveOnBreakTime?.ToString("HH:mm:ss"),
-                    e.ReturnOnBreakTime?.ToString("HH:mm:ss"),
+                    OrgClock.ToLocal(e.CreatedAt)?.ToString("yyyy-MM-dd"),
+                    OrgClock.ToLocal(e.ClockInTime)?.ToString("HH:mm:ss"),
+                    OrgClock.ToLocal(e.ClockOutTime)?.ToString("HH:mm:ss"),
+                    OrgClock.ToLocal(e.LeaveOnBreakTime)?.ToString("HH:mm:ss"),
+                    OrgClock.ToLocal(e.ReturnOnBreakTime)?.ToString("HH:mm:ss"),
                     e.WorkingHours != null ? e.WorkingHours.Value.ToString() : "");
                 sb.AppendLine(line);
             }
@@ -367,8 +384,9 @@ public class ReportsController : Controller
     {
         try
         {
+            var (startUtc, endUtc) = LocalRangeToUtc(model);
             var record = await _db.Clockings.Where(e =>
-                    e.VoluntId == model.Id && e.CreatedAt!.Value.Date >= model.StartDate && e.CreatedAt.Value.Date <= model.EndDate)
+                    e.VoluntId == model.Id && e.CreatedAt >= startUtc && e.CreatedAt < endUtc)
                 .ToListAsync();
             if (record != null!)
             {
@@ -376,11 +394,11 @@ public class ReportsController : Controller
                 var list = record.Select(e => new Clockings
                 {
                     Name = e.FullName,
-                    Date = e.CreatedAt!.Value.Date.ToString("dd-MM-yyyy"),
-                    ClockIn = e.ClockInTime != null ? e.ClockInTime!.Value.ToString("HH:mm:ss") : null,
-                    ClockOut = e.ClockOutTime != null ? e.ClockOutTime!.Value.ToString("HH:mm:ss") : null,
-                    BreakStart = e.LeaveOnBreakTime != null ? e.LeaveOnBreakTime!.Value.ToString("HH:mm:ss") : null,
-                    BreakEnd = e.ReturnOnBreakTime != null ? e.ReturnOnBreakTime!.Value.ToString("HH:mm:ss") : null,
+                    Date = OrgClock.ToLocal(e.CreatedAt)?.ToString("dd-MM-yyyy"),
+                    ClockIn = OrgClock.ToLocal(e.ClockInTime)?.ToString("HH:mm:ss"),
+                    ClockOut = OrgClock.ToLocal(e.ClockOutTime)?.ToString("HH:mm:ss"),
+                    BreakStart = OrgClock.ToLocal(e.LeaveOnBreakTime)?.ToString("HH:mm:ss"),
+                    BreakEnd = OrgClock.ToLocal(e.ReturnOnBreakTime)?.ToString("HH:mm:ss"),
                     Hours = e.WorkingHours != null ? $"{e.WorkingHours!.Value.Hours} hours {e.WorkingHours.Value.Minutes} minutes" : null
                 }).ToList();
 

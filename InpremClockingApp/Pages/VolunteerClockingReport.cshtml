@@ -74,9 +74,9 @@
                                 var item = r.Clocking?.FirstOrDefault();
                                 <tr>
                                     <td>@(item?.FullName ?? "")</td>
-                                    <td>@(item?.CreatedAt?.ToString("yyyy-MM-dd") ?? "")</td>
-                                    <td>@(item?.ClockInTime?.ToString("HH:mm:ss") ?? "")</td>
-                                    <td>@(item?.ClockOutTime?.ToString("HH:mm:ss") ?? "")</td>
+                                    <td>@(OrgClock.ToLocal(item?.CreatedAt)?.ToString("yyyy-MM-dd") ?? "")</td>
+                                    <td>@(OrgClock.ToLocal(item?.ClockInTime)?.ToString("HH:mm:ss") ?? "")</td>
+                                    <td>@(OrgClock.ToLocal(item?.ClockOutTime)?.ToString("HH:mm:ss") ?? "")</td>
                                     <td>@(item?.WorkingHours?.ToString() ?? "")</td>
                                 </tr>
                             }

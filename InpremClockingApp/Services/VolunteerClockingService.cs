@@ -1,4 +1,5 @@
 using InpremClockingApp.Data;
+using InpremClockingApp.Helpers;
 using InpremClockingApp.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,11 +14,15 @@ public class VolunteerClockingService
         _db = db;
     }
 
-    // New helper to return volunteer clocking report rows
+    // New helper to return volunteer clocking report rows.
+    // start/end are org-local wall-clock boundaries (e.g. from a date picker); converted to UTC for the query.
     public async Task<List<VolunteerClockingVm>> GetClockingReport(DateTime start, DateTime end)
     {
+        var startUtc = OrgClock.ToUtc(start);
+        var endUtc = OrgClock.ToUtc(end);
+
         var record = await _db.Clockings
-            .Where(e => (e.ClockInTime >= start && e.ClockInTime <= end) || (e.ClockOutTime != null && e.ClockOutTime >= start && e.ClockOutTime <= end))
+            .Where(e => (e.ClockInTime >= startUtc && e.ClockInTime <= endUtc) || (e.ClockOutTime != null && e.ClockOutTime >= startUtc && e.ClockOutTime <= endUtc))
             .ToListAsync().ConfigureAwait(false);
 
         var list = record.Select(e => new VolunteerClockingVm
@@ -30,8 +35,11 @@ public class VolunteerClockingService
 
     public async Task<List<VolunteerClockingVm>> GetClockingReportForVolunteer(int volunteerId, DateTime start, DateTime end)
     {
+        var startUtc = OrgClock.ToUtc(start);
+        var endUtc = OrgClock.ToUtc(end);
+
         var record = await _db.Clockings
-            .Where(e => e.VoluntId == volunteerId && ((e.ClockInTime >= start && e.ClockInTime <= end) || (e.ClockOutTime != null && e.ClockOutTime >= start && e.ClockOutTime <= end)))
+            .Where(e => e.VoluntId == volunteerId && ((e.ClockInTime >= startUtc && e.ClockInTime <= endUtc) || (e.ClockOutTime != null && e.ClockOutTime >= startUtc && e.ClockOutTime <= endUtc)))
             .ToListAsync().ConfigureAwait(false);
 
         var list = record.Select(e => new VolunteerClockingVm
@@ -47,6 +55,7 @@ public class VolunteerClockingService
         return await _db.Clockings.ToListAsync().ConfigureAwait(false);
     }
 
+    // start/end, when provided, are org-local wall-clock boundaries; converted to UTC for the query.
     public async Task<PagedResult<Clocking>> GetPaged(int page, int pageSize, int? volunteerId = null, DateTime? start = null, DateTime? end = null)
     {
         if (page < 1) page = 1;
@@ -58,10 +67,16 @@ public class VolunteerClockingService
             query = query.Where(e => e.VoluntId == volunteerId.Value);
 
         if (start.HasValue)
-            query = query.Where(e => e.ClockInTime >= start.Value);
+        {
+            var startUtc = OrgClock.ToUtc(start.Value);
+            query = query.Where(e => e.ClockInTime >= startUtc);
+        }
 
         if (end.HasValue)
-            query = query.Where(e => e.ClockInTime <= end.Value);
+        {
+            var endUtc = OrgClock.ToUtc(end.Value);
+            query = query.Where(e => e.ClockInTime <= endUtc);
+        }
 
         query = query.OrderByDescending(e => e.CreatedAt!.Value);
 
@@ -79,7 +94,8 @@ public class VolunteerClockingService
 
     public async Task<IEnumerable<Clocking>> GetAllToday()
     {
-        return await _db.Clockings.Where(e => e.CreatedAt!.Value.Date == DateTime.Today.Date).ToListAsync().ConfigureAwait(false);
+        var (dayStart, dayEnd) = OrgClock.TodayRangeUtc();
+        return await _db.Clockings.Where(e => e.CreatedAt >= dayStart && e.CreatedAt < dayEnd).ToListAsync().ConfigureAwait(false);
     }
 
     public async Task<bool> ClockOut(Clocking model)
@@ -92,12 +108,13 @@ public class VolunteerClockingService
 
         if (item.ClockOutTime == null)
         {
-            item.ClockOutTime = DateTime.Now;
+            var now = DateTime.UtcNow;
+            item.ClockOutTime = now;
 
             if (item.LeaveOnBreakTime != null &&
                 item.ReturnOnBreakTime == null)
             {
-                item.ReturnOnBreakTime = DateTime.Now;
+                item.ReturnOnBreakTime = now;
             }
         }
         else
@@ -123,7 +140,7 @@ public class VolunteerClockingService
         {
             if (item.LeaveOnBreakTime == null)
             {
-                item!.LeaveOnBreakTime = DateTime.Now;
+                item!.LeaveOnBreakTime = DateTime.UtcNow;
             }
             else
             {
@@ -153,7 +170,7 @@ public class VolunteerClockingService
         {
             if (item.ReturnOnBreakTime == null)
             {
-                item!.ReturnOnBreakTime = DateTime.Now;
+                item!.ReturnOnBreakTime = DateTime.UtcNow;
             }
             else
             {
@@ -172,8 +189,9 @@ public class VolunteerClockingService
     }
     public async Task<bool> CheckToday(Clocking model)
     {
+        var (dayStart, dayEnd) = OrgClock.TodayRangeUtc();
         var item = await _db.Clockings
-            .FirstOrDefaultAsync(e => e.VoluntId == model.VoluntId && e.CreatedAt!.Value.Date == DateTime.Now.Date).ConfigureAwait(false);
+            .FirstOrDefaultAsync(e => e.VoluntId == model.VoluntId && e.CreatedAt >= dayStart && e.CreatedAt < dayEnd).ConfigureAwait(false);
         if (item == null!)
         {
             return false;
@@ -186,8 +204,9 @@ public class VolunteerClockingService
     {
         try
         {
+            var (dayStart, dayEnd) = OrgClock.TodayRangeUtc();
             var check = await _db.Clockings
-                .FirstOrDefaultAsync(e => e.VoluntId == model.VoluntId && e.CreatedAt!.Value.Date == DateTime.Now.Date)
+                .FirstOrDefaultAsync(e => e.VoluntId == model.VoluntId && e.CreatedAt >= dayStart && e.CreatedAt < dayEnd)
                 .ConfigureAwait(false);
             if (check != null!)
             {

@@ -83,11 +83,11 @@
                             <tr>
                                 @* <td>@c.ClockingId</td> *@
                                 <td>@c.FullName</td>
-                                <td>@c.CreatedAt?.ToString("yyyy-MM-dd")</td>
-                                <td>@(c.ClockInTime?.ToString("HH:mm:ss") ?? "")</td>
-                                <td>@(c.ClockOutTime?.ToString("HH:mm:ss") ?? "")</td>
-                                <td>@(c.LeaveOnBreakTime?.ToString("HH:mm:ss") ?? "")</td>
-                                <td>@(c.ReturnOnBreakTime?.ToString("HH:mm:ss") ?? "")</td>
+                                <td>@OrgClock.ToLocal(c.CreatedAt)?.ToString("yyyy-MM-dd")</td>
+                                <td>@(OrgClock.ToLocal(c.ClockInTime)?.ToString("HH:mm:ss") ?? "")</td>
+                                <td>@(OrgClock.ToLocal(c.ClockOutTime)?.ToString("HH:mm:ss") ?? "")</td>
+                                <td>@(OrgClock.ToLocal(c.LeaveOnBreakTime)?.ToString("HH:mm:ss") ?? "")</td>
+                                <td>@(OrgClock.ToLocal(c.ReturnOnBreakTime)?.ToString("HH:mm:ss") ?? "")</td>
                                 <td>@(c.WorkingHours?.ToString() ?? "")</td>
                                 <td>
                                     <button class="btn btn-sm btn-success" onclick="vpostAction('ClockOut', { ClockingId: @c.ClockingId })">Clock Out</button>

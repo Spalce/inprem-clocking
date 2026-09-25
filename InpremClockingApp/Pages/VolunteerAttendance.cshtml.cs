@@ -41,7 +41,7 @@ public class VolunteerAttendance : PageModel
             return RedirectToPage("./VolunteerAttendance");
         }
 
-        Input.CreatedAt = DateTime.Now;
+        Input.CreatedAt = DateTime.UtcNow;
         Input.Type = "Volunteer";
 
         await _db.Volunteers.AddAsync(Input).ConfigureAwait(false);

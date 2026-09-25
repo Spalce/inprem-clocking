@@ -1,3 +1,4 @@
+using InpremClockingApp.Helpers;
 using InpremClockingApp.Models;
 using InpremClockingApp.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -175,6 +176,6 @@ public class HoursWorkedModel : PageModel
 
     public string FormatDateTime(DateTime? value)
     {
-        return value?.ToString("dd/MM/yyyy HH:mm") ?? "-";
+        return OrgClock.ToLocal(value)?.ToString("dd/MM/yyyy HH:mm") ?? "-";
     }
 }

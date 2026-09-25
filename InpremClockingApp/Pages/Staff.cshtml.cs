@@ -160,7 +160,7 @@ public class Staff : PageModel
             return RedirectToPage("./Staff");
         }
 
-        model.CreatedAt = DateTime.Now;
+        model.CreatedAt = DateTime.UtcNow;
         model.Type = "Staff";
 
         try

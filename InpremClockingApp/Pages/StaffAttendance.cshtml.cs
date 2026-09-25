@@ -41,7 +41,7 @@ public class StaffAttendance : PageModel
             return RedirectToPage("./StaffAttendance");
         }
 
-        Input.CreatedAt = DateTime.Now;
+        Input.CreatedAt = DateTime.UtcNow;
         Input.Type = "Staff";
 
         await _db.Staffs.AddAsync(Input).ConfigureAwait(false);

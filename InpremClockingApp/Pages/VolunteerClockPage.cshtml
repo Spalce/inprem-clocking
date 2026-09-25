@@ -34,10 +34,10 @@
                       <span class="text-small font-weight-500">Please clock in</span>
                   </div>
                   <div class="text-block text-center my-3">
-                      <span id="current-date" class="text-small font-weight-500">@DateTime.Now.Date.ToString("dd-MM-yyyy")</span>
+                      <span id="current-date" class="text-small font-weight-500">@OrgClock.NowLocal().ToString("dd-MM-yyyy")</span>
                   </div>
                   <div class="text-block text-center my-3">
-                      <span id="current-time" class="text-small font-weight-500">@DateTime.Now.ToString("hh:mm:ss")</span>
+                      <span id="current-time" class="text-small font-weight-500">@OrgClock.NowLocal().ToString("HH:mm:ss")</span>
                   </div>
                   <div class="form-group">
                       <a class="btn btn-success submit-btn btn-block" id="clockin">ClockIn</a>

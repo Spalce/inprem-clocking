@@ -1,3 +1,4 @@
+using InpremClockingApp.Helpers;
 using InpremClockingApp.Models;
 using InpremClockingApp.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -54,9 +55,15 @@ public class StaffClocking : PageModel
             return RedirectToPage("./StaffClocking");
 
         ClockingStaff.FullName = staff.FirstName + " " + staff.LastName;
-        ClockingStaff.CreatedAt = DateTime.Now;
-        if (ClockingStaff.ClockInTime == null)
-            ClockingStaff.ClockInTime = DateTime.Now;
+
+        // ClockInTime/ClockOutTime, when submitted, come from a datetime-local input
+        // and represent the org's local wall-clock time - convert to UTC for storage.
+        ClockingStaff.ClockInTime = ClockingStaff.ClockInTime.HasValue
+            ? OrgClock.ToUtc(ClockingStaff.ClockInTime.Value)
+            : DateTime.UtcNow;
+        ClockingStaff.ClockOutTime = OrgClock.ToUtc(ClockingStaff.ClockOutTime);
+        ClockingStaff.CreatedAt = DateTime.UtcNow;
+
         if (ClockingStaff.ClockOutTime != null)
             ClockingStaff.WorkingHours = ClockingStaff.ClockOutTime - ClockingStaff.ClockInTime;
 

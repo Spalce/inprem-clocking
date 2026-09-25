@@ -63,7 +63,7 @@ public class Volunteer : PageModel
             return RedirectToPage("./Volunteer");
         }
 
-        model.CreatedAt = DateTime.Now;
+        model.CreatedAt = DateTime.UtcNow;
         model.Type = "Volunteer";
 
         try

@@ -3,6 +3,7 @@ using InpremClockingApp.Data;
 using InpremClockingApp.Models;
 using InpremClockingApp.Services;
 using Microsoft.AspNetCore.Mvc;
+using InpremClockingApp.Helpers;
 
 namespace InpremClockingApp.Controllers;
 
@@ -57,11 +58,12 @@ public class StaffController : Controller
                 });
             }
 
+            var now = DateTime.UtcNow;
             var clocking = new ClockingStaff
             {
                 StafId = staff.StaffId,
-                CreatedAt = DateTime.Now,
-                ClockInTime = DateTime.Now
+                CreatedAt = now,
+                ClockInTime = now
             };
 
             var save = await _staffClock.Create(clocking);

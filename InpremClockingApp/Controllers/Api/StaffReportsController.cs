@@ -1,3 +1,4 @@
+using InpremClockingApp.Helpers;
 using InpremClockingApp.Models;
 using InpremClockingApp.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -23,9 +24,9 @@ public class StaffReportsController : ControllerBase
     public async Task<IActionResult> GetStaffHours([FromQuery] int id, [FromQuery] DateTime? start, [FromQuery] DateTime? end)
     {
         if (id <= 0) return BadRequest(new { error = "Invalid id" });
-        var s = start?.Date ?? DateTime.Now.Date.AddDays(-30);
+        var s = start?.Date ?? OrgClock.NowLocal().Date.AddDays(-30);
         var e = end?.Date.AddDays(1).AddTicks(-1)
-                ?? DateTime.Now.Date.AddDays(1).AddTicks(-1);
+                ?? OrgClock.NowLocal().Date.AddDays(1).AddTicks(-1);
         var rows = await _clocking.GetClockingReportForStaff(id, s, e);
         // compute total hours from returned rows
         double totalClockedHours = 0;
@@ -85,8 +86,8 @@ public class StaffReportsController : ControllerBase
         if (id <= 0)
             return BadRequest(new { error = "Invalid id" });
 
-        var s = start ?? DateTime.Now.Date.AddDays(-30);
-        var e = end ?? DateTime.Now.Date.AddDays(1).AddTicks(-1);
+        var s = start ?? OrgClock.NowLocal().Date.AddDays(-30);
+        var e = end ?? OrgClock.NowLocal().Date.AddDays(1).AddTicks(-1);
 
         // Get staff
         var staff = await _staff.GetById(id);

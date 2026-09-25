@@ -1,5 +1,6 @@
 
 using InpremClockingApp.Data;
+using InpremClockingApp.Helpers;
 using InpremClockingApp.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -25,8 +26,9 @@ public class ControlsController : Controller
             var staff = await _db.Staffs.FindAsync(id).ConfigureAwait(false);
             if (staff != null)
             {
+                var (dayStart, dayEnd) = OrgClock.TodayRangeUtc();
                 var isExists = await _db.ClockingsStaff
-                    .FirstOrDefaultAsync(e => e.StafId == id && e.CreatedAt!.Value.Date == DateTime.Now.Date)
+                    .FirstOrDefaultAsync(e => e.StafId == id && e.CreatedAt >= dayStart && e.CreatedAt < dayEnd)
                     .ConfigureAwait(false);
 
                 if (isExists != null)
@@ -34,16 +36,17 @@ public class ControlsController : Controller
                     return Ok("You have already clocked in");
                 }
 
+                var now = DateTime.UtcNow;
                 var model = new ClockingStaff
                 {
                     StafId = id,
                     FullName = staff.FullName,
-                    ClockInTime = DateTime.Now,
+                    ClockInTime = now,
                     ClockOutTime = null,
                     LeaveOnBreakTime = null,
                     ReturnOnBreakTime = null,
                     WorkingHours = null,
-                    CreatedAt = DateTime.Now
+                    CreatedAt = now
                 };
 
                 await _db.ClockingsStaff.AddAsync(model).ConfigureAwait(false);
@@ -76,8 +79,9 @@ public class ControlsController : Controller
             Console.WriteLine(staff);
             if (staff != null)
             {
+                var (dayStart, dayEnd) = OrgClock.TodayRangeUtc();
                 var record = await _db.ClockingsStaff
-                    .FirstOrDefaultAsync(e => e.StafId == id && e.CreatedAt!.Value.Date == DateTime.Now.Date)
+                    .FirstOrDefaultAsync(e => e.StafId == id && e.CreatedAt >= dayStart && e.CreatedAt < dayEnd)
                     .ConfigureAwait(false);
 
                 if (record != null)
@@ -87,13 +91,15 @@ public class ControlsController : Controller
                         return Ok("You have already clocked out");
                     }
 
+                    var now = DateTime.UtcNow;
+
                     if (record is { LeaveOnBreakTime: { }, ReturnOnBreakTime: null })
                     {
-                        record.ReturnOnBreakTime = DateTime.Now;
+                        record.ReturnOnBreakTime = now;
                     }
 
-                    record.ClockOutTime = DateTime.Now;
-                    TimeSpan? main = DateTime.Now - record.ClockInTime;
+                    record.ClockOutTime = now;
+                    TimeSpan? main = now - record.ClockInTime;
                     TimeSpan? difference = null;
                     if (record is { LeaveOnBreakTime: { }, ReturnOnBreakTime: { } })
                     {
@@ -137,8 +143,9 @@ public class ControlsController : Controller
     {
         try
         {
+            var (dayStart, dayEnd) = OrgClock.TodayRangeUtc();
             var record = await _db.ClockingsStaff
-                .FirstOrDefaultAsync(e => e.StafId == id && e.CreatedAt!.Value.Date == DateTime.Now.Date)
+                .FirstOrDefaultAsync(e => e.StafId == id && e.CreatedAt >= dayStart && e.CreatedAt < dayEnd)
                 .ConfigureAwait(false);
 
             if (record != null)
@@ -153,7 +160,7 @@ public class ControlsController : Controller
                     return Ok("You cannot take leave since you have already clocked out");
                 }
 
-                record.LeaveOnBreakTime = DateTime.Now;
+                record.LeaveOnBreakTime = DateTime.UtcNow;
 
                 _db.ClockingsStaff.Update(record);
                 var result = await _db.SaveChangesAsync();
@@ -181,8 +188,9 @@ public class ControlsController : Controller
     {
         try
         {
+            var (dayStart, dayEnd) = OrgClock.TodayRangeUtc();
             var record = await _db.ClockingsStaff
-                .FirstOrDefaultAsync(e => e.StafId == id && e.CreatedAt!.Value.Date == DateTime.Now.Date)
+                .FirstOrDefaultAsync(e => e.StafId == id && e.CreatedAt >= dayStart && e.CreatedAt < dayEnd)
                 .ConfigureAwait(false);
 
             if (record != null)
@@ -197,7 +205,7 @@ public class ControlsController : Controller
                     return Ok("You have already clocked to have returned from break");
                 }
 
-                record.ReturnOnBreakTime = DateTime.Now;
+                record.ReturnOnBreakTime = DateTime.UtcNow;
 
                 _db.ClockingsStaff.Update(record);
                 var result = await _db.SaveChangesAsync();
@@ -228,8 +236,9 @@ public class ControlsController : Controller
             var staff = await _db.Volunteers.FindAsync(id).ConfigureAwait(false);
             if (staff != null)
             {
+                var (dayStart, dayEnd) = OrgClock.TodayRangeUtc();
                 var isExists = await _db.Clockings
-                    .FirstOrDefaultAsync(e => e.VoluntId == id && e.CreatedAt!.Value.Date == DateTime.Now.Date)
+                    .FirstOrDefaultAsync(e => e.VoluntId == id && e.CreatedAt >= dayStart && e.CreatedAt < dayEnd)
                     .ConfigureAwait(false);
 
                 if (isExists != null)
@@ -237,16 +246,17 @@ public class ControlsController : Controller
                     return Ok("You have already clocked in");
                 }
 
+                var now = DateTime.UtcNow;
                 var model = new Clocking()
                 {
                     VoluntId = id,
                     FullName = staff.FullName,
-                    ClockInTime = DateTime.Now,
+                    ClockInTime = now,
                     ClockOutTime = null,
                     LeaveOnBreakTime = null,
                     ReturnOnBreakTime = null,
                     WorkingHours = null,
-                    CreatedAt = DateTime.Now
+                    CreatedAt = now
                 };
 
                 await _db.Clockings.AddAsync(model).ConfigureAwait(false);
@@ -279,8 +289,9 @@ public class ControlsController : Controller
             Console.WriteLine(staff);
             if (staff != null)
             {
+                var (dayStart, dayEnd) = OrgClock.TodayRangeUtc();
                 var record = await _db.Clockings
-                    .FirstOrDefaultAsync(e => e.VoluntId == id && e.CreatedAt!.Value.Date == DateTime.Now.Date)
+                    .FirstOrDefaultAsync(e => e.VoluntId == id && e.CreatedAt >= dayStart && e.CreatedAt < dayEnd)
                     .ConfigureAwait(false);
 
                 if (record != null)
@@ -290,13 +301,15 @@ public class ControlsController : Controller
                         return Ok("You have already clocked out");
                     }
 
+                    var now = DateTime.UtcNow;
+
                     if (record is { LeaveOnBreakTime: { }, ReturnOnBreakTime: null })
                     {
-                        record.ReturnOnBreakTime = DateTime.Now;
+                        record.ReturnOnBreakTime = now;
                     }
 
-                    record.ClockOutTime = DateTime.Now;
-                    TimeSpan? main = DateTime.Now - record.ClockInTime;
+                    record.ClockOutTime = now;
+                    TimeSpan? main = now - record.ClockInTime;
                     TimeSpan? difference = null;
                     if (record is { LeaveOnBreakTime: { }, ReturnOnBreakTime: { } })
                     {
@@ -340,8 +353,9 @@ public class ControlsController : Controller
     {
         try
         {
+            var (dayStart, dayEnd) = OrgClock.TodayRangeUtc();
             var record = await _db.Clockings
-                .FirstOrDefaultAsync(e => e.VoluntId == id && e.CreatedAt!.Value.Date == DateTime.Now.Date)
+                .FirstOrDefaultAsync(e => e.VoluntId == id && e.CreatedAt >= dayStart && e.CreatedAt < dayEnd)
                 .ConfigureAwait(false);
 
             if (record != null)
@@ -356,7 +370,7 @@ public class ControlsController : Controller
                     return Ok("You cannot take leave since you have already clocked out");
                 }
 
-                record.LeaveOnBreakTime = DateTime.Now;
+                record.LeaveOnBreakTime = DateTime.UtcNow;
 
                 _db.Clockings.Update(record);
                 var result = await _db.SaveChangesAsync();
@@ -384,8 +398,9 @@ public class ControlsController : Controller
     {
         try
         {
+            var (dayStart, dayEnd) = OrgClock.TodayRangeUtc();
             var record = await _db.Clockings
-                .FirstOrDefaultAsync(e => e.VoluntId == id && e.CreatedAt!.Value.Date == DateTime.Now.Date)
+                .FirstOrDefaultAsync(e => e.VoluntId == id && e.CreatedAt >= dayStart && e.CreatedAt < dayEnd)
                 .ConfigureAwait(false);
 
             if (record != null)
@@ -400,7 +415,7 @@ public class ControlsController : Controller
                     return Ok("You have already clocked to have returned from break");
                 }
 
-                record.ReturnOnBreakTime = DateTime.Now;
+                record.ReturnOnBreakTime = DateTime.UtcNow;
 
                 _db.Clockings.Update(record);
                 var result = await _db.SaveChangesAsync();

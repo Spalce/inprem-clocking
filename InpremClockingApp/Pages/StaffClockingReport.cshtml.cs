@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using InpremClockingApp.Helpers;
 using InpremClockingApp.Services;
 using InpremClockingApp.Models;
 using System;
@@ -33,8 +34,8 @@ public class StaffClockingReport : PageModel
     public async Task<IActionResult> OnGetAsync()
     {
         // default last 30 days
-        var start = Start ?? DateTime.Now.Date.AddDays(-30);
-        var end = End ?? DateTime.Now.Date.AddDays(1).AddTicks(-1); // include full end day if only date provided
+        var start = Start ?? OrgClock.NowLocal().Date.AddDays(-30);
+        var end = End ?? OrgClock.NowLocal().Date.AddDays(1).AddTicks(-1); // include full end day if only date provided
 
         ViewData["StaffId"] = StaffId;
         ViewData["Start"] = start.ToString("yyyy-MM-ddTHH:mm");
