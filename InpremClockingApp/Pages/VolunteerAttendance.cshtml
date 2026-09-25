@@ -1,6 +1,7 @@
 @page
 @model VolunteerAttendance
 @using Microsoft.AspNetCore.Authorization;
+@using InpremClockingApp.Models;
 @attribute [Authorize]
 @{
     Layout = "Shared/_MainLayout";
@@ -92,6 +93,53 @@
                                       <span asp-validation-for="Input!.Gender" class="text-danger small"></span>
                                   </div>
                               </div>
+                              <div class="col-md-12">
+                                  <div class="form-floating">
+                                      <label asp-for="Input!.VolunteerCategory" class="small">Which volunteer category do you fall under?</label>
+                                      <select asp-for="Input!.VolunteerCategory" class="form-control form-control-sm" required>
+                                          <option value="">-- Select category --</option>
+                                          <option value="@VolunteerCategories.MandatedCommunityHours">Mandated Community Hours</option>
+                                          <option value="@VolunteerCategories.MofcVolunteerHub">MOFC Volunteer Hub</option>
+                                          <option value="@VolunteerCategories.EducationalPurposes">Educational Purposes</option>
+                                          <option value="@VolunteerCategories.CorporateVolunteering">Corporate Volunteering</option>
+                                          <option value="@VolunteerCategories.PersonalOrIndividualVolunteering">Personal or Individual Volunteering</option>
+                                      </select>
+                                      <span asp-validation-for="Input!.VolunteerCategory" class="text-danger small"></span>
+                                  </div>
+                              </div>
+                              <div class="col-md-12" id="mandateTypeGroup" style="display:none;">
+                                  <div class="form-floating">
+                                      <label asp-for="Input!.MandateType" class="small">Which of these applies to you?</label>
+                                      <select asp-for="Input!.MandateType" class="form-control form-control-sm">
+                                          <option value="">-- Select --</option>
+                                          <option value="@VolunteerMandateTypes.CourtOrders">Court orders</option>
+                                          <option value="@VolunteerMandateTypes.Diversion">Diversion</option>
+                                          <option value="@VolunteerMandateTypes.YouthDetention">Youth Detention</option>
+                                      </select>
+                                      <span asp-validation-for="Input!.MandateType" class="text-danger small"></span>
+                                  </div>
+                              </div>
+                              <div class="col-md-6" id="institutionGroup" style="display:none;">
+                                  <div class="form-floating">
+                                      <label asp-for="Input!.InstitutionName" class="small"></label>
+                                      <input asp-for="Input!.InstitutionName" class="form-control form-control-sm" />
+                                      <span asp-validation-for="Input!.InstitutionName" class="text-danger small"></span>
+                                  </div>
+                              </div>
+                              <div class="col-md-6" id="placeOfWorkGroup" style="display:none;">
+                                  <div class="form-floating">
+                                      <label asp-for="Input!.PlaceOfWork" class="small"></label>
+                                      <input asp-for="Input!.PlaceOfWork" class="form-control form-control-sm" />
+                                      <span asp-validation-for="Input!.PlaceOfWork" class="text-danger small"></span>
+                                  </div>
+                              </div>
+                              <div class="col-md-6" id="contactPersonGroup" style="display:none;">
+                                  <div class="form-floating">
+                                      <label asp-for="Input!.ContactPerson" class="small"></label>
+                                      <input asp-for="Input!.ContactPerson" class="form-control form-control-sm" />
+                                      <span asp-validation-for="Input!.ContactPerson" class="text-danger small"></span>
+                                  </div>
+                              </div>
                               <div class="col-md-12" style="margin-top: 20px;">
                                   <button id="registerSubmit" type="submit" class="w-100 btn btn-sm btn-primary">Register</button>
                               </div>
@@ -124,6 +172,41 @@
     <partial name="_ValidationScriptsPartial" />
 }
 <script>
+    // Show/hide the volunteer category's conditional follow-up fields, and only mark
+    // them required while they're actually visible.
+    (function () {
+        var categorySelect = document.getElementById('Input_VolunteerCategory');
+        var mandateGroup = document.getElementById('mandateTypeGroup');
+        var mandateSelect = document.getElementById('Input_MandateType');
+        var institutionGroup = document.getElementById('institutionGroup');
+        var institutionInput = document.getElementById('Input_InstitutionName');
+        var placeOfWorkGroup = document.getElementById('placeOfWorkGroup');
+        var placeOfWorkInput = document.getElementById('Input_PlaceOfWork');
+        var contactPersonGroup = document.getElementById('contactPersonGroup');
+        var contactPersonInput = document.getElementById('Input_ContactPerson');
+
+        var MANDATED = '@VolunteerCategories.MandatedCommunityHours';
+        var EDUCATIONAL = '@VolunteerCategories.EducationalPurposes';
+        var CORPORATE = '@VolunteerCategories.CorporateVolunteering';
+
+        function setVisible(group, input, visible) {
+            group.style.display = visible ? '' : 'none';
+            input.required = visible;
+            if (!visible) input.value = '';
+        }
+
+        function updateConditionalFields() {
+            var value = categorySelect.value;
+            setVisible(mandateGroup, mandateSelect, value === MANDATED);
+            setVisible(institutionGroup, institutionInput, value === EDUCATIONAL);
+            setVisible(placeOfWorkGroup, placeOfWorkInput, value === CORPORATE);
+            setVisible(contactPersonGroup, contactPersonInput, value === EDUCATIONAL || value === CORPORATE);
+        }
+
+        categorySelect.addEventListener('change', updateConditionalFields);
+        updateConditionalFields();
+    })();
+
     $("#volunteerSearch").autocomplete({
       source: '/api/search/volunteer',
       autofocus: true,

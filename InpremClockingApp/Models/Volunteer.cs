@@ -47,10 +47,53 @@ public class Volunteer
     [MaxLength(255, ErrorMessage = "Address length should not be more than 255 characters")]
     public string? Address { get; set; }
 
+    // Volunteer sign-up questionnaire: which category the volunteer falls under, plus the
+    // conditional follow-up answers for that category. Left unattributed (no [Required]) because
+    // this type is also bound by the admin Manage Volunteers panel (Volunteer.cshtml.cs), which
+    // never collects these fields - required-ness is enforced where the questionnaire actually
+    // lives (VolunteerAttendance.cshtml.cs), not on the shared model.
+    [DisplayName("Volunteer Category")]
+    [StringLength(100)]
+    public string? VolunteerCategory { get; set; }
+
+    [DisplayName("Mandate Type")]
+    [StringLength(100)]
+    public string? MandateType { get; set; }
+
+    [DisplayName("Name of Institution")]
+    [StringLength(200)]
+    public string? InstitutionName { get; set; }
+
+    [DisplayName("Place of Work")]
+    [StringLength(200)]
+    public string? PlaceOfWork { get; set; }
+
+    [DisplayName("Contact Person")]
+    [StringLength(200)]
+    public string? ContactPerson { get; set; }
+
     public DateTime? CreatedAt { get; set; }
 
     public string? FullName => $"{FirstName} {LastName}";
 
     [JsonIgnore]
     public virtual ICollection<Clocking>? Clockings { get; set; }
+}
+
+/// <summary>Canonical volunteer category values, shared between the sign-up page and its server-side validation.</summary>
+public static class VolunteerCategories
+{
+    public const string MandatedCommunityHours = "Mandated Community Hours";
+    public const string MofcVolunteerHub = "MOFC Volunteer Hub";
+    public const string EducationalPurposes = "Educational Purposes";
+    public const string CorporateVolunteering = "Corporate Volunteering";
+    public const string PersonalOrIndividualVolunteering = "Personal or Individual Volunteering";
+}
+
+/// <summary>Sub-options under the "Mandated Community Hours" volunteer category.</summary>
+public static class VolunteerMandateTypes
+{
+    public const string CourtOrders = "Court orders";
+    public const string Diversion = "Diversion";
+    public const string YouthDetention = "Youth Detention";
 }
