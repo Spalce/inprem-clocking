@@ -1,27 +1,43 @@
-﻿@{
-    if (ViewData.TryGetValue("ParentLayout", out var parentLayout))
-    {
-        Layout = (string)parentLayout;
-    }
-    else
-    {
-        // Layout = "/Areas/Identity/Pages/_Layout.cshtml";
-    }
+@{
+    Layout = "/Pages/Shared/_Layout.cshtml";
 }
 
-<h1>Manage your account</h1>
-
-<div>
-    <h2>Change your account settings</h2>
-    <hr />
-    <div class="row">
+<div class="content-wrapper">
+  <div class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h1 class="m-0">Manage Account</h1>
+        </div>
+        <div class="col-sm-6">
+          <ol class="breadcrumb float-sm-right">
+            <li class="breadcrumb-item"><a href="#">Home</a></li>
+            <li class="breadcrumb-item active">Manage Account</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="container-fluid">
+      <div class="row">
         <div class="col-md-3">
-            <partial name="_ManageNav" />
+          <div class="card card-primary card-outline">
+            <div class="card-body p-0">
+              <partial name="_ManageNav" />
+            </div>
+          </div>
         </div>
         <div class="col-md-9">
-            @RenderBody()
+          <div class="card card-primary card-outline">
+            <div class="card-body">
+              @RenderBody()
+            </div>
+          </div>
         </div>
+      </div>
     </div>
+  </div>
 </div>
 
 @section Scripts {
