@@ -47,6 +47,36 @@ public class StaffClockingService
         return await _db.ClockingsStaff.ToListAsync().ConfigureAwait(false);
     }
 
+    // Paginated variant of GetClockingReport/GetClockingReportForStaff, for report pages backed
+    // by potentially large date ranges. Preserves the same clock-in-or-clock-out range filter.
+    public async Task<PagedResult<ClockingStaff>> GetClockingReportPaged(DateTime start, DateTime end, int? staffId, int page, int pageSize)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+
+        var startUtc = OrgClock.ToUtc(start);
+        var endUtc = OrgClock.ToUtc(end);
+
+        var query = _db.ClockingsStaff
+            .Where(e => (e.ClockInTime >= startUtc && e.ClockInTime <= endUtc) || (e.ClockOutTime != null && e.ClockOutTime >= startUtc && e.ClockOutTime <= endUtc));
+
+        if (staffId.HasValue)
+            query = query.Where(e => e.StafId == staffId.Value);
+
+        query = query.OrderByDescending(e => e.CreatedAt!.Value);
+
+        var total = await query.CountAsync().ConfigureAwait(false);
+        var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync().ConfigureAwait(false);
+
+        return new PagedResult<ClockingStaff>
+        {
+            Items = items,
+            TotalCount = total,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
+
     // start/end, when provided, are org-local wall-clock boundaries; converted to UTC for the query.
     public async Task<PagedResult<ClockingStaff>> GetPaged(int page, int pageSize, int? staffId = null, DateTime? start = null, DateTime? end = null)
     {
