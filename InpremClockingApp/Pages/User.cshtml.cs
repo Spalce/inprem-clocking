@@ -17,6 +17,15 @@ public class User : PageModel
 
     public IEnumerable<AppUser>? Users { get; set; }
 
+    // Named "pageNumber" rather than "page" because "page" is a reserved Razor Pages route
+    // value (the page's own path) - a query string "page" is intercepted by route-value model
+    // binding before it ever reaches a same-named property.
+    [BindProperty(SupportsGet = true)]
+    public int PageNumber { get; set; } = 1;
+
+    [BindProperty(SupportsGet = true)]
+    public int PageSize { get; set; } = 20;
+
     [BindProperty]
     public CreateAdminInput Input { get; set; } = new();
 
@@ -65,8 +74,12 @@ public class User : PageModel
 
     private async Task LoadUsersAsync()
     {
-        var model = await _service.GetAll().ConfigureAwait(true);
-        if (model != null!)
-            Users = model;
+        var result = await _service.GetPaged(PageNumber, PageSize).ConfigureAwait(true);
+        Users = result.Items;
+
+        ViewData["TotalCount"] = result.TotalCount;
+        ViewData["Page"] = result.Page;
+        ViewData["PageSize"] = result.PageSize;
+        ViewData["TotalPages"] = result.TotalPages;
     }
 }
