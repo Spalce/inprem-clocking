@@ -21,7 +21,6 @@ public class OneStaffClockingReport : PageModel
     {
         var start = OrgClock.NowLocal().Date.AddDays(-30);
         var end = OrgClock.NowLocal().Date;
-        var rows = await _service.GetClockingReport(start, end).ConfigureAwait(false);
-        ReportRows = rows.Where(r => r.StafId == staffId).ToList();
+        ReportRows = await _service.GetClockingReportForStaff(staffId, start, end).ConfigureAwait(false);
     }
 }
