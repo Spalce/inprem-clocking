@@ -53,6 +53,7 @@
                         </div>
                         <div class="col-md-3 d-flex align-items-end">
                           <button class="btn btn-primary">Filter</button>
+                          <button type="button" id="btnDownloadPdf" class="btn btn-danger ml-2">Download PDF</button>
                         </div>
                       </div>
                     </form>
@@ -234,6 +235,29 @@
         }
       } catch {}
     })();
+
+    document.getElementById('btnDownloadPdf').addEventListener('click', function(){
+      var params = new URLSearchParams();
+      if (hidden.value) params.set('volunteerId', hidden.value);
+      var startEl = document.querySelector('input[name="Start"]');
+      var endEl = document.querySelector('input[name="End"]');
+      if (startEl && startEl.value) params.set('start', startEl.value);
+      if (endEl && endEl.value) params.set('end', endEl.value);
+
+      fetch('/api/people/volunteer-clocking-report-pdf?' + params.toString())
+        .then(function(res){ if(!res.ok) throw new Error('PDF failed'); return res.blob(); })
+        .then(function(blob){
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = 'volunteer-clocking-report.pdf';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        })
+        .catch(function(){ alert('Failed to download PDF'); });
+    });
   })();
 </script>
 

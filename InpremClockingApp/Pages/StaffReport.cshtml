@@ -11,11 +11,12 @@
       <div class="col-sm-6">
         <h1 class="m-0">Staff Report (Total: @(ViewData["TotalCount"] ?? 0))</h1>
       </div>
-      <div class="col-sm-6">
+      <div class="col-sm-6 text-sm-right">
         <ol class="breadcrumb float-sm-right">
           <li class="breadcrumb-item"><a href="#">Home</a></li>
           <li class="breadcrumb-item active">Staff Report</li>
         </ol>
+        <button type="button" id="btnDownloadPdf" class="btn btn-danger btn-sm">Download PDF</button>
       </div>
     </div>
   </div>
@@ -82,4 +83,22 @@
   </div>
 </div>
 </div>
+
+<script>
+    document.getElementById('btnDownloadPdf').addEventListener('click', function () {
+        fetch('/api/people/staff-list-pdf')
+            .then(function (res) { if (!res.ok) throw new Error('PDF failed'); return res.blob(); })
+            .then(function (blob) {
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'staff-list.pdf';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+            })
+            .catch(function () { alert('Failed to download PDF'); });
+    });
+</script>
 

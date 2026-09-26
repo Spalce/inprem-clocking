@@ -11,11 +11,12 @@
                 <div class="col-sm-6">
                     <h1 class="m-0">Individual Volunteer Clocking Report</h1>
                 </div>
-                <div class="col-sm-6">
+                <div class="col-sm-6 text-sm-right">
                     <ol class="breadcrumb float-sm-right">
                         <li class="breadcrumb-item"><a href="#">Home</a></li>
                         <li class="breadcrumb-item active">Individual Volunteer Clocking Report</li>
                     </ol>
+                    <button type="button" id="btnDownloadPdf" class="btn btn-danger btn-sm">Download PDF</button>
                 </div>
             </div>
         </div>
@@ -51,4 +52,23 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.getElementById('btnDownloadPdf').addEventListener('click', function () {
+        var url = '/api/people/volunteer-hours-pdf?id=@Model.VolunteerId&start=@Uri.EscapeDataString(Model.Start.ToString("o"))&end=@Uri.EscapeDataString(Model.End.ToString("o"))';
+        fetch(url)
+            .then(function (res) { if (!res.ok) throw new Error('PDF failed'); return res.blob(); })
+            .then(function (blob) {
+                var u = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = u;
+                a.download = 'volunteer-@Model.VolunteerId-hours.pdf';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(u);
+            })
+            .catch(function () { alert('Failed to download PDF'); });
+    });
+</script>
 

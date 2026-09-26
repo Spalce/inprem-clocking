@@ -12,6 +12,10 @@ public class OneStaffClockingReport : PageModel
     private readonly StaffClockingService _service;
     public List<ClockingStaff> ReportRows { get; set; } = new List<ClockingStaff>();
 
+    public int StaffId { get; set; }
+    public DateTime Start { get; set; }
+    public DateTime End { get; set; }
+
     public OneStaffClockingReport(StaffClockingService service)
     {
         _service = service;
@@ -19,8 +23,9 @@ public class OneStaffClockingReport : PageModel
 
     public async Task OnGetAsync(int staffId)
     {
-        var start = OrgClock.NowLocal().Date.AddDays(-30);
-        var end = OrgClock.NowLocal().Date;
-        ReportRows = await _service.GetClockingReportForStaff(staffId, start, end).ConfigureAwait(false);
+        StaffId = staffId;
+        Start = OrgClock.NowLocal().Date.AddDays(-30);
+        End = OrgClock.NowLocal().Date;
+        ReportRows = await _service.GetClockingReportForStaff(staffId, Start, End).ConfigureAwait(false);
     }
 }
