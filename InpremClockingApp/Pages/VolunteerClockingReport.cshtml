@@ -75,7 +75,7 @@
                                     <td>@(OrgClock.ToLocal(item?.CreatedAt)?.ToString("yyyy-MM-dd") ?? "")</td>
                                     <td>@(OrgClock.ToLocal(item?.ClockInTime)?.ToString("HH:mm:ss") ?? "")</td>
                                     <td>@(OrgClock.ToLocal(item?.ClockOutTime)?.ToString("HH:mm:ss") ?? "")</td>
-                                    <td>@(item?.WorkingHours?.ToString() ?? "")</td>
+                                    <td>@(item?.WorkingHours?.ToString(@"hh\:mm\:ss") ?? "")</td>
                                 </tr>
                             }
                         </tbody>

@@ -83,7 +83,7 @@
                                 <td>@(OrgClock.ToLocal(c.ClockOutTime)?.ToString("HH:mm:ss") ?? "")</td>
                                 <td>@(OrgClock.ToLocal(c.LeaveOnBreakTime)?.ToString("HH:mm:ss") ?? "")</td>
                                 <td>@(OrgClock.ToLocal(c.ReturnOnBreakTime)?.ToString("HH:mm:ss") ?? "")</td>
-                                <td>@(c.WorkingHours?.ToString() ?? "")</td>
+                                <td>@(c.WorkingHours?.ToString(@"hh\:mm\:ss") ?? "")</td>
                                 <td>
                                     <button class="btn btn-sm btn-success" onclick="vpostAction('ClockOut', { ClockingId: @c.ClockingId })">Clock Out</button>
                                     <button class="btn btn-sm btn-warning" onclick="vpostAction('BreakStart', { ClockingId: @c.ClockingId })">Break Start</button>
