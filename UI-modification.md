@@ -137,6 +137,69 @@ clocked in successfully. Test data cleaned up from the dev DB afterward. No regr
 - One-time build: `../tools/tailwindcss-windows-x64.exe -i wwwroot/css/tailwind-input.css -o wwwroot/css/tailwind.css --minify`
 - Watch while editing: `../tools/tailwindcss-windows-x64.exe -i wwwroot/css/tailwind-input.css -o wwwroot/css/tailwind.css --watch`
 
+## Phase 2 status: done
+
+Converted the core admin CRUD/reporting pages: `Staff.cshtml`, `Volunteer.cshtml`,
+`StaffClocking.cshtml`, `VolunteerClocking.cshtml`, `StaffReport.cshtml`,
+`VolunteerReport.cshtml`, `User.cshtml` (Admins), `StaffClockingReport.cshtml`,
+`VolunteerClockingReport.cshtml`, `OneStaffClockingReport.cshtml`,
+`OneVolunteerClockingReport.cshtml`, plus `HoursWorked.cshtml` (see below for why it was added
+to this phase's scope). Established a small set of reusable Tailwind class strings per page
+(`input`, `label`, `btnPrimary`, `btnWhite`, `btnDanger`, `actionBtn`) applied via Razor
+`@{ var x = "..."; }` locals — same visual language as Phase 1's chrome. Bootstrap modal
+mechanics (`modal fade`, `data-dismiss`, jQuery `.modal('show'/'hide')`) are kept as-is for the
+Edit/Add dialogs on Staff/Volunteer — only their inner content is restyled, per the guardrails.
+
+**Branch had to absorb two other in-flight branches before this phase's markup would compile.**
+`ui/tailwind-modernization` was created off `main`, but the Phase 2 markup assumes page-model
+properties (pagination, `Search`, PDF handler routes, `StaffId`/`Start`/`End` on the "One..."
+reports) that only exist on `fix/pagination-and-hours-display` and
+`fix/duplicate-registration-prevention` — neither merged into `main` yet. Stashed the in-progress
+Tailwind markup, merged both branches into `ui/tailwind-modernization` (`--no-edit`, both clean,
+no conflicts), confirmed the merged base builds with 0 errors, then reapplied the Tailwind
+conversions on top. This only changed `ui/tailwind-modernization` locally — `main` and the two
+source branches are untouched.
+
+**Found and fixed a real Phase-1 layout bug that affects every page in the app, not just Phase
+2's.** The standard page container (`tw:mx-auto tw:max-w-7xl tw:px-4 ...`, used on every
+Tailwind-converted page) is a direct child of the shared layout's `tw:flex tw:flex-col` shell.
+Per the CSS flexbox spec, a flex item with an auto margin on the cross axis (`mx-auto`, in a
+column flex container) has its `stretch` alignment disabled and sizes to its own content's
+preferred width instead of the available space — invisible on narrow pages, but on any page
+with a wide table (7-8 columns), the container quietly rendered ~150px wider than the viewport,
+and because that oversized box was a sibling of the top bar and footer (not a descendant of the
+table's own `overflow-x-auto` wrapper), the *entire page* — top bar and footer included —
+became horizontally scrollable instead of just the table. Root-caused via `getBoundingClientRect`
+on every element to find which one exceeded the viewport, rather than guessing. Fixed with a
+single wrapping `<div class="tw:w-full tw:min-w-0">@RenderBody()</div>` in both
+`_Layout.cshtml` and `_MainLayout.cshtml` — an explicit `width:100%` on that wrapper (rather
+than relying on stretch) sidesteps the auto-margin rule entirely, and `min-w-0` lets it shrink
+below its content's intrinsic width so the table's own `overflow-x-auto` div is what scrolls.
+Verified via `scrollWidth`/`innerWidth` comparison and visually: the table now scrolls in its own
+contained horizontal scrollbar while the sidebar, top bar, and footer stay fixed.
+
+**`HoursWorked.cshtml` was pulled into this phase's scope.** It didn't exist when Phase 2 was
+planned — it arrived via the `fix/pagination-and-hours-display` merge above, and the "Hours"
+action link on both Staff and Volunteer list pages routes directly to it. Since it's a primary,
+one-click destination from pages just converted, leaving it in raw Bootstrap/AdminLTE markup
+would have been a jarring inconsistency, so it was converted to the same Tailwind design system
+as part of this phase. Its predecessor — an in-page "hours" Bootstrap modal that Staff.cshtml
+and Volunteer.cshtml had accumulated from an earlier iteration of this phase, superseded by the
+dedicated page and no longer reachable from any visible button — was removed from both files
+(dead modal markup + its now-unused `btnCalculate`/`btnDownloadPdf`/`btn-hours` JS listeners).
+
+**Verified live in the browser**, all 12 pages: Staff/Volunteer (search, Add New, Edit modal
+pre-filling correctly, pagination, horizontal table scroll contained after the layout fix),
+StaffClocking/VolunteerClocking (manual clock-in form, colored Clock Out/Break Start/Break End
+action buttons), StaffReport/VolunteerReport (table + working PDF download, confirmed via direct
+`fetch()` returning a valid 200 OK PDF byte stream), Admins (create form + table),
+StaffClockingReport/VolunteerClockingReport (filter form + results), the two "Individual ..."
+report pages reached via the Reports sidebar submenu (submenu expand/collapse still works), and
+HoursWorked (reached from both Staff and Volunteer "Hours" links, filter/summary/PDF all intact).
+Two console `[EXCEPTION] Object` entries observed during testing were confirmed to originate
+from third-party Chrome extensions active in the test browser profile (maxai, Quillbot, and
+similar), not from the app — they fire on every page load regardless of app code.
+
 ## Phased plan
 
 **Phase 0 — Foundation (no visible change)**

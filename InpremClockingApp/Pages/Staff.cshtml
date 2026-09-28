@@ -2,200 +2,162 @@
 @model Staff
 @{
     ViewData["Title"] = "Staff List";
+    var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
+    var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
+    var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
+    var btnWhite = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-slate-300 tw:bg-white tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:text-slate-700 tw:hover:bg-slate-50";
+    var actionBtn = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-slate-300 tw:bg-white tw:px-2.5 tw:py-1 tw:text-xs tw:font-medium tw:text-slate-700 tw:hover:bg-slate-50";
 }
 
-<div class="content-wrapper">
-    <div class="content-header">
-        <div class="container-fluid">
-            <div class="row mb-2">
-                <div class="col-sm-6">
-                    <h1 class="m-0">Staff List (Total: @(ViewData["TotalCount"] ?? 0))</h1>
-                </div>
-                <div class="col-sm-6">
-                    <ol class="breadcrumb float-sm-right">
-                        <li class="breadcrumb-item"><a href="#">Home</a></li>
-                        <li class="breadcrumb-item active">Staff List</li>
-                    </ol>
-                </div>
-            </div>
-        </div>
-        <div class="modal fade" id="hoursModal" tabindex="-1" role="dialog" aria-hidden="true">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Staff Hours</h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <form id="hoursForm">
-                            <input type="hidden" id="hStaffId" name="StaffId" />
-                            <div class="form-group">
-                                <label>Start</label>
-                                <input type="date" id="hStart" name="Start" class="form-control" />
-                            </div>
-                            <div class="form-group">
-                                <label>End</label>
-                                <input type="date" id="hEnd" name="End" class="form-control" />
-                            </div>
-                            <div id="hoursResult" class="mt-3"></div>
-                        </form>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                        <button type="button" id="btnDownloadPdf" class="btn btn-primary">Download PDF</button>
-                        <button type="button" id="btnCalculate" class="btn btn-info">Calculate</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+<div class="tw:mx-auto tw:max-w-7xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
+  <div class="tw:mb-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4">
+    <h1 class="tw:text-2xl tw:font-semibold tw:text-slate-900">Staff List (Total: @(ViewData["TotalCount"] ?? 0))</h1>
+    <nav class="tw:text-sm tw:text-slate-500">
+      <a href="#" class="tw:hover:text-slate-700">Home</a>
+      <span class="tw:mx-1">/</span>
+      <span class="tw:text-slate-700">Staff List</span>
+    </nav>
+  </div>
+
+  <div class="tw:mb-4 tw:flex tw:flex-col tw:gap-3 tw:sm:flex-row tw:sm:items-start tw:sm:justify-between">
+    <div class="tw:flex tw:flex-1 tw:items-start tw:gap-2">
+      <div class="tw:relative tw:flex-1">
+        <input id="emailSearch" placeholder="Search by name or email..." class="@input" autocomplete="off" value="@ViewData["Search"]" />
+        <div id="emailHint" class="tw:mt-1 tw:text-xs tw:text-slate-500">Type to search all staff</div>
+      </div>
+      <button id="btnSearch" class="@btnWhite">Search</button>
     </div>
-    <div class="content">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-md-12">
-                    <div class="d-flex justify-content-between mb-2">
-                        <div style="flex:1" class="d-flex">
-                            <div style="flex:1">
-                                <input id="emailSearch" placeholder="Search by name or email..." class="form-control" autocomplete="off" value="@ViewData["Search"]" />
-                                <div id="emailHint" class="small text-muted mt-1">Type to search all staff</div>
-                            </div>
-                            <button id="btnSearch" class="btn btn-outline-secondary ml-2" style="height:38px;">Search</button>
-                        </div>
-                        <div class="ml-2">
-                            <button id="btnAdd" class="btn btn-primary">Add New</button>
-                        </div>
-                    </div>
+    <button id="btnAdd" class="@btnPrimary">Add New</button>
+  </div>
 
-                    <table class="table table-striped" id="staffTable">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>First Name</th>
-                                <th>Last Name</th>
-                                <th>Email</th>
-                                <th>Gender</th>
-                                <th>Phone</th>
-                                <th>Zip</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var s in Model.Staffs ?? Enumerable.Empty<InpremClockingApp.Models.Staff>())
-                            {
-                                <tr data-id="@s.StaffId" data-address="@s.Address" data-created-at="@s.CreatedAt?.ToString("O")">
-                                    <td>@s.StaffId</td>
-                                    <td>@s.FirstName</td>
-                                    <td>@s.LastName</td>
-                                    <td>@s.EmailAddress</td>
-                                    <td>@s.Gender</td>
-                                    <td>@s.PhoneNumber</td>
-                                    <td>@s.ZipCode</td>
-                                    <td>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary btn-edit">Edit</button>
-                                        <button type="button" class="btn btn-sm btn-outline-info btn-move">Move To Volunteer</button>
-                                        @* <button type="button" class="btn btn-sm btn-outline-primary btn-hours">Hours</button> *@
-                                        <a href="/HoursWorked?type=staff&id=@s.StaffId"
-                                           class="btn btn-sm btn-outline-primary">
-                                            Hours
-                                        </a>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-
-                    <div class="d-flex justify-content-between align-items-center my-3">
-                        <div>
-                            <form id="pageSizeForm" method="get" class="form-inline">
-                                <label class="mr-2">Page size</label>
-                                @{ var currentSize = (int)(ViewData["PageSize"] ?? 20); var sel10 = currentSize == 10; var sel20 = currentSize == 20; var sel50 = currentSize == 50; var sel100 = currentSize == 100; }
-                                <select name="pageSize" id="pageSizeSelect" class="form-control" onchange="document.getElementById('pageSizeForm').submit();">
-                                    <option value="10" selected="@(sel10 ? "selected" : null)">10</option>
-                                    <option value="20" selected="@(sel20 ? "selected" : null)">20</option>
-                                    <option value="50" selected="@(sel50 ? "selected" : null)">50</option>
-                                    <option value="100" selected="@(sel100 ? "selected" : null)">100</option>
-                                </select>
-                                <input type="hidden" name="pageNumber" value="1" />
-                                <input type="hidden" name="Search" value="@ViewData["Search"]" />
-                            </form>
-                        </div>
-
-                        <nav aria-label="Page navigation">
-                            <ul class="pagination justify-content-center mb-0">
-                                @{ var current = (int)(ViewData["Page"] ?? 1); var total = (int)(ViewData["TotalPages"] ?? 1); var size = (int)(ViewData["PageSize"] ?? 20); }
-                                <li class="page-item @(current == 1 ? "disabled" : "")">
-                                    <a class="page-link" asp-page="./Staff" asp-route-pageNumber="@(current-1)" asp-route-pageSize="@size" asp-route-Search="@ViewData["Search"]">Previous</a>
-                                </li>
-                                @for (int i = 1; i <= total; i++)
-                                {
-                                    <li class="page-item @(i == current ? "active" : "")"><a class="page-link" asp-page="./Staff" asp-route-pageNumber="@i" asp-route-pageSize="@size" asp-route-Search="@ViewData["Search"]">@i</a></li>
-                                }
-                                <li class="page-item @(current == total ? "disabled" : "")">
-                                    <a class="page-link" asp-page="./Staff" asp-route-pageNumber="@(current+1)" asp-route-pageSize="@size" asp-route-Search="@ViewData["Search"]">Next</a>
-                                </li>
-                            </ul>
-                        </nav>
-                    </div>
-
-                    <div class="modal fade" id="editorModal" tabindex="-1" role="dialog" aria-hidden="true">
-                        <div class="modal-dialog" role="document">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">Edit Staff</h5>
-                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
-                                </div>
-                                <div class="modal-body">
-                                    <div id="editorErrors"></div>
-                                    <form id="editorForm">
-                                        <input type="hidden" name="StaffId" id="StaffId" />
-                                        <div class="form-group">
-                                            <label>First Name</label>
-                                            <input class="form-control" name="FirstName" id="FirstName" />
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Last Name</label>
-                                            <input class="form-control" name="LastName" id="LastName" />
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Email</label>
-                                            <input class="form-control" name="EmailAddress" id="EmailAddress" />
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Gender</label>
-                                            <select class="form-control" name="Gender" id="Gender">
-                                                <option value="M">M</option>
-                                                <option value="F">F</option>
-                                            </select>
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Phone</label>
-                                            <input class="form-control" name="PhoneNumber" id="PhoneNumber" />
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Zip</label>
-                                            <input class="form-control" name="ZipCode" id="ZipCode" />
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Address</label>
-                                            <textarea class="form-control" name="Address" id="Address"></textarea>
-                                        </div>
-                                    </form>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                    <button type="button" id="btnSave" class="btn btn-primary">Save</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+  <div class="tw:overflow-hidden tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white">
+    <div class="tw:overflow-x-auto">
+      <table class="tw:min-w-full tw:divide-y tw:divide-slate-200" id="staffTable">
+        <thead class="tw:bg-slate-50">
+          <tr>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">ID</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">First Name</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Last Name</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Email</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Gender</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Phone</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Zip</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="tw:divide-y tw:divide-slate-100">
+          @foreach (var s in Model.Staffs ?? Enumerable.Empty<InpremClockingApp.Models.Staff>())
+          {
+            <tr data-id="@s.StaffId" data-address="@s.Address" data-created-at="@s.CreatedAt?.ToString("O")" class="tw:hover:bg-slate-50">
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@s.StaffId</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@s.FirstName</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@s.LastName</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@s.EmailAddress</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@s.Gender</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@s.PhoneNumber</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@s.ZipCode</td>
+              <td class="tw:px-4 tw:py-3 tw:whitespace-nowrap">
+                <div class="tw:flex tw:gap-1.5">
+                  <button type="button" class="@actionBtn btn-edit">Edit</button>
+                  <button type="button" class="@actionBtn btn-move">Move To Volunteer</button>
+                  <a href="/HoursWorked?type=staff&id=@s.StaffId" class="@actionBtn">Hours</a>
                 </div>
-            </div>
-        </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
     </div>
+
+    <div class="tw:flex tw:flex-col tw:gap-3 tw:border-t tw:border-slate-200 tw:px-4 tw:py-3 tw:sm:flex-row tw:sm:items-center tw:sm:justify-between">
+      <form id="pageSizeForm" method="get" class="tw:flex tw:items-center tw:gap-2">
+        <label class="tw:text-sm tw:text-slate-600">Page size</label>
+        @{ var currentSize = (int)(ViewData["PageSize"] ?? 20); var sel10 = currentSize == 10; var sel20 = currentSize == 20; var sel50 = currentSize == 50; var sel100 = currentSize == 100; }
+        <select name="pageSize" id="pageSizeSelect" class="tw:rounded-md tw:border tw:border-slate-300 tw:px-2 tw:py-1 tw:text-sm" onchange="document.getElementById('pageSizeForm').submit();">
+          <option value="10" selected="@(sel10 ? "selected" : null)">10</option>
+          <option value="20" selected="@(sel20 ? "selected" : null)">20</option>
+          <option value="50" selected="@(sel50 ? "selected" : null)">50</option>
+          <option value="100" selected="@(sel100 ? "selected" : null)">100</option>
+        </select>
+        <input type="hidden" name="pageNumber" value="1" />
+        <input type="hidden" name="Search" value="@ViewData["Search"]" />
+      </form>
+
+      <nav aria-label="Page navigation">
+        <ul class="tw:flex tw:items-center tw:gap-1">
+          @{ var current = (int)(ViewData["Page"] ?? 1); var total = (int)(ViewData["TotalPages"] ?? 1); var size = (int)(ViewData["PageSize"] ?? 20); }
+          <li>
+            <a class="tw:rounded-md tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium @(current == 1 ? "tw:pointer-events-none tw:text-slate-300" : "tw:text-slate-600 tw:hover:bg-slate-100")" asp-page="./Staff" asp-route-pageNumber="@(current-1)" asp-route-pageSize="@size" asp-route-Search="@ViewData["Search"]">Previous</a>
+          </li>
+          @for (int i = 1; i <= total; i++)
+          {
+            <li>
+              <a class="tw:rounded-md tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium @(i == current ? "tw:bg-blue-600 tw:text-white" : "tw:text-slate-600 tw:hover:bg-slate-100")" asp-page="./Staff" asp-route-pageNumber="@i" asp-route-pageSize="@size" asp-route-Search="@ViewData["Search"]">@i</a>
+            </li>
+          }
+          <li>
+            <a class="tw:rounded-md tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium @(current == total ? "tw:pointer-events-none tw:text-slate-300" : "tw:text-slate-600 tw:hover:bg-slate-100")" asp-page="./Staff" asp-route-pageNumber="@(current+1)" asp-route-pageSize="@size" asp-route-Search="@ViewData["Search"]">Next</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+@* Modals keep Bootstrap's structural classes/JS (data-dismiss, fade, backdrop) for show/hide -
+   only the inner content is restyled with Tailwind. A full modal rebuild is a later phase. *@
+<div class="modal fade" id="editorModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content tw:rounded-lg">
+      <div class="modal-header tw:items-center tw:border-b tw:border-slate-200">
+        <h5 class="modal-title tw:text-base tw:font-semibold tw:text-slate-900">Edit Staff</h5>
+        <button type="button" class="close tw:cursor-pointer tw:border-0 tw:bg-transparent tw:text-xl tw:leading-none tw:text-slate-400 tw:hover:text-slate-600" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="editorErrors" class="tw:mb-2"></div>
+        <form id="editorForm">
+          <input type="hidden" name="StaffId" id="StaffId" />
+          <div class="tw:mb-3">
+            <label class="@label">First Name</label>
+            <input class="@input" name="FirstName" id="FirstName" />
+          </div>
+          <div class="tw:mb-3">
+            <label class="@label">Last Name</label>
+            <input class="@input" name="LastName" id="LastName" />
+          </div>
+          <div class="tw:mb-3">
+            <label class="@label">Email</label>
+            <input class="@input" name="EmailAddress" id="EmailAddress" />
+          </div>
+          <div class="tw:mb-3">
+            <label class="@label">Gender</label>
+            <select class="@input" name="Gender" id="Gender">
+              <option value="M">M</option>
+              <option value="F">F</option>
+            </select>
+          </div>
+          <div class="tw:mb-3">
+            <label class="@label">Phone</label>
+            <input class="@input" name="PhoneNumber" id="PhoneNumber" />
+          </div>
+          <div class="tw:mb-3">
+            <label class="@label">Zip</label>
+            <input class="@input" name="ZipCode" id="ZipCode" />
+          </div>
+          <div class="tw:mb-3">
+            <label class="@label">Address</label>
+            <textarea class="@input" name="Address" id="Address"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer tw:border-t tw:border-slate-200">
+        <button type="button" class="@btnWhite" data-dismiss="modal">Close</button>
+        <button type="button" id="btnSave" class="@btnPrimary">Save</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -229,13 +191,13 @@
             if (obj && obj.errors) {
                 Object.keys(obj.errors).forEach(function (key) {
                     var p = document.createElement('div');
-                    p.className = 'text-danger';
+                    p.className = 'tw:text-sm tw:text-red-600';
                     p.innerText = key + ': ' + obj.errors[key].join('; ');
                     container.appendChild(p);
                 });
             } else {
                 var p = document.createElement('div');
-                p.className = 'text-danger';
+                p.className = 'tw:text-sm tw:text-red-600';
                 p.innerText = obj && obj.error ? obj.error : 'Request failed.';
                 container.appendChild(p);
             }
@@ -274,7 +236,7 @@
             list.slice(0, 10).forEach(function (email) {
                 var button = document.createElement('button');
                 button.type = 'button';
-                button.className = 'btn btn-link p-0 mr-2';
+                button.className = 'tw:mr-2 tw:cursor-pointer tw:border-0 tw:bg-transparent tw:p-0 tw:text-sm tw:text-blue-600 tw:hover:underline';
                 button.textContent = email;
                 button.addEventListener('click', function () {
                     navigateSearch(email);
@@ -312,84 +274,6 @@
 
         document.getElementById('btnSearch').addEventListener('click', function () {
             navigateSearch(searchInput.value || '');
-        });
-
-        // Hours modal actions
-        document.getElementById('btnCalculate').addEventListener('click', function () {
-            var id = document.getElementById('hStaffId').value;
-            var s = document.getElementById('hStart').value;
-            var e = document.getElementById('hEnd').value;
-            if (!id) return;
-            fetch(`/api/people/staff-hours?id=${encodeURIComponent(id)}&start=${encodeURIComponent(s)}&end=${encodeURIComponent(e)}`)
-                .then(r => r.json())
-                .then(json => {
-                    document.getElementById('hoursResult').innerHTML = `
-                        <div class="mt-3">
-                            <div class="d-flex justify-content-between border-bottom py-2">
-                                <span>Total Hours Clocked</span>
-                                <strong>${json.totalClockedDisplay}</strong>
-                            </div>
-
-                            <div class="d-flex justify-content-between border-bottom py-2">
-                                <span>Total Hours for Break</span>
-                                <strong>${json.totalBreakDisplay}</strong>
-                            </div>
-
-                            <div class="d-flex justify-content-between py-2">
-                                <span>Actual Hours Worked</span>
-                                <strong>${json.actualWorkedDisplay}</strong>
-                            </div>
-                        </div>`;
-                    
-                    // store last result for PDF
-                    document.getElementById('hoursResult').dataset.last = JSON.stringify(json);
-                }).catch(()=> document.getElementById('hoursResult').innerHTML = '<div class="text-danger">Failed to calculate hours.</div>');
-        });
-
-        document.getElementById('btnDownloadPdf').addEventListener('click', function () {
-            var data = document.getElementById('hoursResult').dataset.last;
-            if (!data) {
-                alert('Please calculate hours first');
-                return;
-            }
-            var json = JSON.parse(data);
-            // request server PDF generation endpoint
-            fetch(`/api/people/staff-hours-pdf?id=${encodeURIComponent(json.staffId)}&start=${encodeURIComponent(json.start)}&end=${encodeURIComponent(json.end)}`)
-                .then(function (res) { if (!res.ok) throw new Error('PDF failed'); return res.blob(); })
-                .then(function (blob) { var url = URL.createObjectURL(blob); var a = document.createElement('a'); a.href = url; a.download = `staff-${json.staffId}-hours.pdf`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); })
-                .catch(function () { alert('Failed to download PDF'); });
-        });
-
-            // Open Staff Hours modal
-        document.addEventListener('click', function (event) {
-            if (!event.target.classList.contains('btn-hours')) return;
-
-            var tr = event.target.closest('tr');
-            if (!tr) return;
-
-            var staffId = tr.dataset.id;
-
-            if (!staffId) {
-                alert('Staff ID not found.');
-                return;
-            }
-
-            document.getElementById('hStaffId').value = staffId;
-
-            // Default dates: last 30 days
-            var end = new Date();
-            var start = new Date();
-            start.setDate(end.getDate() - 30);
-
-            document.getElementById('hStart').value =
-                start.toISOString().slice(0, 10);
-
-            document.getElementById('hEnd').value =
-                end.toISOString().slice(0, 10);
-
-            document.getElementById('hoursResult').innerHTML = '';
-
-            $('#hoursModal').modal('show');
         });
 
         document.getElementById('btnSave').addEventListener('click', function () {

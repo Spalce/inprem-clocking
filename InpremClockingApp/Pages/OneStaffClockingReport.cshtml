@@ -2,56 +2,49 @@
 @model OneStaffClockingReport
 @{
     ViewData["Title"] = "Staff Clocking Report";
+    var btnDanger = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-red-600 tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-red-700";
 }
 
-<div class="content-wrapper">
-    <div class="content-header">
-        <div class="container-fluid">
-            <div class="row mb-2">
-                <div class="col-sm-6">
-                    <h1 class="m-0">Individual Staff Clocking Report</h1>
-                </div>
-                <div class="col-sm-6 text-sm-right">
-                    <ol class="breadcrumb float-sm-right">
-                        <li class="breadcrumb-item"><a href="#">Home</a></li>
-                        <li class="breadcrumb-item active">Individual Staff Clocking Report</li>
-                    </ol>
-                    <button type="button" id="btnDownloadPdf" class="btn btn-danger btn-sm">Download PDF</button>
-                </div>
-            </div>
-        </div>
+<div class="tw:mx-auto tw:max-w-7xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
+  <div class="tw:mb-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4">
+    <h1 class="tw:text-2xl tw:font-semibold tw:text-slate-900">Individual Staff Clocking Report</h1>
+    <div class="tw:flex tw:items-center tw:gap-4">
+      <nav class="tw:text-sm tw:text-slate-500">
+        <a href="#" class="tw:hover:text-slate-700">Home</a>
+        <span class="tw:mx-1">/</span>
+        <span class="tw:text-slate-700">Individual Staff Clocking Report</span>
+      </nav>
+      <button type="button" id="btnDownloadPdf" class="@btnDanger">Download PDF</button>
     </div>
-    <div class="content">
-        <div class="container-fluid">
-            <div class="row">
-                <div style="width:100%;">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Staff</th>
-                                <th>Date</th>
-                                <th>Clock In</th>
-                                <th>Clock Out</th>
-                                <th>Hours</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var row in Model.ReportRows)
-                            {
-                                <tr>
-                                    <td>@row.FullName</td>
-                                    <td>@OrgClock.ToLocal(row.CreatedAt)?.ToString("yyyy-MM-dd")</td>
-                                    <td>@(OrgClock.ToLocal(row.ClockInTime)?.ToString("HH:mm:ss") ?? "")</td>
-                                    <td>@(OrgClock.ToLocal(row.ClockOutTime)?.ToString("HH:mm:ss") ?? "")</td>
-                                    <td>@(row.WorkingHours?.ToString(@"hh\:mm\:ss") ?? "")</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+  </div>
+
+  <div class="tw:overflow-hidden tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white">
+    <div class="tw:overflow-x-auto">
+      <table class="tw:min-w-full tw:divide-y tw:divide-slate-200">
+        <thead class="tw:bg-slate-50">
+          <tr>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Staff</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Date</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Clock In</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Clock Out</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Hours</th>
+          </tr>
+        </thead>
+        <tbody class="tw:divide-y tw:divide-slate-100">
+          @foreach (var row in Model.ReportRows)
+          {
+            <tr class="tw:hover:bg-slate-50">
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@row.FullName</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@OrgClock.ToLocal(row.CreatedAt)?.ToString("yyyy-MM-dd")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(OrgClock.ToLocal(row.ClockInTime)?.ToString("HH:mm:ss") ?? "")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(OrgClock.ToLocal(row.ClockOutTime)?.ToString("HH:mm:ss") ?? "")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(row.WorkingHours?.ToString(@"hh\:mm\:ss") ?? "")</td>
+            </tr>
+          }
+        </tbody>
+      </table>
     </div>
+  </div>
 </div>
 
 <script>

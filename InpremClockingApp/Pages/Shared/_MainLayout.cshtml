@@ -22,10 +22,12 @@
 
 <partial name="_MainSidebar"/>
 
-<div class="tw:flex tw:min-h-screen tw:flex-col tw:lg:pl-64">
+<div class="tw:flex tw:min-h-screen tw:min-w-0 tw:flex-col tw:lg:pl-64">
   <partial name="_MainTopmenu"/>
 
-  @RenderBody()
+  <div class="tw:w-full tw:min-w-0">
+    @RenderBody()
+  </div>
 
   <partial name="_Footer"/>
 </div>

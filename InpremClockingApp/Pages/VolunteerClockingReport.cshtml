@@ -2,128 +2,125 @@
 @model VolunteerClockingReport
 @{
     ViewData["Title"] = "Volunteer Clocking Report";
+    var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
+    var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
+    var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
+    var btnDanger = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-red-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-red-700";
 }
 
-<div class="content-wrapper">
-    <div class="content-header">
-        <div class="container-fluid">
-            <div class="row mb-2">
-                <div class="col-sm-6">
-                    <h1 class="m-0">Volunteer Clocking Report</h1>
-                </div>
-                <div class="col-sm-6">
-                    <ol class="breadcrumb float-sm-right">
-                        <li class="breadcrumb-item"><a href="#">Home</a></li>
-                        <li class="breadcrumb-item active">Volunteer Clocking Report</li>
-                    </ol>
-                </div>
-            </div>
+<div class="tw:mx-auto tw:max-w-7xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
+  <div class="tw:mb-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4">
+    <h1 class="tw:text-2xl tw:font-semibold tw:text-slate-900">Volunteer Clocking Report</h1>
+    <nav class="tw:text-sm tw:text-slate-500">
+      <a href="#" class="tw:hover:text-slate-700">Home</a>
+      <span class="tw:mx-1">/</span>
+      <span class="tw:text-slate-700">Volunteer Clocking Report</span>
+    </nav>
+  </div>
+
+  <div class="tw:mb-6 tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:p-4 tw:shadow-sm">
+    <form method="get">
+      @if (ViewData["Error"] != null)
+      {
+        <div class="tw:mb-3 tw:rounded-md tw:bg-red-50 tw:px-3 tw:py-2 tw:text-sm tw:text-red-700">@ViewData["Error"]</div>
+      }
+      <div class="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2 tw:lg:grid-cols-5 tw:lg:items-end">
+        <div class="tw:relative">
+          <label class="@label">Select Volunteer</label>
+          <select class="tw:hidden" id="volunteerSelect">
+            <option value="">-- All --</option>
+            @foreach (var v in Model.Volunteers ?? Enumerable.Empty<InpremClockingApp.Models.Volunteer>())
+            {
+                var isSelected = ViewData["VolunteerId"] != null && ViewData["VolunteerId"].ToString() == v.VolunteerId.ToString();
+                <option value="@v.VolunteerId" selected="@(isSelected ? "selected" : null)">@v.FullName</option>
+            }
+          </select>
+          <input type="text" id="volunteerLookup" class="@input" placeholder="Search volunteer..." />
+          <input type="hidden" name="VolunteerId" id="VolunteerIdHidden" value="@(ViewData["VolunteerId"] ?? "")" />
         </div>
-    </div>
-    <div class="content">
-        <div class="container-fluid">
-            <div class="row">
-                <div style="width:100%;">
-                    <form method="get" class="mb-3">
-                      @if (ViewData["Error"] != null)
-                      {
-                          <div class="alert alert-danger">@ViewData["Error"]</div>
-                      }
-                      <div class="form-row">
-                        <div class="col-md-3">
-                          <label>Select Volunteer</label>
-                          <select class="form-control d-none" id="volunteerSelect">
-                            <option value="">-- All --</option>
-                            @foreach (var v in Model.Volunteers ?? Enumerable.Empty<InpremClockingApp.Models.Volunteer>())
-                            {
-                                var isSelected = ViewData["VolunteerId"] != null && ViewData["VolunteerId"].ToString() == v.VolunteerId.ToString();
-                                <option value="@v.VolunteerId" selected="@(isSelected ? "selected" : null)">@v.FullName</option>
-                            }
-                          </select>
-                          <input type="text" id="volunteerLookup" class="form-control" placeholder="Search volunteer..." />
-                          <input type="hidden" name="VolunteerId" id="VolunteerIdHidden" value="@(ViewData["VolunteerId"] ?? "")" />
-                        </div>
-                        <div class="col-md-3">
-                          <label>Start</label>
-                          <input name="Start" type="datetime-local" class="form-control" value="@(ViewData["Start"] ?? "")" />
-                        </div>
-                        <div class="col-md-3">
-                          <label>End</label>
-                          <input name="End" type="datetime-local" class="form-control" value="@(ViewData["End"] ?? "")" />
-                        </div>
-                        <div class="col-md-3 d-flex align-items-end">
-                          <button class="btn btn-primary">Filter</button>
-                          <button type="button" id="btnDownloadPdf" class="btn btn-danger ml-2">Download PDF</button>
-                        </div>
-                      </div>
-                    </form>
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Volunteer</th>
-                                <th>Date</th>
-                                <th>Clock In</th>
-                                <th>Clock Out</th>
-                                <th>Hours</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var r in Model.ReportRows)
-                            {
-                                var item = r.Clocking?.FirstOrDefault();
-                                <tr>
-                                    <td>@(item?.FullName ?? "")</td>
-                                    <td>@(OrgClock.ToLocal(item?.CreatedAt)?.ToString("yyyy-MM-dd") ?? "")</td>
-                                    <td>@(OrgClock.ToLocal(item?.ClockInTime)?.ToString("HH:mm:ss") ?? "")</td>
-                                    <td>@(OrgClock.ToLocal(item?.ClockOutTime)?.ToString("HH:mm:ss") ?? "")</td>
-                                    <td>@(item?.WorkingHours?.ToString(@"hh\:mm\:ss") ?? "")</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-
-                    <div class="d-flex justify-content-between align-items-center my-3">
-                        <div>
-                            <form id="reportPageSizeForm" method="get" class="form-inline">
-                                <label class="mr-2">Page size</label>
-                                @{ var currentSize = (int)(ViewData["PageSize"] ?? 20); var sel10 = currentSize == 10; var sel20 = currentSize == 20; var sel50 = currentSize == 50; var sel100 = currentSize == 100; }
-                                <select name="pageSize" id="reportPageSizeSelect" class="form-control" onchange="document.getElementById('reportPageSizeForm').submit();">
-                                    <option value="10" selected="@(sel10 ? "selected" : null)">10</option>
-                                    <option value="20" selected="@(sel20 ? "selected" : null)">20</option>
-                                    <option value="50" selected="@(sel50 ? "selected" : null)">50</option>
-                                    <option value="100" selected="@(sel100 ? "selected" : null)">100</option>
-                                </select>
-                                <input type="hidden" name="pageNumber" value="1" />
-                                <input type="hidden" name="VolunteerId" value="@(ViewData["VolunteerId"])" />
-                                <input type="hidden" name="Start" value="@(ViewData["Start"])" />
-                                <input type="hidden" name="End" value="@(ViewData["End"])" />
-                            </form>
-                        </div>
-
-                        <nav aria-label="Page navigation">
-                            <ul class="pagination justify-content-center mb-0">
-                                @{ var current = (int)(ViewData["Page"] ?? 1); var total = (int)(ViewData["TotalPages"] ?? 1); var size = (int)(ViewData["PageSize"] ?? 20); }
-                                <li class="page-item @(current == 1 ? "disabled" : "")">
-                                    <a class="page-link" asp-page="./VolunteerClockingReport" asp-route-pageNumber="@(current-1)" asp-route-pageSize="@size" asp-route-VolunteerId="@ViewData["VolunteerId"]" asp-route-Start="@ViewData["Start"]" asp-route-End="@ViewData["End"]">Previous</a>
-                                </li>
-                                @for (int i = 1; i <= total; i++)
-                                {
-                                    <li class="page-item @(i == current ? "active" : "")"><a class="page-link" asp-page="./VolunteerClockingReport" asp-route-pageNumber="@i" asp-route-pageSize="@size" asp-route-VolunteerId="@ViewData["VolunteerId"]" asp-route-Start="@ViewData["Start"]" asp-route-End="@ViewData["End"]">@i</a></li>
-                                }
-                                <li class="page-item @(current == total ? "disabled" : "")">
-                                    <a class="page-link" asp-page="./VolunteerClockingReport" asp-route-pageNumber="@(current+1)" asp-route-pageSize="@size" asp-route-VolunteerId="@ViewData["VolunteerId"]" asp-route-Start="@ViewData["Start"]" asp-route-End="@ViewData["End"]">Next</a>
-                                </li>
-                            </ul>
-                        </nav>
-
-                        <div>
-                            <small class="text-muted">@(ViewData["TotalCount"] ?? 0) total record(s)</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div>
+          <label class="@label">Start</label>
+          <input name="Start" type="datetime-local" class="@input" value="@(ViewData["Start"] ?? "")" />
         </div>
+        <div>
+          <label class="@label">End</label>
+          <input name="End" type="datetime-local" class="@input" value="@(ViewData["End"] ?? "")" />
+        </div>
+        <div class="tw:flex tw:gap-2">
+          <button class="@btnPrimary tw:w-full">Filter</button>
+          <button type="button" id="btnDownloadPdf" class="@btnDanger tw:w-full">Download PDF</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="tw:overflow-hidden tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white">
+    <div class="tw:overflow-x-auto">
+      <table class="tw:min-w-full tw:divide-y tw:divide-slate-200">
+        <thead class="tw:bg-slate-50">
+          <tr>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Volunteer</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Date</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Clock In</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Clock Out</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Hours</th>
+          </tr>
+        </thead>
+        <tbody class="tw:divide-y tw:divide-slate-100">
+          @foreach (var r in Model.ReportRows)
+          {
+            var item = r.Clocking?.FirstOrDefault();
+            <tr class="tw:hover:bg-slate-50">
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(item?.FullName ?? "")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(OrgClock.ToLocal(item?.CreatedAt)?.ToString("yyyy-MM-dd") ?? "")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(OrgClock.ToLocal(item?.ClockInTime)?.ToString("HH:mm:ss") ?? "")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(OrgClock.ToLocal(item?.ClockOutTime)?.ToString("HH:mm:ss") ?? "")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(item?.WorkingHours?.ToString(@"hh\:mm\:ss") ?? "")</td>
+            </tr>
+          }
+        </tbody>
+      </table>
     </div>
+
+    <div class="tw:flex tw:flex-col tw:gap-3 tw:border-t tw:border-slate-200 tw:px-4 tw:py-3 tw:sm:flex-row tw:sm:items-center tw:sm:justify-between">
+      <form id="reportPageSizeForm" method="get" class="tw:flex tw:items-center tw:gap-2">
+        <label class="tw:text-sm tw:text-slate-600">Page size</label>
+        @{ var currentSize = (int)(ViewData["PageSize"] ?? 20); var sel10 = currentSize == 10; var sel20 = currentSize == 20; var sel50 = currentSize == 50; var sel100 = currentSize == 100; }
+        <select name="pageSize" id="reportPageSizeSelect" class="tw:rounded-md tw:border tw:border-slate-300 tw:px-2 tw:py-1 tw:text-sm" onchange="document.getElementById('reportPageSizeForm').submit();">
+          <option value="10" selected="@(sel10 ? "selected" : null)">10</option>
+          <option value="20" selected="@(sel20 ? "selected" : null)">20</option>
+          <option value="50" selected="@(sel50 ? "selected" : null)">50</option>
+          <option value="100" selected="@(sel100 ? "selected" : null)">100</option>
+        </select>
+        <input type="hidden" name="pageNumber" value="1" />
+        <input type="hidden" name="VolunteerId" value="@(ViewData["VolunteerId"])" />
+        <input type="hidden" name="Start" value="@(ViewData["Start"])" />
+        <input type="hidden" name="End" value="@(ViewData["End"])" />
+      </form>
+
+      <nav aria-label="Page navigation">
+        <ul class="tw:flex tw:items-center tw:gap-1">
+          @{ var current = (int)(ViewData["Page"] ?? 1); var total = (int)(ViewData["TotalPages"] ?? 1); var size = (int)(ViewData["PageSize"] ?? 20); }
+          <li>
+            <a class="tw:rounded-md tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium @(current == 1 ? "tw:pointer-events-none tw:text-slate-300" : "tw:text-slate-600 tw:hover:bg-slate-100")" asp-page="./VolunteerClockingReport" asp-route-pageNumber="@(current-1)" asp-route-pageSize="@size" asp-route-VolunteerId="@ViewData["VolunteerId"]" asp-route-Start="@ViewData["Start"]" asp-route-End="@ViewData["End"]">Previous</a>
+          </li>
+          @for (int i = 1; i <= total; i++)
+          {
+            <li>
+              <a class="tw:rounded-md tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium @(i == current ? "tw:bg-blue-600 tw:text-white" : "tw:text-slate-600 tw:hover:bg-slate-100")" asp-page="./VolunteerClockingReport" asp-route-pageNumber="@i" asp-route-pageSize="@size" asp-route-VolunteerId="@ViewData["VolunteerId"]" asp-route-Start="@ViewData["Start"]" asp-route-End="@ViewData["End"]">@i</a>
+            </li>
+          }
+          <li>
+            <a class="tw:rounded-md tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium @(current == total ? "tw:pointer-events-none tw:text-slate-300" : "tw:text-slate-600 tw:hover:bg-slate-100")" asp-page="./VolunteerClockingReport" asp-route-pageNumber="@(current+1)" asp-route-pageSize="@size" asp-route-VolunteerId="@ViewData["VolunteerId"]" asp-route-Start="@ViewData["Start"]" asp-route-End="@ViewData["End"]">Next</a>
+          </li>
+        </ul>
+      </nav>
+
+      <div>
+        <small class="tw:text-sm tw:text-slate-500">@(ViewData["TotalCount"] ?? 0) total record(s)</small>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -137,14 +134,15 @@
       if(!container){
         container = document.createElement('div');
         container.id = 'vol-suggestions';
-        container.className = 'list-group position-absolute';
+        container.className = 'tw:absolute tw:z-10 tw:mt-1 tw:w-full tw:rounded-md tw:border tw:border-slate-200 tw:bg-white tw:shadow-lg';
+        input.parentNode.style.position = 'relative';
         input.parentNode.appendChild(container);
       }
       container.innerHTML = '';
         items.forEach(i => {
         const el = document.createElement('button');
         el.type = 'button';
-        el.className = 'list-group-item list-group-item-action';
+        el.className = 'tw:block tw:w-full tw:cursor-pointer tw:border-0 tw:bg-transparent tw:px-3 tw:py-2 tw:text-left tw:text-sm tw:text-slate-700 tw:hover:bg-slate-50';
         el.textContent = i.text;
         el.addEventListener('click', function(){
           // set hidden id and navigate using querystring to ensure server receives the VolunteerId
@@ -260,4 +258,3 @@
     });
   })();
 </script>
-

@@ -2,137 +2,128 @@
 @model StaffClocking
 @{
     ViewData["Title"] = "Staff Clocking";
+    var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
+    var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
+    var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
+    var actionBtn = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:px-2.5 tw:py-1 tw:text-xs tw:font-medium tw:text-white";
 }
 
-<div class="content-wrapper">
-<div class="content-header">
-  <div class="container-fluid">
-    <div class="row mb-2">
-      <div class="col-sm-6">
-        <h1 class="m-0">Staff Clocking</h1>
-      </div>
-      <div class="col-sm-6">
-        <ol class="breadcrumb float-sm-right">
-          <li class="breadcrumb-item"><a href="#">Home</a></li>
-          <li class="breadcrumb-item active">Staff Clocking</li>
-        </ol>
-      </div>
+<div class="tw:mx-auto tw:max-w-7xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
+  <div class="tw:mb-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4">
+    <h1 class="tw:text-2xl tw:font-semibold tw:text-slate-900">Staff Clocking</h1>
+    <nav class="tw:text-sm tw:text-slate-500">
+      <a href="#" class="tw:hover:text-slate-700">Home</a>
+      <span class="tw:mx-1">/</span>
+      <span class="tw:text-slate-700">Staff Clocking</span>
+    </nav>
+  </div>
+
+  <div class="tw:mb-6 tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:shadow-sm">
+    <div class="tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+      <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">Manual Clocking Here</h2>
+    </div>
+    <div class="tw:p-4">
+      <form asp-page="StaffClocking" method="post">
+        <div class="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2 tw:lg:grid-cols-6 tw:lg:items-end">
+          <div class="tw:lg:col-span-3">
+            <label for="staffLookup" class="@label">Search Staff (name or email)</label>
+            @{
+                var selectedStaff = Model.ClockingStaff?.StafId > 0
+                    ? (Model.Model.Staff ?? Enumerable.Empty<InpremClockingApp.Models.Staff>()).FirstOrDefault(s => s.StaffId == Model.ClockingStaff.StafId)
+                    : null;
+            }
+            <input type="text" id="staffLookup" class="@input" placeholder="Search by name or email..." autocomplete="off" value="@selectedStaff?.FullName" required />
+            <input type="hidden" asp-for="ClockingStaff.StafId" id="staffIdHidden" />
+          </div>
+          <div>
+            <label for="clockIn" class="@label">Clock In</label>
+            <input id="clockIn" asp-for="ClockingStaff.ClockInTime" class="@input" type="datetime-local" />
+          </div>
+          <div>
+            <label for="clockOut" class="@label">Clock Out</label>
+            <input id="clockOut" asp-for="ClockingStaff.ClockOutTime" class="@input" type="datetime-local" />
+          </div>
+          <div>
+            <button id="btnClockIn" type="submit" class="@btnPrimary tw:w-full">Clock In</button>
+          </div>
+        </div>
+      </form>
     </div>
   </div>
-</div>
-<div class="content">
-  <div class="container-fluid">
-      <div class="row">
-          <div class="col-md-12" style="margin-bottom: 30px;">
-              <div class="card card-primary card-outline">
-                <div class="card-header">
-                  <h5 class="m-0">Manual Clocking Here</h5>
-                </div>
-                <div class="card-body">
-                  <form asp-page="StaffClocking" method="post">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <label for="staffLookup">Search Staff (name or email)</label>
-                                @{
-                                    var selectedStaff = Model.ClockingStaff?.StafId > 0
-                                        ? (Model.Model.Staff ?? Enumerable.Empty<InpremClockingApp.Models.Staff>()).FirstOrDefault(s => s.StaffId == Model.ClockingStaff.StafId)
-                                        : null;
-                                }
-                                <input type="text" id="staffLookup" class="form-control" placeholder="Search by name or email..." autocomplete="off" value="@selectedStaff?.FullName" required />
-                                <input type="hidden" asp-for="ClockingStaff.StafId" id="staffIdHidden" />
-                            </div>
-                            <div class="col-md-2">
-                                <label for="clockIn">Clock In</label>
-                                <input id="clockIn" asp-for="ClockingStaff.ClockInTime" class="form-control" type="datetime-local" />
-                            </div>
-                            <div class="col-md-2">
-                                <label for="clockOut">Clock Out</label>
-                                <input id="clockOut" asp-for="ClockingStaff.ClockOutTime" class="form-control" type="datetime-local" />
-                            </div>
-                            <div class="col-md-2 d-flex align-items-end">
-                                <button id="btnClockIn" type="submit" class="btn btn-primary">Clock In</button>
-                            </div>
-                        </div>
-                  </form>
-                </div>
-              </div>
-          </div>
-          <div class="col-md-12">
-              <div class="table-responsive">
-                <table class="table table-striped" id="clockingTable">
-                    <thead>
-                        <tr>
-                            <th>Full Name</th>
-                            <th>Date</th>
-                            <th>Clock In</th>
-                            <th>Clock Out</th>
-                            <th>Break Start</th>
-                            <th>Break End</th>
-                            <th>Working</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var c in Model.Model?.Clocking ?? Enumerable.Empty<InpremClockingApp.Models.ClockingStaff>())
-                        {
-                            <tr>
-                                @* <td>@c.ClockingStaffId</td> *@
-                                <td>@c.FullName</td>
-                                <td>@OrgClock.ToLocal(c.CreatedAt)?.ToString("yyyy-MM-dd")</td>
-                                <td>@(OrgClock.ToLocal(c.ClockInTime)?.ToString("HH:mm:ss") ?? "")</td>
-                                <td>@(OrgClock.ToLocal(c.ClockOutTime)?.ToString("HH:mm:ss") ?? "")</td>
-                                <td>@(OrgClock.ToLocal(c.LeaveOnBreakTime)?.ToString("HH:mm:ss") ?? "")</td>
-                                <td>@(OrgClock.ToLocal(c.ReturnOnBreakTime)?.ToString("HH:mm:ss") ?? "")</td>
-                                <td>@(c.WorkingHours?.ToString(@"hh\:mm\:ss") ?? "")</td>
-                                <td>
-                                    <button class="btn btn-sm btn-success" onclick="postAction('ClockOut', { ClockingStaffId: @c.ClockingStaffId })">Clock Out</button>
-                                    <button class="btn btn-sm btn-warning" onclick="postAction('BreakStart', { ClockingStaffId: @c.ClockingStaffId })">Break Start</button>
-                                    <button class="btn btn-sm btn-info" onclick="postAction('BreakEnd', { ClockingStaffId: @c.ClockingStaffId })">Break End</button>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
 
-                <div class="d-flex justify-content-between align-items-center my-3">
-                    <div>
-                        <form id="pageSizeForm" method="get" class="form-inline">
-                            <label class="mr-2">Page size</label>
-                            @{
-                                var currentSize = (int)(ViewData["PageSize"] ?? 20); var sel10 = currentSize == 10; var sel20 = currentSize == 20; var sel50 = currentSize == 50; var sel100 = currentSize == 100;
-                            }
-                            <select name="pageSize" id="pageSizeSelect" class="form-control" onchange="document.getElementById('pageSizeForm').submit();">
-                                <option value="10" selected="@(sel10 ? "selected" : null)">10</option>
-                                <option value="20" selected="@(sel20 ? "selected" : null)">20</option>
-                                <option value="50" selected="@(sel50 ? "selected" : null)">50</option>
-                                <option value="100" selected="@(sel100 ? "selected" : null)">100</option>
-                            </select>
-                            <input type="hidden" name="pageNumber" value="1" />
-                        </form>
-                    </div>
-
-
-                  <nav aria-label="Page navigation">
-                    <ul class="pagination justify-content-center mb-0">
-                      @{ var current = (int)(ViewData["Page"] ?? 1); var total = (int)(ViewData["TotalPages"] ?? 1); var size = (int)(ViewData["PageSize"] ?? 20); }
-                      <li class="page-item @(current == 1 ? "disabled" : "")">
-                        <a class="page-link" asp-page="./StaffClocking" asp-route-pageNumber="@(current-1)" asp-route-pageSize="@size">Previous</a>
-                      </li>
-                      @for (int i = 1; i <= total; i++)
-                      {
-                          <li class="page-item @(i == current ? "active" : "")"><a class="page-link" asp-page="./StaffClocking" asp-route-pageNumber="@i" asp-route-pageSize="@size">@i</a></li>
-                      }
-                      <li class="page-item @(current == total ? "disabled" : "")">
-                        <a class="page-link" asp-page="./StaffClocking" asp-route-pageNumber="@(current+1)" asp-route-pageSize="@size">Next</a>
-                      </li>
-                    </ul>
-                  </nav>
+  <div class="tw:overflow-hidden tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white">
+    <div class="tw:overflow-x-auto">
+      <table class="tw:min-w-full tw:divide-y tw:divide-slate-200" id="clockingTable">
+        <thead class="tw:bg-slate-50">
+          <tr>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Full Name</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Date</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Clock In</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Clock Out</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Break Start</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Break End</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Working</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="tw:divide-y tw:divide-slate-100">
+          @foreach (var c in Model.Model?.Clocking ?? Enumerable.Empty<InpremClockingApp.Models.ClockingStaff>())
+          {
+            <tr class="tw:hover:bg-slate-50">
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@c.FullName</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@OrgClock.ToLocal(c.CreatedAt)?.ToString("yyyy-MM-dd")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(OrgClock.ToLocal(c.ClockInTime)?.ToString("HH:mm:ss") ?? "")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(OrgClock.ToLocal(c.ClockOutTime)?.ToString("HH:mm:ss") ?? "")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(OrgClock.ToLocal(c.LeaveOnBreakTime)?.ToString("HH:mm:ss") ?? "")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(OrgClock.ToLocal(c.ReturnOnBreakTime)?.ToString("HH:mm:ss") ?? "")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(c.WorkingHours?.ToString(@"hh\:mm\:ss") ?? "")</td>
+              <td class="tw:px-4 tw:py-3 tw:whitespace-nowrap">
+                <div class="tw:flex tw:gap-1.5">
+                  <button class="@actionBtn tw:bg-emerald-600 tw:hover:bg-emerald-700" onclick="postAction('ClockOut', { ClockingStaffId: @c.ClockingStaffId })">Clock Out</button>
+                  <button class="@actionBtn tw:bg-amber-500 tw:hover:bg-amber-600" onclick="postAction('BreakStart', { ClockingStaffId: @c.ClockingStaffId })">Break Start</button>
+                  <button class="@actionBtn tw:bg-sky-500 tw:hover:bg-sky-600" onclick="postAction('BreakEnd', { ClockingStaffId: @c.ClockingStaffId })">Break End</button>
                 </div>
-              </div>
-          </div>
-      </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tw:flex tw:flex-col tw:gap-3 tw:border-t tw:border-slate-200 tw:px-4 tw:py-3 tw:sm:flex-row tw:sm:items-center tw:sm:justify-between">
+      <form id="pageSizeForm" method="get" class="tw:flex tw:items-center tw:gap-2">
+        <label class="tw:text-sm tw:text-slate-600">Page size</label>
+        @{
+            var currentSize = (int)(ViewData["PageSize"] ?? 20); var sel10 = currentSize == 10; var sel20 = currentSize == 20; var sel50 = currentSize == 50; var sel100 = currentSize == 100;
+        }
+        <select name="pageSize" id="pageSizeSelect" class="tw:rounded-md tw:border tw:border-slate-300 tw:px-2 tw:py-1 tw:text-sm" onchange="document.getElementById('pageSizeForm').submit();">
+          <option value="10" selected="@(sel10 ? "selected" : null)">10</option>
+          <option value="20" selected="@(sel20 ? "selected" : null)">20</option>
+          <option value="50" selected="@(sel50 ? "selected" : null)">50</option>
+          <option value="100" selected="@(sel100 ? "selected" : null)">100</option>
+        </select>
+        <input type="hidden" name="pageNumber" value="1" />
+      </form>
+
+      <nav aria-label="Page navigation">
+        <ul class="tw:flex tw:items-center tw:gap-1">
+          @{ var current = (int)(ViewData["Page"] ?? 1); var total = (int)(ViewData["TotalPages"] ?? 1); var size = (int)(ViewData["PageSize"] ?? 20); }
+          <li>
+            <a class="tw:rounded-md tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium @(current == 1 ? "tw:pointer-events-none tw:text-slate-300" : "tw:text-slate-600 tw:hover:bg-slate-100")" asp-page="./StaffClocking" asp-route-pageNumber="@(current-1)" asp-route-pageSize="@size">Previous</a>
+          </li>
+          @for (int i = 1; i <= total; i++)
+          {
+            <li>
+              <a class="tw:rounded-md tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium @(i == current ? "tw:bg-blue-600 tw:text-white" : "tw:text-slate-600 tw:hover:bg-slate-100")" asp-page="./StaffClocking" asp-route-pageNumber="@i" asp-route-pageSize="@size">@i</a>
+            </li>
+          }
+          <li>
+            <a class="tw:rounded-md tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium @(current == total ? "tw:pointer-events-none tw:text-slate-300" : "tw:text-slate-600 tw:hover:bg-slate-100")" asp-page="./StaffClocking" asp-route-pageNumber="@(current+1)" asp-route-pageSize="@size">Next</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
   </div>
-</div>
 </div>
 
 <script>
@@ -166,9 +157,8 @@
         function ensureContainer() {
             if (!container) {
                 container = document.createElement('div');
-                container.className = 'list-group position-absolute';
-                container.style.zIndex = '1000';
-                container.style.width = '100%';
+                container.className = 'tw:absolute tw:z-10 tw:mt-1 tw:w-full tw:rounded-md tw:border tw:border-slate-200 tw:bg-white tw:shadow-lg';
+                input.parentNode.style.position = 'relative';
                 input.parentNode.appendChild(container);
             }
             return container;
@@ -180,7 +170,7 @@
             items.forEach(function (i) {
                 const el = document.createElement('button');
                 el.type = 'button';
-                el.className = 'list-group-item list-group-item-action';
+                el.className = 'tw:block tw:w-full tw:cursor-pointer tw:border-0 tw:bg-transparent tw:px-3 tw:py-2 tw:text-left tw:text-sm tw:text-slate-700 tw:hover:bg-slate-50';
                 el.textContent = i.email ? `${i.text} (${i.email})` : i.text;
                 el.addEventListener('click', function () {
                     input.value = i.text;
