@@ -258,4 +258,200 @@ public class StaffReportsController : ControllerBase
             $"staff-{id}-hours.pdf");
     }
 
+    [HttpGet("staff-clocking-report-pdf")]
+    public async Task<IActionResult> GetStaffClockingReportPdf(
+        [FromQuery] int? staffId,
+        [FromQuery] DateTime? start,
+        [FromQuery] DateTime? end)
+    {
+        var s = start ?? OrgClock.NowLocal().Date.AddDays(-30);
+        var e = end ?? OrgClock.NowLocal().Date.AddDays(1).AddTicks(-1);
+
+        string? staffName = null;
+        if (staffId.HasValue && staffId.Value > 0)
+        {
+            var staff = await _staff.GetById(staffId.Value);
+            staffName = staff?.FullName?.Trim();
+        }
+
+        var rows = staffId.HasValue && staffId.Value > 0
+            ? await _clocking.GetClockingReportForStaff(staffId.Value, s, e)
+            : await _clocking.GetClockingReport(s, e);
+
+        var totalWorked = TimeSpan.Zero;
+        foreach (var row in rows)
+        {
+            if (row.WorkingHours.HasValue)
+                totalWorked += row.WorkingHours.Value;
+        }
+
+        var pdfBytes = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(50);
+
+                page.Header()
+                    .Column(header =>
+                    {
+                        header.Item().Height(55);
+
+                        header.Item()
+                            .AlignCenter()
+                            .Text("Inprem Holistic Community Resource Center")
+                            .FontSize(18)
+                            .Bold();
+
+                        header.Item().PaddingTop(5).LineHorizontal(1);
+                    });
+
+                page.Content()
+                    .PaddingTop(25)
+                    .Column(column =>
+                    {
+                        column.Spacing(10);
+
+                        column.Item().Text("Staff Clocking Report").FontSize(15).Bold();
+
+                        column.Item()
+                            .Text(string.IsNullOrWhiteSpace(staffName) ? "Staff: All Staff" : $"Staff: {staffName}")
+                            .FontSize(11);
+
+                        column.Item().Text($"Period: {s:dd MMM yyyy} - {e:dd MMM yyyy}").FontSize(11);
+
+                        column.Item()
+                            .PaddingTop(10)
+                            .Table(table =>
+                            {
+                                table.ColumnsDefinition(columns =>
+                                {
+                                    columns.RelativeColumn(2);
+                                    columns.RelativeColumn(1);
+                                    columns.RelativeColumn(1);
+                                    columns.RelativeColumn(1);
+                                    columns.RelativeColumn(1);
+                                });
+
+                                table.Header(header =>
+                                {
+                                    header.Cell().Text("Staff").Bold();
+                                    header.Cell().Text("Date").Bold();
+                                    header.Cell().Text("Clock In").Bold();
+                                    header.Cell().Text("Clock Out").Bold();
+                                    header.Cell().Text("Hours").Bold();
+                                });
+
+                                foreach (var row in rows)
+                                {
+                                    table.Cell().Text(row.FullName ?? "");
+                                    table.Cell().Text(OrgClock.ToLocal(row.CreatedAt)?.ToString("yyyy-MM-dd") ?? "");
+                                    table.Cell().Text(OrgClock.ToLocal(row.ClockInTime)?.ToString("HH:mm:ss") ?? "");
+                                    table.Cell().Text(OrgClock.ToLocal(row.ClockOutTime)?.ToString("HH:mm:ss") ?? "");
+                                    table.Cell().Text(row.WorkingHours?.ToString(@"hh\:mm\:ss") ?? "");
+                                }
+                            });
+
+                        column.Item()
+                            .PaddingTop(10)
+                            .Text($"Total Hours: {(int)totalWorked.TotalHours:D2}:{totalWorked.Minutes:D2}:{totalWorked.Seconds:D2}")
+                            .FontSize(12)
+                            .Bold();
+                    });
+
+                page.Footer()
+                    .AlignCenter()
+                    .Column(footer =>
+                    {
+                        footer.Item().Text("Please contact us for further information.").FontSize(9);
+                        footer.Item().PaddingTop(3).Text("Inprem Admin").FontSize(9).Bold();
+                    });
+            });
+        }).GeneratePdf();
+
+        var fname = staffId.HasValue && staffId.Value > 0
+            ? $"staff-{staffId}-clocking-report-{s:yyyyMMdd}-{e:yyyyMMdd}.pdf"
+            : $"staff-clocking-report-{s:yyyyMMdd}-{e:yyyyMMdd}.pdf";
+
+        return File(pdfBytes, "application/pdf", fname);
+    }
+
+    [HttpGet("staff-list-pdf")]
+    public async Task<IActionResult> GetStaffListPdf()
+    {
+        var staffList = (await _staff.GetAll()).ToList();
+
+        var pdfBytes = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(50);
+
+                page.Header()
+                    .Column(header =>
+                    {
+                        header.Item().Height(55);
+
+                        header.Item()
+                            .AlignCenter()
+                            .Text("Inprem Holistic Community Resource Center")
+                            .FontSize(18)
+                            .Bold();
+
+                        header.Item().PaddingTop(5).LineHorizontal(1);
+                    });
+
+                page.Content()
+                    .PaddingTop(25)
+                    .Column(column =>
+                    {
+                        column.Spacing(10);
+
+                        column.Item().Text("Staff Report").FontSize(15).Bold();
+                        column.Item().Text($"Total Staff: {staffList.Count}").FontSize(11);
+
+                        column.Item()
+                            .PaddingTop(10)
+                            .Table(table =>
+                            {
+                                table.ColumnsDefinition(columns =>
+                                {
+                                    columns.RelativeColumn(2);
+                                    columns.RelativeColumn(2);
+                                    columns.RelativeColumn(3);
+                                    columns.RelativeColumn(2);
+                                });
+
+                                table.Header(header =>
+                                {
+                                    header.Cell().Text("First Name").Bold();
+                                    header.Cell().Text("Last Name").Bold();
+                                    header.Cell().Text("Email").Bold();
+                                    header.Cell().Text("Phone").Bold();
+                                });
+
+                                foreach (var staff in staffList)
+                                {
+                                    table.Cell().Text(staff.FirstName ?? "");
+                                    table.Cell().Text(staff.LastName ?? "");
+                                    table.Cell().Text(staff.EmailAddress ?? "");
+                                    table.Cell().Text(staff.PhoneNumber ?? "");
+                                }
+                            });
+                    });
+
+                page.Footer()
+                    .AlignCenter()
+                    .Column(footer =>
+                    {
+                        footer.Item().Text("Please contact us for further information.").FontSize(9);
+                        footer.Item().PaddingTop(3).Text("Inprem Admin").FontSize(9).Bold();
+                    });
+            });
+        }).GeneratePdf();
+
+        return File(pdfBytes, "application/pdf", "staff-list.pdf");
+    }
+
 }

@@ -19,6 +19,25 @@ public class AuthService
         return await _userManager.Users.ToListAsync().ConfigureAwait(false);
     }
 
+    public async Task<Models.PagedResult<AppUser>> GetPaged(int page, int pageSize)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+
+        var query = _userManager.Users.OrderBy(u => u.Email);
+
+        var total = await query.CountAsync().ConfigureAwait(false);
+        var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync().ConfigureAwait(false);
+
+        return new Models.PagedResult<AppUser>
+        {
+            Items = items,
+            TotalCount = total,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
+
     /// <summary>
     /// Creates a new back-office admin account and grants it the Admin role.
     /// Only reachable from the admin-only /User page - this is the sole way new

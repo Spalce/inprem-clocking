@@ -56,6 +56,41 @@ public class VolunteerClockingService
         return await _db.Clockings.ToListAsync().ConfigureAwait(false);
     }
 
+    // Paginated variant of GetClockingReport/GetClockingReportForVolunteer, for report pages
+    // backed by potentially large date ranges. Preserves the same clock-in-or-clock-out range filter.
+    public async Task<PagedResult<VolunteerClockingVm>> GetClockingReportPaged(DateTime start, DateTime end, int? volunteerId, int page, int pageSize)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+
+        var startUtc = OrgClock.ToUtc(start);
+        var endUtc = OrgClock.ToUtc(end);
+
+        var query = _db.Clockings
+            .Where(e => (e.ClockInTime >= startUtc && e.ClockInTime <= endUtc) || (e.ClockOutTime != null && e.ClockOutTime >= startUtc && e.ClockOutTime <= endUtc));
+
+        if (volunteerId.HasValue)
+            query = query.Where(e => e.VoluntId == volunteerId.Value);
+
+        query = query.OrderByDescending(e => e.CreatedAt!.Value);
+
+        var total = await query.CountAsync().ConfigureAwait(false);
+        var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync().ConfigureAwait(false);
+
+        var list = items.Select(e => new VolunteerClockingVm
+        {
+            Clocking = new List<Clocking> { e }
+        }).ToList();
+
+        return new PagedResult<VolunteerClockingVm>
+        {
+            Items = list,
+            TotalCount = total,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
+
     // start/end, when provided, are org-local wall-clock boundaries; converted to UTC for the query.
     public async Task<PagedResult<Clocking>> GetPaged(int page, int pageSize, int? volunteerId = null, DateTime? start = null, DateTime? end = null)
     {

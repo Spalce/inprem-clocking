@@ -254,10 +254,10 @@
 
                         var firstItem = totalCount == 0
                             ? 0
-                            : ((Model.Page - 1) * Model.PageSize) + 1;
+                            : ((Model.PageNumber - 1) * Model.PageSize) + 1;
 
                         var lastItem = Math.Min(
-                            Model.Page * Model.PageSize,
+                            Model.PageNumber * Model.PageSize,
                             totalCount);
                     }
 
@@ -276,14 +276,14 @@
                                 <nav>
                                     <ul class="pagination justify-content-md-end mb-0">
 
-                                        <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                                        <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
                                             <a class="page-link"
                                                asp-page="/HoursWorked"
                                                asp-route-type="@Model.Type"
                                                asp-route-id="@Model.Id"
                                                asp-route-start="@Model.Start?.ToString("yyyy-MM-dd")"
                                                asp-route-end="@Model.End?.ToString("yyyy-MM-dd")"
-                                               asp-route-page="@(Model.Page - 1)"
+                                               asp-route-pageNumber="@(Model.PageNumber - 1)"
                                                asp-route-pageSize="@Model.PageSize">
                                                 Previous
                                             </a>
@@ -291,28 +291,28 @@
 
                                         @for (int i = 1; i <= totalPages; i++)
                                         {
-                                            <li class="page-item @(i == Model.Page ? "active" : "")">
+                                            <li class="page-item @(i == Model.PageNumber ? "active" : "")">
                                                 <a class="page-link"
                                                    asp-page="/HoursWorked"
                                                    asp-route-type="@Model.Type"
                                                    asp-route-id="@Model.Id"
                                                    asp-route-start="@Model.Start?.ToString("yyyy-MM-dd")"
                                                    asp-route-end="@Model.End?.ToString("yyyy-MM-dd")"
-                                                   asp-route-page="@i"
+                                                   asp-route-pageNumber="@i"
                                                    asp-route-pageSize="@Model.PageSize">
                                                     @i
                                                 </a>
                                             </li>
                                         }
 
-                                        <li class="page-item @(Model.Page >= totalPages ? "disabled" : "")">
+                                        <li class="page-item @(Model.PageNumber >= totalPages ? "disabled" : "")">
                                             <a class="page-link"
                                                asp-page="/HoursWorked"
                                                asp-route-type="@Model.Type"
                                                asp-route-id="@Model.Id"
                                                asp-route-start="@Model.Start?.ToString("yyyy-MM-dd")"
                                                asp-route-end="@Model.End?.ToString("yyyy-MM-dd")"
-                                               asp-route-page="@(Model.Page + 1)"
+                                               asp-route-pageNumber="@(Model.PageNumber + 1)"
                                                asp-route-pageSize="@Model.PageSize">
                                                 Next
                                             </a>
@@ -365,7 +365,7 @@
 
                         </select>
 
-                        <input type="hidden" name="page" value="1" />
+                        <input type="hidden" name="pageNumber" value="1" />
 
                     </form>
 

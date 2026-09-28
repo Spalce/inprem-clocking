@@ -21,11 +21,29 @@ public class Staff : PageModel
     public IEnumerable<Models.Staff>? Staffs { get; set; }
     public Models.Staff? Model { get; set; }
 
+    [BindProperty(SupportsGet = true)]
+    public string? Search { get; set; }
+
+    // Named "pageNumber" rather than "page" because "page" is a reserved Razor Pages route
+    // value (the page's own path) - a query string "page" is intercepted by route-value model
+    // binding before it ever reaches a same-named property.
+    [BindProperty(SupportsGet = true)]
+    public int PageNumber { get; set; } = 1;
+
+    [BindProperty(SupportsGet = true)]
+    public int PageSize { get; set; } = 20;
+
     public async Task<IActionResult> OnGetAsync()
     {
-        var model = await _service.GetAll().ConfigureAwait(true);
-        if (model != null!)
-            Staffs = model;
+        var result = await _service.SearchByName(Search, PageNumber, PageSize).ConfigureAwait(true);
+        Staffs = result.Items;
+
+        ViewData["Search"] = Search;
+        ViewData["TotalCount"] = result.TotalCount;
+        ViewData["Page"] = result.Page;
+        ViewData["PageSize"] = result.PageSize;
+        ViewData["TotalPages"] = result.TotalPages;
+
         return Page();
     }
 

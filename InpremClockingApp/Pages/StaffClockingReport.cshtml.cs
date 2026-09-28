@@ -25,6 +25,15 @@ public class StaffClockingReport : PageModel
     [BindProperty(SupportsGet = true)]
     public DateTime? End { get; set; }
 
+    // Named "pageNumber" rather than "page" because "page" is a reserved Razor Pages route
+    // value (the page's own path) - a query string "page" is intercepted by route-value model
+    // binding before it ever reaches a same-named property.
+    [BindProperty(SupportsGet = true)]
+    public int PageNumber { get; set; } = 1;
+
+    [BindProperty(SupportsGet = true)]
+    public int PageSize { get; set; } = 20;
+
     public StaffClockingReport(StaffClockingService service, StaffService staffService)
     {
         _service = service;
@@ -45,15 +54,22 @@ public class StaffClockingReport : PageModel
         if (Start.HasValue && End.HasValue && Start.Value > End.Value)
         {
             ViewData["Error"] = "Start must be before or equal to End.";
+            ViewData["Page"] = 1;
+            ViewData["PageSize"] = PageSize;
+            ViewData["TotalCount"] = 0;
+            ViewData["TotalPages"] = 0;
             Staffs = await _staffService.GetAll().ConfigureAwait(false);
             ReportRows = new List<ClockingStaff>();
             return Page();
         }
 
-        if (StaffId.HasValue)
-            ReportRows = await _service.GetClockingReportForStaff(StaffId.Value, start, end).ConfigureAwait(false);
-        else
-            ReportRows = await _service.GetClockingReport(start, end).ConfigureAwait(false);
+        var result = await _service.GetClockingReportPaged(start, end, StaffId, PageNumber, PageSize).ConfigureAwait(false);
+        ReportRows = result.Items.ToList();
+
+        ViewData["Page"] = result.Page;
+        ViewData["PageSize"] = result.PageSize;
+        ViewData["TotalCount"] = result.TotalCount;
+        ViewData["TotalPages"] = result.TotalPages;
 
         Staffs = await _staffService.GetAll().ConfigureAwait(false);
 

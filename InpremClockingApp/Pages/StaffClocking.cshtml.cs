@@ -23,16 +23,18 @@ public class StaffClocking : PageModel
     [BindProperty]
     public ClockingStaff ClockingStaff { get; set; } = new();
 
-    // pagination parameters
+    // pagination parameters. Named "pageNumber" rather than "page" because "page" is a
+    // reserved Razor Pages route value (the page's own path) - a query string "page" is
+    // intercepted by route-value model binding before it ever reaches a same-named property.
     [BindProperty(SupportsGet = true)]
-    public int Page { get; set; } = 1;
+    public int PageNumber { get; set; } = 1;
 
     [BindProperty(SupportsGet = true)]
     public int PageSize { get; set; } = 20;
 
     public async Task<IActionResult> OnGetAsync()
     {
-        var paged = await _service.GetPaged(Page, PageSize).ConfigureAwait(true);
+        var paged = await _service.GetPaged(PageNumber, PageSize).ConfigureAwait(true);
         Model!.Clocking = paged.Items;
         Model.Staff = await _staff.GetAll().ConfigureAwait(true);
 
@@ -70,7 +72,7 @@ public class StaffClocking : PageModel
         await _service.Create(ClockingStaff).ConfigureAwait(true);
 
         // repopulate list so the newly created clocking shows immediately
-        var paged = await _service.GetPaged(Page, PageSize).ConfigureAwait(true);
+        var paged = await _service.GetPaged(PageNumber, PageSize).ConfigureAwait(true);
         Model!.Clocking = paged.Items;
         Model.Staff = await _staff.GetAll().ConfigureAwait(true);
 

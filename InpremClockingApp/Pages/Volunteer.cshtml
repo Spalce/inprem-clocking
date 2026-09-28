@@ -9,7 +9,7 @@
   <div class="container-fluid">
     <div class="row mb-2">
       <div class="col-sm-6">
-        <h1 class="m-0">Volunteers List (Total: @Model.Volunteers!.Count())</h1>
+        <h1 class="m-0">Volunteers List (Total: @(ViewData["TotalCount"] ?? 0))</h1>
       </div>
       <div class="col-sm-6">
         <ol class="breadcrumb float-sm-right">
@@ -56,9 +56,12 @@
     <div class="row">
         <div class="col-md-12">
             <div class="d-flex justify-content-between mb-2">
-                <div style="flex:1">
-                    <input id="vemailSearch" placeholder="Search by email..." class="form-control" autocomplete="off" />
-                    <div id="vemailHint" class="small text-muted mt-1">Type to search emails</div>
+                <div style="flex:1" class="d-flex">
+                    <div style="flex:1">
+                        <input id="vemailSearch" placeholder="Search by name or email..." class="form-control" autocomplete="off" value="@ViewData["Search"]" />
+                        <div id="vemailHint" class="small text-muted mt-1">Type to search all volunteers</div>
+                    </div>
+                    <button id="vbtnSearch" class="btn btn-outline-secondary ml-2" style="height:38px;">Search</button>
                 </div>
                 <div class="ml-2">
                     <button id="vbtnAdd" class="btn btn-primary">Add New</button>
@@ -102,6 +105,39 @@
                     }
                 </tbody>
             </table>
+
+            <div class="d-flex justify-content-between align-items-center my-3">
+                <div>
+                    <form id="vpageSizeForm" method="get" class="form-inline">
+                        <label class="mr-2">Page size</label>
+                        @{ var currentSize = (int)(ViewData["PageSize"] ?? 20); var vsel10 = currentSize == 10; var vsel20 = currentSize == 20; var vsel50 = currentSize == 50; var vsel100 = currentSize == 100; }
+                        <select name="pageSize" id="vpageSizeSelect" class="form-control" onchange="document.getElementById('vpageSizeForm').submit();">
+                            <option value="10" selected="@(vsel10 ? "selected" : null)">10</option>
+                            <option value="20" selected="@(vsel20 ? "selected" : null)">20</option>
+                            <option value="50" selected="@(vsel50 ? "selected" : null)">50</option>
+                            <option value="100" selected="@(vsel100 ? "selected" : null)">100</option>
+                        </select>
+                        <input type="hidden" name="pageNumber" value="1" />
+                        <input type="hidden" name="Search" value="@ViewData["Search"]" />
+                    </form>
+                </div>
+
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-center mb-0">
+                        @{ var current = (int)(ViewData["Page"] ?? 1); var total = (int)(ViewData["TotalPages"] ?? 1); var size = (int)(ViewData["PageSize"] ?? 20); }
+                        <li class="page-item @(current == 1 ? "disabled" : "")">
+                            <a class="page-link" asp-page="./Volunteer" asp-route-pageNumber="@(current-1)" asp-route-pageSize="@size" asp-route-Search="@ViewData["Search"]">Previous</a>
+                        </li>
+                        @for (int i = 1; i <= total; i++)
+                        {
+                            <li class="page-item @(i == current ? "active" : "")"><a class="page-link" asp-page="./Volunteer" asp-route-pageNumber="@i" asp-route-pageSize="@size" asp-route-Search="@ViewData["Search"]">@i</a></li>
+                        }
+                        <li class="page-item @(current == total ? "disabled" : "")">
+                            <a class="page-link" asp-page="./Volunteer" asp-route-pageNumber="@(current+1)" asp-route-pageSize="@size" asp-route-Search="@ViewData["Search"]">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
 
             <div class="modal fade" id="veditorModal" tabindex="-1" role="dialog" aria-hidden="true">
               <div class="modal-dialog" role="document">
@@ -223,11 +259,14 @@
             $('#veditorModal').modal('show');
         }
 
-        function filterRows(value) {
-            var term = value.toLowerCase();
-            Array.prototype.forEach.call(table.tBodies[0].rows, function (row) {
-                row.style.display = !term || row.children[3].innerText.toLowerCase().indexOf(term) !== -1 ? '' : 'none';
-            });
+        // Rows are server-paginated, so search re-runs the query server-side (page reset to 1)
+        // rather than hiding/showing rows already in the DOM - a client-only filter would only
+        // ever see whichever page happens to be loaded.
+        function navigateSearch(value) {
+            var params = new URLSearchParams(window.location.search);
+            if (value) params.set('Search', value); else params.delete('Search');
+            params.set('pageNumber', '1');
+            window.location.href = window.location.pathname + '?' + params.toString();
         }
 
         function showHints(list) {
@@ -238,9 +277,7 @@
                 button.className = 'btn btn-link p-0 mr-2';
                 button.textContent = email;
                 button.addEventListener('click', function () {
-                    searchInput.value = email;
-                    filterRows(email);
-                    hint.innerHTML = '';
+                    navigateSearch(email);
                 });
                 hint.appendChild(button);
             });
@@ -283,6 +320,10 @@
 
         document.getElementById('vbtnAdd').addEventListener('click', function () {
             openEditor({ Gender: 'M' });
+        });
+
+        document.getElementById('vbtnSearch').addEventListener('click', function () {
+            navigateSearch(searchInput.value || '');
         });
 
         // Hours modal actions
@@ -361,11 +402,10 @@
 
         searchInput.addEventListener('input', function () {
             var value = searchInput.value || '';
-            filterRows(value);
             if (timer) clearTimeout(timer);
             timer = setTimeout(function () {
                 if (!value) {
-                    hint.innerText = 'Type to search emails';
+                    hint.innerText = 'Type to search all volunteers';
                     return;
                 }
                 fetch('/api/people/emails?q=' + encodeURIComponent(value))
@@ -373,6 +413,14 @@
                     .then(showHints)
                     .catch(function () { hint.innerHTML = ''; });
             }, 250);
+        });
+
+        searchInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (timer) clearTimeout(timer);
+                navigateSearch(searchInput.value || '');
+            }
         });
     })();
 </script>

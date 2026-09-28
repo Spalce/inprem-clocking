@@ -46,8 +46,11 @@ public class HoursWorkedModel : PageModel
     [BindProperty(SupportsGet = true)]
     public string? Search { get; set; }
 
+    // Named "pageNumber" rather than "page" because "page" is a reserved Razor Pages route
+    // value (the page's own path) - a query string "page" is intercepted by route-value model
+    // binding before it ever reaches a same-named property.
     [BindProperty(SupportsGet = true)]
-    public int Page { get; set; } = 1;
+    public int PageNumber { get; set; } = 1;
 
     [BindProperty(SupportsGet = true)]
     public int PageSize { get; set; } = 20;
@@ -61,8 +64,8 @@ public class HoursWorkedModel : PageModel
         if (Id <= 0)
             return NotFound();
 
-        if (Page < 1)
-            Page = 1;
+        if (PageNumber < 1)
+            PageNumber = 1;
 
         if (PageSize != 10 &&
             PageSize != 20 &&
@@ -86,7 +89,7 @@ public class HoursWorkedModel : PageModel
                 return NotFound();
 
             ClockingRecords = await _volunteerClockingService.GetPaged(
-                Page,
+                PageNumber,
                 PageSize,
                 (int)Id,
                 startDate,
@@ -125,7 +128,7 @@ public class HoursWorkedModel : PageModel
                 return NotFound();
 
             StaffClockingRecords = await _staffClockingService.GetPaged(
-                Page,
+                PageNumber,
                 PageSize,
                 (int)Id,
                 startDate,

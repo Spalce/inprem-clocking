@@ -266,6 +266,204 @@ public class VolunteerReportsController : ControllerBase
             pdfBytes,
             "application/pdf",
             $"volunteer-{id}-hours.pdf");
-    }    
+    }
+
+    [HttpGet("volunteer-clocking-report-pdf")]
+    public async Task<IActionResult> GetVolunteerClockingReportPdf(
+        [FromQuery] int? volunteerId,
+        [FromQuery] DateTime? start,
+        [FromQuery] DateTime? end)
+    {
+        var s = start ?? OrgClock.NowLocal().Date.AddDays(-30);
+        var e = end ?? OrgClock.NowLocal().Date.AddDays(1).AddTicks(-1);
+
+        string? volunteerName = null;
+        if (volunteerId.HasValue && volunteerId.Value > 0)
+        {
+            var volunteer = await _volunteer.GetById(volunteerId.Value);
+            volunteerName = volunteer?.FullName?.Trim();
+        }
+
+        var rows = volunteerId.HasValue && volunteerId.Value > 0
+            ? await _clocking.GetClockingReportForVolunteer(volunteerId.Value, s, e)
+            : await _clocking.GetClockingReport(s, e);
+
+        var totalWorked = TimeSpan.Zero;
+        foreach (var vm in rows)
+        {
+            var item = vm.Clocking?.FirstOrDefault();
+            if (item?.WorkingHours != null)
+                totalWorked += item.WorkingHours.Value;
+        }
+
+        var pdfBytes = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(50);
+
+                page.Header()
+                    .Column(header =>
+                    {
+                        header.Item().Height(55);
+
+                        header.Item()
+                            .AlignCenter()
+                            .Text("Inprem Holistic Community Resource Center")
+                            .FontSize(18)
+                            .Bold();
+
+                        header.Item().PaddingTop(5).LineHorizontal(1);
+                    });
+
+                page.Content()
+                    .PaddingTop(25)
+                    .Column(column =>
+                    {
+                        column.Spacing(10);
+
+                        column.Item().Text("Volunteer Clocking Report").FontSize(15).Bold();
+
+                        column.Item()
+                            .Text(string.IsNullOrWhiteSpace(volunteerName) ? "Volunteer: All Volunteers" : $"Volunteer: {volunteerName}")
+                            .FontSize(11);
+
+                        column.Item().Text($"Period: {s:dd MMM yyyy} - {e:dd MMM yyyy}").FontSize(11);
+
+                        column.Item()
+                            .PaddingTop(10)
+                            .Table(table =>
+                            {
+                                table.ColumnsDefinition(columns =>
+                                {
+                                    columns.RelativeColumn(2);
+                                    columns.RelativeColumn(1);
+                                    columns.RelativeColumn(1);
+                                    columns.RelativeColumn(1);
+                                    columns.RelativeColumn(1);
+                                });
+
+                                table.Header(header =>
+                                {
+                                    header.Cell().Text("Volunteer").Bold();
+                                    header.Cell().Text("Date").Bold();
+                                    header.Cell().Text("Clock In").Bold();
+                                    header.Cell().Text("Clock Out").Bold();
+                                    header.Cell().Text("Hours").Bold();
+                                });
+
+                                foreach (var vm in rows)
+                                {
+                                    var item = vm.Clocking?.FirstOrDefault();
+                                    table.Cell().Text(item?.FullName ?? "");
+                                    table.Cell().Text(OrgClock.ToLocal(item?.CreatedAt)?.ToString("yyyy-MM-dd") ?? "");
+                                    table.Cell().Text(OrgClock.ToLocal(item?.ClockInTime)?.ToString("HH:mm:ss") ?? "");
+                                    table.Cell().Text(OrgClock.ToLocal(item?.ClockOutTime)?.ToString("HH:mm:ss") ?? "");
+                                    table.Cell().Text(item?.WorkingHours?.ToString(@"hh\:mm\:ss") ?? "");
+                                }
+                            });
+
+                        column.Item()
+                            .PaddingTop(10)
+                            .Text($"Total Hours: {(int)totalWorked.TotalHours:D2}:{totalWorked.Minutes:D2}:{totalWorked.Seconds:D2}")
+                            .FontSize(12)
+                            .Bold();
+                    });
+
+                page.Footer()
+                    .AlignCenter()
+                    .Column(footer =>
+                    {
+                        footer.Item().Text("Please contact us for further information.").FontSize(9);
+                        footer.Item().PaddingTop(3).Text("Inprem Admin").FontSize(9).Bold();
+                    });
+            });
+        }).GeneratePdf();
+
+        var fname = volunteerId.HasValue && volunteerId.Value > 0
+            ? $"volunteer-{volunteerId}-clocking-report-{s:yyyyMMdd}-{e:yyyyMMdd}.pdf"
+            : $"volunteer-clocking-report-{s:yyyyMMdd}-{e:yyyyMMdd}.pdf";
+
+        return File(pdfBytes, "application/pdf", fname);
+    }
+
+    [HttpGet("volunteer-list-pdf")]
+    public async Task<IActionResult> GetVolunteerListPdf()
+    {
+        var volunteerList = (await _volunteer.GetAll()).ToList();
+
+        var pdfBytes = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(50);
+
+                page.Header()
+                    .Column(header =>
+                    {
+                        header.Item().Height(55);
+
+                        header.Item()
+                            .AlignCenter()
+                            .Text("Inprem Holistic Community Resource Center")
+                            .FontSize(18)
+                            .Bold();
+
+                        header.Item().PaddingTop(5).LineHorizontal(1);
+                    });
+
+                page.Content()
+                    .PaddingTop(25)
+                    .Column(column =>
+                    {
+                        column.Spacing(10);
+
+                        column.Item().Text("Volunteer Report").FontSize(15).Bold();
+                        column.Item().Text($"Total Volunteers: {volunteerList.Count}").FontSize(11);
+
+                        column.Item()
+                            .PaddingTop(10)
+                            .Table(table =>
+                            {
+                                table.ColumnsDefinition(columns =>
+                                {
+                                    columns.RelativeColumn(2);
+                                    columns.RelativeColumn(2);
+                                    columns.RelativeColumn(3);
+                                    columns.RelativeColumn(2);
+                                });
+
+                                table.Header(header =>
+                                {
+                                    header.Cell().Text("First Name").Bold();
+                                    header.Cell().Text("Last Name").Bold();
+                                    header.Cell().Text("Email").Bold();
+                                    header.Cell().Text("Phone").Bold();
+                                });
+
+                                foreach (var volunteer in volunteerList)
+                                {
+                                    table.Cell().Text(volunteer.FirstName ?? "");
+                                    table.Cell().Text(volunteer.LastName ?? "");
+                                    table.Cell().Text(volunteer.EmailAddress ?? "");
+                                    table.Cell().Text(volunteer.PhoneNumber ?? "");
+                                }
+                            });
+                    });
+
+                page.Footer()
+                    .AlignCenter()
+                    .Column(footer =>
+                    {
+                        footer.Item().Text("Please contact us for further information.").FontSize(9);
+                        footer.Item().PaddingTop(3).Text("Inprem Admin").FontSize(9).Bold();
+                    });
+            });
+        }).GeneratePdf();
+
+        return File(pdfBytes, "application/pdf", "volunteer-list.pdf");
+    }
 
 }
