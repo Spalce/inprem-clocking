@@ -53,9 +53,8 @@
   </div>
 
   <div class="tw:overflow-hidden tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white">
-    <div class="tw:flex tw:flex-col tw:gap-3 tw:border-b tw:border-slate-200 tw:px-4 tw:py-3 tw:sm:flex-row tw:sm:items-center tw:sm:justify-between">
+    <div class="tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
       <h3 class="tw:text-sm tw:font-semibold tw:text-slate-900">Clocking History</h3>
-      <input type="text" id="searchBox" class="@input tw:sm:max-w-xs" placeholder="Search..." />
     </div>
 
     <div class="tw:overflow-x-auto">
@@ -201,12 +200,12 @@
     </form>
   </div>
 
-  <div class="tw:mt-6 tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:shadow-sm">
+  <div class="tw:mt-6 tw:max-w-sm tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:shadow-sm">
     <div class="tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
       <h3 class="tw:text-sm tw:font-semibold tw:text-slate-900">Hours Summary</h3>
     </div>
     <div class="tw:p-4">
-      <table class="tw:w-full tw:max-w-md tw:text-sm">
+      <table class="tw:w-full tw:text-sm">
         <tbody>
           <tr class="tw:border-b tw:border-slate-100">
             <th class="tw:py-2 tw:text-left tw:font-medium tw:text-slate-600">Total Hours Clocked</th>
@@ -228,14 +227,6 @@
 
 @section Scripts {
   <script>
-    document.getElementById('searchBox').addEventListener('keyup', function () {
-        var searchValue = this.value.toLowerCase();
-        document.querySelectorAll('#hoursTable tbody tr').forEach(function (row) {
-            var text = row.textContent.toLowerCase();
-            row.style.display = text.includes(searchValue) ? '' : 'none';
-        });
-    });
-
     document.getElementById('btnDownloadPdf').addEventListener('click', function () {
         var id = '@Model.Id';
         var start = '@(Model.Start?.ToString("o") ?? "")';

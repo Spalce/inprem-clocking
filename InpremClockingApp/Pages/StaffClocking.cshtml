@@ -5,7 +5,8 @@
     var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
     var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
     var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
-    var actionBtn = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:px-2.5 tw:py-1 tw:text-xs tw:font-medium tw:text-white";
+    var dropdownBtn = "tw:inline-flex tw:cursor-pointer tw:items-center tw:gap-1.5 tw:rounded-md tw:border tw:border-slate-300 tw:bg-white tw:px-2.5 tw:py-1 tw:text-xs tw:font-medium tw:text-slate-700 tw:hover:bg-slate-50";
+    var dropdownItem = "tw:block tw:w-full tw:cursor-pointer tw:border-0 tw:bg-transparent tw:px-3 tw:py-1.5 tw:text-left tw:text-xs tw:text-slate-700 tw:hover:bg-slate-50";
 }
 
 <div class="tw:mx-auto tw:max-w-7xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
@@ -78,10 +79,16 @@
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(OrgClock.ToLocal(c.ReturnOnBreakTime)?.ToString("HH:mm:ss") ?? "")</td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(c.WorkingHours?.ToString(@"hh\:mm\:ss") ?? "")</td>
               <td class="tw:px-4 tw:py-3 tw:whitespace-nowrap">
-                <div class="tw:flex tw:gap-1.5">
-                  <button class="@actionBtn tw:bg-emerald-600 tw:hover:bg-emerald-700" onclick="postAction('ClockOut', { ClockingStaffId: @c.ClockingStaffId })">Clock Out</button>
-                  <button class="@actionBtn tw:bg-amber-500 tw:hover:bg-amber-600" onclick="postAction('BreakStart', { ClockingStaffId: @c.ClockingStaffId })">Break Start</button>
-                  <button class="@actionBtn tw:bg-sky-500 tw:hover:bg-sky-600" onclick="postAction('BreakEnd', { ClockingStaffId: @c.ClockingStaffId })">Break End</button>
+                <div class="tw:relative tw:inline-block" data-dropdown>
+                  <button type="button" class="@dropdownBtn" data-dropdown-toggle>
+                    Actions
+                    <i class="fas fa-chevron-down tw:text-[10px]"></i>
+                  </button>
+                  <div class="tw:fixed tw:z-20 tw:hidden tw:w-36 tw:rounded-md tw:border tw:border-slate-200 tw:bg-white tw:py-1 tw:shadow-lg" data-dropdown-menu>
+                    <button type="button" class="@dropdownItem" onclick="postAction('ClockOut', { ClockingStaffId: @c.ClockingStaffId })">Clock Out</button>
+                    <button type="button" class="@dropdownItem" onclick="postAction('BreakStart', { ClockingStaffId: @c.ClockingStaffId })">Break Start</button>
+                    <button type="button" class="@dropdownItem" onclick="postAction('BreakEnd', { ClockingStaffId: @c.ClockingStaffId })">Break End</button>
+                  </div>
                 </div>
               </td>
             </tr>
