@@ -47,6 +47,18 @@
 
                           <form id="registerForm" method="post" class="form-row">
                               <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                              @if (Model.NameConflict)
+                              {
+                                  <div class="col-md-12">
+                                      <div class="alert alert-warning">
+                                          <p class="mb-2">A volunteer named <strong>@Model.ExistingName</strong> is already registered. Is this you?</p>
+                                          <a href="/volunteer-clockin/@Model.ExistingId" class="btn btn-sm btn-primary">Yes, that's me</a>
+                                          <button type="submit" name="ConfirmDifferentPerson" value="true" class="btn btn-sm btn-secondary">No, this is a different person</button>
+                                      </div>
+                                  </div>
+                              }
+
                               <div class="col-md-6">
                                   <div class="form-floating">
                                       <label asp-for="Input!.FirstName" class="small"></label>

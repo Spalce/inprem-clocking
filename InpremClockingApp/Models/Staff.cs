@@ -1,9 +1,11 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 
 namespace InpremClockingApp.Models;
 
+[Index(nameof(EmailAddress), IsUnique = true)]
 public class Staff
 {
     [Key]
