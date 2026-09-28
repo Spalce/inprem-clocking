@@ -16,29 +16,36 @@
 @import "tailwindcss/utilities" prefix(tw);
 
 /*
-  Two specific resets Bootstrap used to provide for free, and which Preflight would also
-  provide - needed now that neither is loaded, found via a real bug report (overlapping
-  boxes/cards/buttons across the app, and underlines under every sidebar/pagination/button
-  link). This is intentionally NOT full Preflight: it's the minimal, universally-safe subset
-  that every CSS reset (Bootstrap, normalize.css, Preflight) agrees on, without touching
-  headings/lists/margins the way full Preflight would.
+  Specific resets Bootstrap used to provide for free, and which Preflight would also provide -
+  needed now that neither is loaded. This is intentionally NOT full Preflight: it's the
+  minimal, universally-safe subset that every CSS reset (Bootstrap, normalize.css, Preflight)
+  agrees on, without touching headings/margins generally the way full Preflight would.
 
-  1. `box-sizing: border-box` - the actual bug. Every Tailwind utility (`w-full`, `px-*`,
-     `border`) is authored assuming border-box sizing (this is what Preflight's first rule
-     sets, and what Bootstrap also set globally). Without it, the browser default
-     `content-box` adds an element's padding and border ON TOP of a `w-full`/percentage width
-     instead of inside it, so anything with both `w-full` and padding/border (every input,
-     button, and card in this app) renders wider than its container and overlaps its
-     neighbor - confirmed via getComputedStyle on the Staff-page search box: the input
-     measured 244.6px inside a 218.6px parent, a 26px overflow exactly matching its
-     padding+border.
-  2. `a { text-decoration: none }` - anchors used as nav items/pagination/buttons throughout
-     the app never had their default browser underline suppressed; Bootstrap did this
-     globally, nothing does now. `color: inherit` alongside it so an unstyled link picks up
-     its surrounding text color rather than the browser's default link blue. Actual hyperlinks
-     that should look like hyperlinks already carry an explicit `tw:text-blue-600
+  1. `box-sizing: border-box` - found via a real bug report (overlapping boxes/cards/buttons
+     across the app). Every Tailwind utility (`w-full`, `px-*`, `border`) is authored assuming
+     border-box sizing (this is what Preflight's first rule sets, and what Bootstrap also set
+     globally). Without it, the browser default `content-box` adds an element's padding and
+     border ON TOP of a `w-full`/percentage width instead of inside it, so anything with both
+     `w-full` and padding/border (every input, button, and card in this app) renders wider
+     than its container and overlaps its neighbor - confirmed via getComputedStyle on the
+     Staff-page search box: the input measured 244.6px inside a 218.6px parent, a 26px overflow
+     exactly matching its padding+border.
+  2. `a { text-decoration: none }` - found via the same bug report (underlines under every
+     sidebar/pagination/button link). Bootstrap suppressed the browser's default anchor
+     underline globally; nothing does now. `color: inherit` alongside it so an unstyled link
+     picks up its surrounding text color rather than the browser's default link blue. Actual
+     hyperlinks that should look like hyperlinks already carry an explicit `tw:text-blue-600
      tw:hover:underline` class, which - being a class selector - still wins over this
      lower-specificity element selector regardless of source order.
+  3. `ul, ol { list-style: none; margin: 0; padding: 0; }` - found from a follow-up report:
+     three stray bullet dots next to every pagination control. Every `<ul class="tw:flex ...">`
+     used for pagination across the app is still a plain browser list underneath - `display:
+     flex` on the `<ul>` doesn't stop the browser rendering a bullet before each `<li>`, nor
+     does it remove the default 40px left padding or 16px top margin `<ul>`/`<ol>` get by
+     default, all of which Bootstrap used to zero out. The one place a list legitimately wants
+     numbers - `EnableAuthenticator.cshtml`'s instructions - already carries an explicit
+     `tw:list-decimal` class, which (being a class selector) still overrides this element-level
+     reset regardless of source order, so it's unaffected.
 */
 * {
   box-sizing: border-box;
@@ -47,6 +54,13 @@
 a {
   text-decoration: none;
   color: inherit;
+}
+
+ul,
+ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
 /* Automatic content detection only walks downward from this file's directory, so it never
