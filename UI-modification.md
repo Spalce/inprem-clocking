@@ -41,6 +41,49 @@ executable, no Node install required, on any machine including the deployment ta
   Code / Web Deploy / FTP deployment to SmarterASP.NET need **zero changes** — the compiled CSS
   is just another static file. Running the CLI with `--watch` is a dev-time convenience for
   iterating on styles locally; it is never required to build or deploy the app.
+- All Tailwind classes are generated with a **`tw:` prefix** (e.g. `tw:flex`, `tw:p-4`), and
+  Preflight (Tailwind's base CSS reset) is deliberately left out for now — see the Phase 0
+  notes below for why both of those decisions exist.
+
+## Phase 0 status: done
+
+- Downloaded the Tailwind standalone CLI (`v4.3.3`, Windows x64) to `/tools/` at the repo
+  root. This binary is **not committed** (large, platform-specific) — `.gitignore` now
+  excludes `/tools/`. To re-fetch it:
+  ```
+  curl -sL -o tools/tailwindcss-windows-x64.exe https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.3/tailwindcss-windows-x64.exe
+  ```
+- Created `wwwroot/css/tailwind-input.css`, importing only Tailwind's `theme` and `utilities`
+  layers (not `preflight`). Preflight resets default browser styling for headings, lists,
+  buttons, etc. — while Bootstrap/AdminLTE is still in place (through Phase 3), Preflight
+  would fight with Bootstrap's own reset on every page not yet converted. It gets added back
+  once Bootstrap/AdminLTE is fully removed in Phase 4.
+- **Found a real collision risk and fixed it structurally, not by luck:** compiling without a
+  prefix first, Tailwind generated classes named `.collapse`, `.sr-only`, and `.invisible` —
+  because those literal class names already appear in the codebase (from Bootstrap/AdminLTE
+  usage), Tailwind's content scanner picked them up. Bootstrap already defines its own
+  `.collapse` (used by AdminLTE's collapsible sidebar menus, e.g. "Reports"), `.sr-only`, and
+  `.invisible` with different behavior — loading both would have let Tailwind's version win the
+  cascade and silently broken those Bootstrap components. Fixed by prefixing every generated
+  class with `tw:` (`@import "tailwindcss/theme" layer(theme) prefix(tw);` /
+  `@import "tailwindcss/utilities" layer(utilities) prefix(tw);`), so no Tailwind class can ever
+  share a name with a Bootstrap/AdminLTE class. This prefix is kept permanently (including
+  after Bootstrap is removed in Phase 4) rather than stripped later — there's no real downside
+  to keeping it, and removing it would mean re-touching every already-converted page for no
+  functional gain.
+- Compiled the initial (currently near-empty, since no page uses any `tw:` class yet) output
+  to `wwwroot/css/tailwind.css` and referenced it via `<link>` in both `_Layout.cshtml` and
+  `_MainLayout.cshtml` (the app actually uses both — `_Layout` is the default per
+  `_ViewStart.cshtml` and backs most admin pages via the `_Sidebar`/`_Topmenu` partials;
+  `_MainLayout` backs the kiosk sign-up pages via `_MainSidebar`/`_MainTopmenu`).
+- Verified live in the browser: the admin dashboard, the sidebar's collapsible "Reports"
+  submenu specifically (the exact Bootstrap `.collapse` interaction at risk), and the
+  Volunteer sign-up kiosk page all render and behave identically to before. Zero visual or
+  functional change, as required.
+
+**Local dev commands** (from `InpremClockingApp/`, using the binary in `../tools/`):
+- One-time build: `../tools/tailwindcss-windows-x64.exe -i wwwroot/css/tailwind-input.css -o wwwroot/css/tailwind.css --minify`
+- Watch while editing: `../tools/tailwindcss-windows-x64.exe -i wwwroot/css/tailwind-input.css -o wwwroot/css/tailwind.css --watch`
 
 ## Phased plan
 

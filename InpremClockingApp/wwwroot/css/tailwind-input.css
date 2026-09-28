@@ -1,0 +1,9 @@
+/*
+  Tailwind is intentionally imported without Preflight (its base CSS reset) while the app
+  still runs on Bootstrap/AdminLTE. Preflight resets default browser styling for headings,
+  lists, buttons, etc., which would visually clash with Bootstrap's own reset on every page
+  not yet converted. Preflight gets added once Bootstrap/AdminLTE is fully removed
+  (see UI-modification.md, Phase 4).
+*/
+@import "tailwindcss/theme" layer(theme) prefix(tw);
+@import "tailwindcss/utilities" layer(utilities) prefix(tw);
