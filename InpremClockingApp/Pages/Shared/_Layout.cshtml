@@ -5,12 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>@ViewData["Title"] - Inprem Clockin App</title>
 
-  <!-- Google Font: Source Sans Pro -->
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
   <!-- Font Awesome Icons -->
   <link rel="stylesheet" href="~/lib/fontawesome-free/css/all.min.css">
+  <!-- Material Icons (used by showToast() below) -->
   <link href="https://fonts.googleapis.com/css?family=Material+Icons%7CMaterial+Icons+Outlined%7CMaterial+Icons+Two+Tone%7CMaterial+Icons+Round%7CMaterial+Icons+Sharp" rel="stylesheet">
-  <!-- Theme style -->
+  <!-- Theme style (still used by page-specific content not yet migrated to Tailwind) -->
   <link rel="stylesheet" href="~/dist/css/adminlte.min.css">
   <link rel="stylesheet" href="~/css/site.css" asp-append-version="true"/>
   <link rel="stylesheet" href="~/InpremClockingApp.styles.css" asp-append-version="true"/>
@@ -19,29 +18,23 @@
   <link rel="stylesheet" href="~/css/tailwind.css" asp-append-version="true"/>
   <script src="~/lib/jquery/jquery.min.js"></script>
 </head>
-<body class="hold-transition sidebar-mini">
-<div class="wrapper">
+<body class="tw:min-h-screen tw:bg-slate-50 tw:font-sans tw:text-slate-900 tw:antialiased">
 
+<partial name="_Sidebar"/>
+
+<div class="tw:flex tw:min-h-screen tw:flex-col tw:lg:pl-64">
   <partial name="_Topmenu"/>
 
-  <partial name="_Sidebar"/>
-
   @RenderBody()
-
-  <aside class="control-sidebar control-sidebar-dark">
-    <div class="p-3">
-      <h5>Title</h5>
-      <p>Sidebar content</p>
-    </div>
-  </aside>
 
   <partial name="_Footer"/>
 </div>
 
-<!-- Bootstrap 4 -->
+<!-- Bootstrap 4 (still used by page-specific content not yet migrated to Tailwind) -->
 <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
-<!-- AdminLTE App -->
+<!-- AdminLTE App (still used by page-specific content not yet migrated to Tailwind) -->
 <script src="~/dist/js/adminlte.min.js"></script>
+<script src="~/js/layout.js" asp-append-version="true"></script>
 <script >
 	function showToast(text, duration, alertInfo) {
 		var alerts = $(".alerts"),

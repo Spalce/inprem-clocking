@@ -4,6 +4,17 @@
   lists, buttons, etc., which would visually clash with Bootstrap's own reset on every page
   not yet converted. Preflight gets added once Bootstrap/AdminLTE is fully removed
   (see UI-modification.md, Phase 4).
+
+  Deliberately NOT using Tailwind's `layer(theme)`/`layer(utilities)` wrappers here: CSS
+  Cascade Layers always lose to unlayered styles regardless of specificity or source order,
+  and Bootstrap/AdminLTE's CSS is unlayered - wrapping Tailwind in a layer would make every
+  Tailwind utility silently lose to something as generic as Bootstrap's `a { color: ... }`.
+  Importing unlayered puts Tailwind back on normal specificity/order rules, where its class
+  selectors correctly beat Bootstrap's plainer selectors.
 */
-@import "tailwindcss/theme" layer(theme) prefix(tw);
-@import "tailwindcss/utilities" layer(utilities) prefix(tw);
+@import "tailwindcss/theme" prefix(tw);
+@import "tailwindcss/utilities" prefix(tw);
+
+/* Automatic content detection only walks downward from this file's directory, so it never
+   reaches Pages/*.cshtml (outside wwwroot). Point it there explicitly. */
+@source "../../Pages/**/*.cshtml";

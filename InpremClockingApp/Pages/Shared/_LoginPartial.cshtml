@@ -1,24 +1,18 @@
-﻿@using InpremClockingApp.Models.Identity;
+@using InpremClockingApp.Models.Identity;
 @using Microsoft.AspNetCore.Identity
 @inject SignInManager<AppUser> SignInManager
 @inject UserManager<AppUser> UserManager
 
-<ul class="navbar-nav">
+<div class="tw:flex tw:items-center tw:gap-4">
 @if (SignInManager.IsSignedIn(User))
 {
-    <li class="nav-item">
-        <a  class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Manage/Index" title="Manage">Hello @User.Identity?.Name!</a>
-    </li>
-    <li class="nav-item">
-        <form class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/", new { area = "" })" method="post" >
-            <button  type="submit" class="nav-link btn btn-link text-dark">Logout</button>
-        </form>
-    </li>
+    <a class="tw:text-sm tw:font-medium tw:text-slate-600 tw:hover:text-slate-900" asp-area="Identity" asp-page="/Account/Manage/Index" title="Manage">Hello @User.Identity?.Name!</a>
+    <form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/", new { area = "" })" method="post">
+        <button type="submit" class="tw:cursor-pointer tw:border-0 tw:bg-transparent tw:p-0 tw:text-sm tw:font-medium tw:text-slate-600 tw:hover:text-slate-900">Logout</button>
+    </form>
 }
 else
 {
-    <li class="nav-item">
-        <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Login">Login</a>
-    </li>
+    <a class="tw:text-sm tw:font-medium tw:text-slate-600 tw:hover:text-slate-900" asp-area="Identity" asp-page="/Account/Login">Login</a>
 }
-</ul>
+</div>

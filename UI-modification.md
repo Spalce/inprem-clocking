@@ -65,9 +65,10 @@ executable, no Node install required, on any machine including the deployment ta
   `.collapse` (used by AdminLTE's collapsible sidebar menus, e.g. "Reports"), `.sr-only`, and
   `.invisible` with different behavior — loading both would have let Tailwind's version win the
   cascade and silently broken those Bootstrap components. Fixed by prefixing every generated
-  class with `tw:` (`@import "tailwindcss/theme" layer(theme) prefix(tw);` /
-  `@import "tailwindcss/utilities" layer(utilities) prefix(tw);`), so no Tailwind class can ever
-  share a name with a Bootstrap/AdminLTE class. This prefix is kept permanently (including
+  class with `tw:` (`@import "tailwindcss/theme" prefix(tw);` /
+  `@import "tailwindcss/utilities" prefix(tw);` — see Phase 1 notes below for why these aren't
+  wrapped in `layer(...)` despite Tailwind's own docs suggesting it), so no Tailwind class can
+  ever share a name with a Bootstrap/AdminLTE class. This prefix is kept permanently (including
   after Bootstrap is removed in Phase 4) rather than stripped later — there's no real downside
   to keeping it, and removing it would mean re-touching every already-converted page for no
   functional gain.
@@ -80,6 +81,57 @@ executable, no Node install required, on any machine including the deployment ta
   submenu specifically (the exact Bootstrap `.collapse` interaction at risk), and the
   Volunteer sign-up kiosk page all render and behave identically to before. Zero visual or
   functional change, as required.
+
+## Phase 1 status: done
+
+Converted the shared chrome to Tailwind: `_Layout.cshtml`, `_MainLayout.cshtml` (page shells),
+`_Sidebar.cshtml`, `_MainSidebar.cshtml`, `_Topmenu.cshtml`, `_MainTopmenu.cshtml`,
+`_LoginPartial.cshtml`, and `_Footer.cshtml`. New look: a dark slate sidebar (was AdminLTE's
+navy gradient), a clean white top bar, and the system font stack instead of the "Source Sans
+Pro" webfont (dropped — no functional dependency on it, unlike Material Icons, which is kept
+because `showToast()` — used by the kiosk clock-in pages — renders its icons with it).
+
+**Two real bugs found and fixed while building this, both worth knowing about for later
+phases:**
+
+1. **Automatic content detection doesn't reach `Pages/`.** Tailwind v4's zero-config content
+   scanning only walks *downward* from the CSS input file's own directory
+   (`wwwroot/css/`) — it never saw `Pages/**/*.cshtml` at all, since that's outside `wwwroot`.
+   The very first Phase 0 compile appearing to "find" Bootstrap-colliding classes like
+   `.collapse` was a red herring: those came from vendored library source under `wwwroot`, not
+   from any page. Fixed with an explicit `@source "../../Pages/**/*.cshtml";` in
+   `tailwind-input.css`. **Any new page added in later phases needs no extra config** — this
+   one `@source` line covers the whole `Pages/` tree — but this is worth remembering if a
+   future stylesheet ever moves or a new content root gets added.
+2. **CSS Cascade Layers made every Tailwind utility lose to Bootstrap, silently.** Tailwind's
+   recommended granular-import syntax wraps output in `@layer theme`/`@layer utilities`. Per
+   the CSS spec, *any* layered style loses to *any* unlayered style, regardless of specificity
+   or source order — and Bootstrap/AdminLTE's CSS is unlayered. The result: `.tw\:text-slate-500`
+   was silently losing to Bootstrap's plain `a { color: #007bff }`, even though a class
+   selector should always beat an element selector. Fixed by dropping the `layer(...)`
+   qualifier from both imports in `tailwind-input.css`, so Tailwind's rules are plain unlayered
+   CSS and compete on normal specificity/order rules (where they correctly win). Net effect:
+   **don't reintroduce `layer(theme)`/`layer(utilities)` while Bootstrap/AdminLTE is still
+   loaded** — safe to revisit once they're removed in Phase 4, though there's no real benefit
+   to changing it back even then.
+
+Also worth noting for future phases: **a running `dotnet run` does not pick up `.cshtml`
+changes automatically** (views are compiled into the assembly at build time, not hot-reloaded)
+— every markup change needs a rebuild + restart before it's visible, or it'll look like the
+change "didn't work."
+
+Replaced two AdminLTE JS widget interactions with a small custom script
+(`wwwroot/js/layout.js`, ~35 lines) instead of carrying AdminLTE's JS forward for chrome that
+no longer uses AdminLTE's classes: the mobile sidebar drawer (was `data-widget="pushmenu"`)
+and the "Reports" collapsible submenu (was `data-widget="treeview"`). Bootstrap/AdminLTE's own
+JS files are still loaded, untouched, for page-specific content not yet converted.
+
+**Verified live:** dashboard and sidebar navigation, the "Reports" submenu expand/collapse
+(the exact interaction the Cascade Layers/collision risk could have broken), the mobile
+hamburger drawer + backdrop-click-to-close at a 480px viewport, and a full functional
+smoke test on the kiosk side — registered a real volunteer through `VolunteerAttendance`
+(including hitting its own field validation correctly), landed on the clock-in page, and
+clocked in successfully. Test data cleaned up from the dev DB afterward. No regressions found.
 
 **Local dev commands** (from `InpremClockingApp/`, using the binary in `../tools/`):
 - One-time build: `../tools/tailwindcss-windows-x64.exe -i wwwroot/css/tailwind-input.css -o wwwroot/css/tailwind.css --minify`
