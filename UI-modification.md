@@ -343,6 +343,36 @@ still works unchanged.
 
 No visual or functional regressions found. The branch is ready for review.
 
+## Post-review fix: app-wide overlapping boxes and link underlines
+
+Caught during your own testing after Phase 5: text boxes overlapping their buttons/cards on
+several pages (Register, Manage Staff/Volunteer search, Staff/VolunteerClocking), and every
+sidebar/topbar/pagination/button link showing an underline it shouldn't have.
+
+**Root cause**: neither Bootstrap (removed in Phase 4) nor Tailwind Preflight (never enabled,
+by deliberate choice - see the Phase 4 note above) was setting `box-sizing: border-box`
+anywhere. Every Tailwind utility (`w-full`, `px-*`, `border`) is authored assuming border-box
+sizing, same as Preflight's first rule and what Bootstrap set globally. Without it, the browser
+default `content-box` adds an element's padding and border **on top of** a `w-full`/percentage
+width instead of inside it - so anything with both, which is nearly every input/button/card in
+the app, rendered wider than its container and overlapped its neighbor. Confirmed via
+`getComputedStyle` on the Staff-page search box: it measured 244.6px inside a 218.6px parent, a
+26px overflow matching its padding+border exactly. The same missing-reset gap explains the
+underlines: Bootstrap used to suppress the browser's default `<a>` underline globally; nothing
+does now that it's gone.
+
+**Fix**: a small, targeted reset added to `tailwind-input.css` -
+`* { box-sizing: border-box; }` and `a { text-decoration: none; color: inherit; }` -
+deliberately **not** full Preflight, which would also reset headings/lists/margins with no
+corresponding bug report to justify touching them. Also removed a redundant "Dashboard"
+breadcrumb link on the dashboard page that pointed to itself.
+
+Verified live after the fix: Staff-page search box no longer overlaps its Search button (same
+fix resolved the identical pattern on Volunteer/Staff/VolunteerClocking); Register page textboxes
+render cleanly inside their card; sidebar/topbar/breadcrumb/pagination/kiosk-button underlines
+are gone; the Edit modal and mobile drawer (re-tested at 420px) both still work correctly, since
+this was a global CSS change.
+
 ## Phased plan
 
 **Phase 0 — Foundation (no visible change)**
