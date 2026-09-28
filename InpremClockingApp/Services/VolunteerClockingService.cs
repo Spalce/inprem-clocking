@@ -175,6 +175,21 @@ public class VolunteerClockingService
             {
                 difference = main;
             }
+
+            // WorkingHours is stored as a SQL `time` column (00:00:00 to 23:59:59.9999999) -
+            // clamp into that range so a bad/stale ClockInTime (negative span) or a session left
+            // open for more than a day (span >= 24h) can't throw an unhandled SqlDbType.Time
+            // overflow and 500 the request. Either case reflects bad underlying data, not a
+            // value we can compute correctly, so clamping to the nearest valid bound is the
+            // safest fallback short of rejecting the clock-out outright.
+            if (difference.HasValue)
+            {
+                if (difference.Value < TimeSpan.Zero)
+                    difference = TimeSpan.Zero;
+                else if (difference.Value >= TimeSpan.FromDays(1))
+                    difference = TimeSpan.FromDays(1) - TimeSpan.FromTicks(1);
+            }
+
             item.WorkingHours = difference;
         }
         else
