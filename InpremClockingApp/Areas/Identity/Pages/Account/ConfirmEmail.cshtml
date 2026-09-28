@@ -1,8 +1,10 @@
-﻿@page
+@page
 @model ConfirmEmailModel
 @{
     ViewData["Title"] = "Confirm email";
 }
 
-<h1>@ViewData["Title"]</h1>
-<partial name="_StatusMessage" model="Model.StatusMessage" />
+<div class="tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:p-8 tw:text-center tw:shadow-sm">
+    <h1 class="tw:mb-2 tw:text-xl tw:font-semibold tw:text-slate-900">@ViewData["Title"]</h1>
+    <partial name="_StatusMessage" model="Model.StatusMessage" />
+</div>

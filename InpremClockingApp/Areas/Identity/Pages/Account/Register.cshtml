@@ -1,88 +1,53 @@
-﻿@page
+@page
 @model RegisterModel
 @{
     ViewData["Title"] = "Register";
+    var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
+    var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
+    var btnPrimary = "tw:inline-flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
 }
 
-<div class="register-logo">
-    <a href="#"><b>Inprem</b>Clockin</a>
+<div class="tw:mb-6 tw:text-center">
+    <a href="#" class="tw:text-2xl tw:font-semibold tw:text-slate-900"><b>Inprem</b>Clockin</a>
 </div>
 
-<div class="card">
-    <div class="card-body register-card-body">
-        <p class="login-box-msg">Register as a new user</p>
+<div class="tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:p-8 tw:shadow-sm">
+    <p class="tw:mb-4 tw:text-center tw:text-sm tw:text-slate-600">Register as a new user</p>
 
-        <form asp-page="Register" method="post">
-            <div asp-validation-summary="All" class="text-danger"></div>
-            <div class="input-group mb-3">
-                <input type="text" asp-for="Input.FirstName" class="form-control" placeholder="First name">
-                <div class="input-group-append">
-                    <div class="input-group-text">
-                        <span class="fas fa-user"></span>
-                    </div>
-                </div>
-            </div>
-            <div class="input-group mb-3">
-                <input type="text" asp-for="Input.LastName" class="form-control" placeholder="Last name">
-                <div class="input-group-append">
-                    <div class="input-group-text">
-                        <span class="fas fa-user"></span>
-                    </div>
-                </div>
-            </div>
-            <div class="input-group mb-3">
-                <input type="email" asp-for="Input.Email" class="form-control" placeholder="Email">
-                <div class="input-group-append">
-                    <div class="input-group-text">
-                        <span class="fas fa-envelope"></span>
-                    </div>
-                </div>
-            </div>
-            <div class="input-group mb-3">
-                <input type="password" asp-for="Input.Password" class="form-control" placeholder="Password">
-                <div class="input-group-append">
-                    <div class="input-group-text">
-                        <span class="fas fa-lock"></span>
-                    </div>
-                </div>
-            </div>
-            <div class="input-group mb-3">
-                <input type="password" asp-for="Input.ConfirmPassword" class="form-control" placeholder="Retype password">
-                <div class="input-group-append">
-                    <div class="input-group-text">
-                        <span class="fas fa-lock"></span>
-                    </div>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-8">
-                    <div class="icheck-primary">
-                        <input type="checkbox" id="agreeTerms" name="terms" value="agree">
-                        <label for="agreeTerms">
-                            I agree to the <a href="#">terms</a>
-                        </label>
-                    </div>
-                </div>
-                <div class="col-4">
-                    <button type="submit" class="btn btn-primary btn-block">Register</button>
-                </div>
-            </div>
-        </form>
+    <form asp-page="Register" method="post">
+        <div asp-validation-summary="All" class="tw:mb-3 tw:text-sm tw:text-red-600"></div>
+        <div class="tw:mb-4">
+            <label class="@label">First Name</label>
+            <input type="text" asp-for="Input.FirstName" class="@input" placeholder="First name">
+        </div>
+        <div class="tw:mb-4">
+            <label class="@label">Last Name</label>
+            <input type="text" asp-for="Input.LastName" class="@input" placeholder="Last name">
+        </div>
+        <div class="tw:mb-4">
+            <label class="@label">Email</label>
+            <input type="email" asp-for="Input.Email" class="@input" placeholder="Email">
+        </div>
+        <div class="tw:mb-4">
+            <label class="@label">Password</label>
+            <input type="password" asp-for="Input.Password" class="@input" placeholder="Password">
+        </div>
+        <div class="tw:mb-4">
+            <label class="@label">Confirm Password</label>
+            <input type="password" asp-for="Input.ConfirmPassword" class="@input" placeholder="Retype password">
+        </div>
+        <div class="tw:mb-4 tw:flex tw:items-center tw:gap-2">
+            <input type="checkbox" id="agreeTerms" name="terms" value="agree" class="tw:h-4 tw:w-4 tw:rounded tw:border-slate-300">
+            <label for="agreeTerms" class="tw:text-sm tw:text-slate-700">
+                I agree to the <a href="#" class="tw:text-blue-600 tw:hover:underline">terms</a>
+            </label>
+        </div>
+        <button type="submit" class="@btnPrimary">Register</button>
+    </form>
 
-        @*<div class="social-auth-links text-center">
-        <p>- OR -</p>
-        <a href="#" class="btn btn-block btn-primary">
-        <i class="fab fa-facebook mr-2"></i>
-        Sign up using Facebook
-        </a>
-        <a href="#" class="btn btn-block btn-danger">
-        <i class="fab fa-google-plus mr-2"></i>
-        Sign up using Google+
-        </a>
-        </div>*@
-
-        <a asp-area="Identity" asp-page="Login" class="text-center">I already have a membership</a>
-    </div>
+    <p class="tw:mt-4 tw:text-center tw:text-sm">
+        <a asp-area="Identity" asp-page="Login" class="tw:text-blue-600 tw:hover:underline">I already have a membership</a>
+    </p>
 </div>
 
 @section Scripts {

@@ -2,58 +2,38 @@
 @using Microsoft.AspNetCore.Mvc.TagHelpers
 @model Settings
 @{
+    ViewData["Title"] = "Logout Settings";
+    var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
+    var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
+    var btnWhite = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-slate-300 tw:bg-white tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-slate-700 tw:hover:bg-slate-50";
 }
 
-<div class="content-wrapper">
-<div class="content-header">
-  <div class="container-fluid">
-    <div class="row mb-2">
-      <div class="col-sm-6">
-        <h1 class="m-0">Logout Settings</h1>
-      </div>
-      <div class="col-sm-6">
-        <ol class="breadcrumb float-sm-right">
-          <li class="breadcrumb-item"><a href="#">Home</a></li>
-          <li class="breadcrumb-item active">Logout Settings</li>
-        </ol>
-      </div>
-    </div>
+<div class="tw:mx-auto tw:max-w-7xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
+  <div class="tw:mb-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4">
+    <h1 class="tw:text-2xl tw:font-semibold tw:text-slate-900">Logout Settings</h1>
+    <nav class="tw:text-sm tw:text-slate-500">
+      <a href="#" class="tw:hover:text-slate-700">Home</a>
+      <span class="tw:mx-1">/</span>
+      <span class="tw:text-slate-700">Logout Settings</span>
+    </nav>
   </div>
-</div>
-<div class="content">
-  <div class="container-fluid">
-    <div class="row">
-      <div class="col-md-6">
-        <form asp-page="Settings" method="post">
-          <input type="hidden" asp-for="Model!.Id" />
-          <div class="row">
-            <div class="col-12">
-                <div class="form-group">
-                    <label asp-for="Model!.Name"></label>
-                    <input readonly asp-for="Model!.Name" id="name" class="form-control" placeholder="Setting Type" />
-                </div>
-            </div>
-            <div class="col-12">
-                <div class="form-group">
-                    <label asp-for="Model!.Duration"></label>
-                    <input asp-for="Model!.Duration" id="duration" class="form-control" placeholder="Duration" />
-                </div>
-            </div>
-            <div class="col-12">
-                <div class="form-check">
-                    <input asp-for="Model!.Action" class="form-check-input" id="default" type="checkbox" checked />
-                    <label class="form-check-label" for="default">Logout After Every Clocking</label>
-                </div>
-            </div>
 
-            <div class="col-12" style="margin-top: 20px;">
-              <button id="btnEjsOne" class="btn btn-outline-primary" type="submit"><i class="fa fa-plus"></i> Save</button>
-            </div>
-          </div>
-        </form>
+  <div class="tw:max-w-md tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:p-6 tw:shadow-sm">
+    <form asp-page="Settings" method="post">
+      <input type="hidden" asp-for="Model!.Id" />
+      <div class="tw:mb-4">
+        <label asp-for="Model!.Name" class="@label"></label>
+        <input readonly asp-for="Model!.Name" id="name" class="@input tw:bg-slate-50" placeholder="Setting Type" />
       </div>
-
-    </div>
+      <div class="tw:mb-4">
+        <label asp-for="Model!.Duration" class="@label"></label>
+        <input asp-for="Model!.Duration" id="duration" class="@input" placeholder="Duration" />
+      </div>
+      <div class="tw:mb-5 tw:flex tw:items-center tw:gap-2">
+        <input asp-for="Model!.Action" class="tw:h-4 tw:w-4 tw:rounded tw:border-slate-300" id="default" type="checkbox" checked />
+        <label class="tw:text-sm tw:text-slate-700" for="default">Logout After Every Clocking</label>
+      </div>
+      <button id="btnEjsOne" class="@btnWhite" type="submit"><i class="fa fa-plus tw:mr-2"></i> Save</button>
+    </form>
   </div>
-</div>
 </div>

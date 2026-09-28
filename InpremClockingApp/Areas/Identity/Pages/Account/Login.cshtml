@@ -1,71 +1,42 @@
-﻿@page
+@page
 @model LoginModel
 
 @{
     ViewData["Title"] = "Log in";
+    var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
+    var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
+    var btnPrimary = "tw:inline-flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
 }
 
-<div class="login-logo">
-    <a href="/"><b>Inprem</b>Clockin</a>
+<div class="tw:mb-6 tw:text-center">
+    <a href="/" class="tw:text-2xl tw:font-semibold tw:text-slate-900"><b>Inprem</b>Clockin</a>
 </div>
-<!-- /.login-logo -->
-<div class="card">
-    <div class="card-body login-card-body">
-        <p class="login-box-msg">Sign in to start your session</p>
 
-        <form asp-page="Login" method="post" asp-route-returnUrl="@Model.ReturnUrl">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="input-group mb-3">
-                <input asp-for="Input.Email" type="email" class="form-control" placeholder="Email">
-                <div class="input-group-append">
-                    <div class="input-group-text">
-                        <span class="fas fa-envelope"></span>
-                    </div>
-                </div>
-                @*<span asp-validation-for="Input.Email" class="text-danger"></span>*@
-            </div>
-            <div class="input-group mb-3">
-                <input asp-for="Input.Password" type="password" class="form-control" placeholder="Password">
-                <div class="input-group-append">
-                    <div class="input-group-text">
-                        <span class="fas fa-lock"></span>
-                    </div>
-                </div>
-                @*<span asp-validation-for="Input.Password" class="text-danger"></span>*@
-            </div>
-            <div class="row">
-                <div class="col-8">
-                    <div class="icheck-primary">
-                        <input asp-for="Input.RememberMe" type="checkbox" id="remember">
-                        <label for="remember">
-                            @Html.DisplayNameFor(m => m.Input.RememberMe)
-                        </label>
-                    </div>
-                </div>
-                <!-- /.col -->
-                <div class="col-4">
-                    <button type="submit" class="btn btn-primary btn-block">Sign In</button>
-                </div>
-                <!-- /.col -->
-            </div>
-        </form>
+<div class="tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:p-8 tw:shadow-sm">
+    <p class="tw:mb-4 tw:text-center tw:text-sm tw:text-slate-600">Sign in to start your session</p>
 
-        @*<div class="social-auth-links text-center mb-3">
-        <p>- OR -</p>
-        <a href="#" class="btn btn-block btn-primary">
-        <i class="fab fa-facebook mr-2"></i> Sign in using Facebook
-        </a>
-        <a href="#" class="btn btn-block btn-danger">
-        <i class="fab fa-google-plus mr-2"></i> Sign in using Google+
-        </a>
-        </div>*@
-        <!-- /.social-auth-links -->
+    <form asp-page="Login" method="post" asp-route-returnUrl="@Model.ReturnUrl">
+        <div asp-validation-summary="ModelOnly" class="tw:mb-3 tw:text-sm tw:text-red-600"></div>
+        <div class="tw:mb-4">
+            <label class="@label">Email</label>
+            <input asp-for="Input.Email" type="email" class="@input" placeholder="Email">
+        </div>
+        <div class="tw:mb-4">
+            <label class="@label">Password</label>
+            <input asp-for="Input.Password" type="password" class="@input" placeholder="Password">
+        </div>
+        <div class="tw:mb-4 tw:flex tw:items-center tw:gap-2">
+            <input asp-for="Input.RememberMe" type="checkbox" id="remember" class="tw:h-4 tw:w-4 tw:rounded tw:border-slate-300">
+            <label for="remember" class="tw:text-sm tw:text-slate-700">
+                @Html.DisplayNameFor(m => m.Input.RememberMe)
+            </label>
+        </div>
+        <button type="submit" class="@btnPrimary">Sign In</button>
+    </form>
 
-        <p class="mb-1">
-            <a asp-area="Identity" asp-page="ForgotPassword">I forgot my password</a>
-        </p>
-    </div>
-    <!-- /.login-card-body -->
+    <p class="tw:mt-4 tw:text-center tw:text-sm">
+        <a asp-area="Identity" asp-page="ForgotPassword" class="tw:text-blue-600 tw:hover:underline">I forgot my password</a>
+    </p>
 </div>
 
 @section Scripts {

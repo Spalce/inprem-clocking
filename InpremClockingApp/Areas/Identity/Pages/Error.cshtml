@@ -1,23 +1,25 @@
-﻿@page
+@page
 @model ErrorModel
 @{
     ViewData["Title"] = "Error";
 }
 
-<h1 class="text-danger">Error.</h1>
-<h2 class="text-danger">An error occurred while processing your request.</h2>
+<div class="tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:p-8 tw:shadow-sm">
+    <h1 class="tw:mb-1 tw:text-xl tw:font-semibold tw:text-red-600">Error.</h1>
+    <h2 class="tw:mb-4 tw:text-sm tw:font-medium tw:text-red-600">An error occurred while processing your request.</h2>
 
-@if (Model.ShowRequestId)
-{
-    <p>
-        <strong>Request ID:</strong> <code>@Model.RequestId</code>
+    @if (Model.ShowRequestId)
+    {
+        <p class="tw:mb-4 tw:text-sm tw:text-slate-600">
+            <strong>Request ID:</strong> <code>@Model.RequestId</code>
+        </p>
+    }
+
+    <h3 class="tw:mb-1 tw:text-sm tw:font-semibold tw:text-slate-900">Development Mode</h3>
+    <p class="tw:mb-2 tw:text-sm tw:text-slate-600">
+        Swapping to <strong>Development</strong> environment will display more detailed information about the error that occurred.
     </p>
-}
-
-<h3>Development Mode</h3>
-<p>
-    Swapping to <strong>Development</strong> environment will display more detailed information about the error that occurred.
-</p>
-<p>
-    <strong>Development environment should not be enabled in deployed applications</strong>, as it can result in sensitive information from exceptions being displayed to end users. For local debugging, development environment can be enabled by setting the <strong>ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong>Development</strong>, and restarting the application.
-</p>
+    <p class="tw:text-sm tw:text-slate-600">
+        <strong>Development environment should not be enabled in deployed applications</strong>, as it can result in sensitive information from exceptions being displayed to end users. For local debugging, development environment can be enabled by setting the <strong>ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong>Development</strong>, and restarting the application.
+    </p>
+</div>

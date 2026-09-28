@@ -18,3 +18,4 @@
 /* Automatic content detection only walks downward from this file's directory, so it never
    reaches Pages/*.cshtml (outside wwwroot). Point it there explicitly. */
 @source "../../Pages/**/*.cshtml";
+@source "../../Areas/**/*.cshtml";

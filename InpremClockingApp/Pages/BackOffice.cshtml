@@ -1,93 +1,47 @@
-﻿@page
+@page
 @using InpremClockingApp.Models
 @model BackOfficeModel
 @{
     ViewData["Title"] = "Home page";
+    var card = "tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:shadow-sm";
+    var cardHeader = "tw:border-b tw:border-slate-200 tw:px-4 tw:py-3";
+    var cardBody = "tw:p-4";
 }
 
-<div class="content-wrapper">
-<div class="content-header">
-  <div class="container-fluid">
-    <div class="row mb-2">
-      <div class="col-sm-6">
-        <h1 class="m-0">Dashboard</h1>
+<div class="tw:mx-auto tw:max-w-7xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
+  <div class="tw:mb-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4">
+    <h1 class="tw:text-2xl tw:font-semibold tw:text-slate-900">Dashboard</h1>
+    <nav class="tw:text-sm tw:text-slate-500">
+      <a href="#" class="tw:hover:text-slate-700">Dashboard</a>
+    </nav>
+  </div>
+
+  <div class="tw:grid tw:grid-cols-1 tw:gap-6 tw:sm:grid-cols-2 tw:lg:grid-cols-3">
+    <div class="@card tw:border-t-4 tw:border-t-blue-600">
+      <div class="@cardHeader">
+        <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">Staff</h2>
       </div>
-      <div class="col-sm-6">
-        <ol class="breadcrumb float-sm-right">
-          <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
-          <li class="breadcrumb-item active"></li>
-        </ol>
+      <div class="@cardBody">
+        <p class="tw:text-sm tw:text-slate-600">Total: <span class="tw:font-semibold tw:text-slate-900">@Model.Dashboard!.StaffCount</span></p>
+        <p class="tw:mt-2 tw:text-sm tw:text-slate-600">Working Time: <span class="tw:font-semibold tw:text-slate-900">@Model.Dashboard!.StaffClocking</span></p>
+      </div>
+    </div>
+    <div class="@card tw:border-t-4 tw:border-t-emerald-600">
+      <div class="@cardHeader">
+        <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">Volunteer</h2>
+      </div>
+      <div class="@cardBody">
+        <p class="tw:text-sm tw:text-slate-600">Total: <span class="tw:font-semibold tw:text-slate-900">@Model.Dashboard!.VolunteerCount</span></p>
+        <p class="tw:mt-2 tw:text-sm tw:text-slate-600">Working Time: <span class="tw:font-semibold tw:text-slate-900">@Model.Dashboard!.VolunteerClocking</span></p>
+      </div>
+    </div>
+    <div class="@card tw:border-t-4 tw:border-t-red-600">
+      <div class="@cardHeader">
+        <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">Admins</h2>
+      </div>
+      <div class="@cardBody">
+        <p class="tw:text-sm tw:text-slate-600">Total: <span class="tw:font-semibold tw:text-slate-900">@Model.Dashboard!.AdminCount</span></p>
       </div>
     </div>
   </div>
-</div>
-<div class="content">
-  <div class="container-fluid">
-    <div class="row">
-      @*<div class="col-lg-6">
-        <div class="card">
-          <div class="card-body">
-            <h5 class="card-title">Card title</h5>
-
-            <p class="card-text">
-              Some quick example text to build on the card title and make up the bulk of the card's
-              content.
-            </p>
-
-            <a href="#" class="card-link">Card link</a>
-            <a href="#" class="card-link">Another link</a>
-          </div>
-        </div>
-
-        <div class="card card-primary card-outline">
-          <div class="card-body">
-            <h5 class="card-title">Card title</h5>
-
-            <p class="card-text">
-              Some quick example text to build on the card title and make up the bulk of the card's
-              content.
-            </p>
-            <a href="#" class="card-link">Card link</a>
-            <a href="#" class="card-link">Another link</a>
-          </div>
-        </div>
-      </div>*@
-      <div class="col-md-4">
-        <div class="card card-primary card-outline">
-            <div class="card-header">
-              <h5 class="m-0">Staff</h5>
-            </div>
-            <div class="card-body">
-              <h6 class="card-title">Total: @Model.Dashboard!.StaffCount</h6>
-              <br>
-              <h6 class="card-title">Working Time: @Model.Dashboard!.StaffClocking</h6>
-            </div>
-          </div>
-      </div>
-      <div class="col-md-4">
-        <div class="card card-success card-outline">
-          <div class="card-header">
-            <h5 class="m-0">Volunteer</h5>
-          </div>
-          <div class="card-body">
-            <h6 class="card-title">Total: @Model.Dashboard!.VolunteerCount</h6>
-            <br>
-            <h6 class="card-title">Working Time: @Model.Dashboard!.VolunteerClocking</h6>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="card card-danger card-outline">
-          <div class="card-header">
-            <h5 class="m-0">Admins</h5>
-          </div>
-          <div class="card-body">
-            <h6 class="card-title">Total: @Model.Dashboard!.AdminCount</h6>
-            <br>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 </div>

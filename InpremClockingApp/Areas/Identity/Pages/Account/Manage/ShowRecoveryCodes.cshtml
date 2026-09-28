@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model ShowRecoveryCodesModel
 @{
     ViewData["Title"] = "Recovery codes";
@@ -6,20 +6,16 @@
 }
 
 <partial name="_StatusMessage" for="StatusMessage" />
-<h3>@ViewData["Title"]</h3>
-<div class="alert alert-warning" role="alert">
-    <p>
-        <strong>Put these codes in a safe place.</strong>
-    </p>
+<h3 class="tw:mb-4 tw:text-lg tw:font-semibold tw:text-slate-900">@ViewData["Title"]</h3>
+<div class="tw:mb-4 tw:rounded-md tw:bg-amber-50 tw:p-3 tw:text-sm tw:text-amber-800" role="alert">
+    <p class="tw:mb-1"><strong>Put these codes in a safe place.</strong></p>
     <p>
         If you lose your device and don't have the recovery codes you will lose access to your account.
     </p>
 </div>
-<div class="row">
-    <div class="col-md-12">
-        @for (var row = 0; row < Model.RecoveryCodes.Length; row += 2)
-        {
-            <code class="recovery-code">@Model.RecoveryCodes[row]</code><text>&nbsp;</text><code class="recovery-code">@Model.RecoveryCodes[row + 1]</code><br />
-        }
-    </div>
+<div class="tw:rounded-md tw:bg-slate-50 tw:p-4 tw:font-mono tw:text-sm tw:leading-loose">
+    @for (var row = 0; row < Model.RecoveryCodes.Length; row += 2)
+    {
+        <code class="tw:mr-4">@Model.RecoveryCodes[row]</code><code>@Model.RecoveryCodes[row + 1]</code><br />
+    }
 </div>

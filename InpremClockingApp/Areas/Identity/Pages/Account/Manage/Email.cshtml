@@ -1,42 +1,45 @@
-﻿@page
+@page
 @model EmailModel
 @{
     ViewData["Title"] = "Manage Email";
     ViewData["ActivePage"] = ManageNavPages.Email;
+    var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
+    var inputDisabled = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:bg-slate-50 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900";
+    var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
+    var validation = "tw:mt-1 tw:block tw:text-xs tw:text-red-600";
+    var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
 }
 
-<h3>@ViewData["Title"]</h3>
+<h3 class="tw:mb-4 tw:text-lg tw:font-semibold tw:text-slate-900">@ViewData["Title"]</h3>
 <partial name="_StatusMessage" for="StatusMessage" />
-<div class="row">
-    <div class="col-md-6">
-        <form id="email-form" method="post">
-            <div asp-validation-summary="All" class="text-danger"></div>
-            @if (Model.IsEmailConfirmed)
-            {
-                <div class="form-floating input-group">
-                    <input asp-for="Email" class="form-control" disabled />
-                        <div class="input-group-append">
-                            <span class="h-100 input-group-text text-success font-weight-bold">✓</span>
-                        </div>
-                    <label asp-for="Email" class="form-label"></label>
+<div class="tw:max-w-md">
+    <form id="email-form" method="post">
+        <div asp-validation-summary="All" class="tw:mb-3 tw:text-sm tw:text-red-600"></div>
+        @if (Model.IsEmailConfirmed)
+        {
+            <div class="tw:mb-4">
+                <label asp-for="Email" class="@label"></label>
+                <div class="tw:flex tw:items-center tw:gap-2">
+                    <input asp-for="Email" class="@inputDisabled" disabled />
+                    <span class="tw:font-bold tw:text-emerald-600">&#10003;</span>
                 </div>
-            }
-            else
-            {
-                <div class="form-floating">
-                    <input asp-for="Email" class="form-control" disabled />
-                    <label asp-for="Email" class="form-label"></label>
-                    <button id="email-verification" type="submit" asp-page-handler="SendVerificationEmail" class="btn btn-link">Send verification email</button>
-                </div>
-            }
-            <div class="form-floating">
-                <input asp-for="Input.NewEmail" class="form-control" autocomplete="email" aria-required="true" />
-                <label asp-for="Input.NewEmail" class="form-label"></label>
-                <span asp-validation-for="Input.NewEmail" class="text-danger"></span>
             </div>
-            <button id="change-email-button" type="submit" asp-page-handler="ChangeEmail" class="w-100 btn btn-lg btn-primary">Change email</button>
-        </form>
-    </div>
+        }
+        else
+        {
+            <div class="tw:mb-4">
+                <label asp-for="Email" class="@label"></label>
+                <input asp-for="Email" class="@inputDisabled" disabled />
+                <button id="email-verification" type="submit" asp-page-handler="SendVerificationEmail" class="tw:mt-1 tw:cursor-pointer tw:border-0 tw:bg-transparent tw:p-0 tw:text-sm tw:text-blue-600 tw:hover:underline">Send verification email</button>
+            </div>
+        }
+        <div class="tw:mb-4">
+            <label asp-for="Input.NewEmail" class="@label"></label>
+            <input asp-for="Input.NewEmail" class="@input" autocomplete="email" aria-required="true" />
+            <span asp-validation-for="Input.NewEmail" class="@validation"></span>
+        </div>
+        <button id="change-email-button" type="submit" asp-page-handler="ChangeEmail" class="@btnPrimary tw:w-full">Change email</button>
+    </form>
 </div>
 
 @section Scripts {

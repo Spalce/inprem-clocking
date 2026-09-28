@@ -2,40 +2,22 @@
     Layout = "/Pages/Shared/_Layout.cshtml";
 }
 
-<div class="content-wrapper">
-  <div class="content-header">
-    <div class="container-fluid">
-      <div class="row mb-2">
-        <div class="col-sm-6">
-          <h1 class="m-0">Manage Account</h1>
-        </div>
-        <div class="col-sm-6">
-          <ol class="breadcrumb float-sm-right">
-            <li class="breadcrumb-item"><a href="#">Home</a></li>
-            <li class="breadcrumb-item active">Manage Account</li>
-          </ol>
-        </div>
-      </div>
-    </div>
+<div class="tw:mx-auto tw:max-w-7xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
+  <div class="tw:mb-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4">
+    <h1 class="tw:text-2xl tw:font-semibold tw:text-slate-900">Manage Account</h1>
+    <nav class="tw:text-sm tw:text-slate-500">
+      <a href="#" class="tw:hover:text-slate-700">Home</a>
+      <span class="tw:mx-1">/</span>
+      <span class="tw:text-slate-700">Manage Account</span>
+    </nav>
   </div>
-  <div class="content">
-    <div class="container-fluid">
-      <div class="row">
-        <div class="col-md-3">
-          <div class="card card-primary card-outline">
-            <div class="card-body p-0">
-              <partial name="_ManageNav" />
-            </div>
-          </div>
-        </div>
-        <div class="col-md-9">
-          <div class="card card-primary card-outline">
-            <div class="card-body">
-              @RenderBody()
-            </div>
-          </div>
-        </div>
-      </div>
+
+  <div class="tw:grid tw:grid-cols-1 tw:gap-6 tw:lg:grid-cols-4">
+    <div class="tw:overflow-hidden tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white">
+      <partial name="_ManageNav" />
+    </div>
+    <div class="tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:p-6 tw:shadow-sm tw:lg:col-span-3">
+      @RenderBody()
     </div>
   </div>
 </div>

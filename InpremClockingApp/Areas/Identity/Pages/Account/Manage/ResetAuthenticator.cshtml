@@ -1,24 +1,20 @@
-﻿@page
+@page
 @model ResetAuthenticatorModel
 @{
     ViewData["Title"] = "Reset authenticator key";
     ViewData["ActivePage"] = ManageNavPages.TwoFactorAuthentication;
+    var btnDanger = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-red-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-red-700";
 }
 
 <partial name="_StatusMessage" for="StatusMessage" />
-<h3>@ViewData["Title"]</h3>
-<div class="alert alert-warning" role="alert">
-    <p>
-        <span class="glyphicon glyphicon-warning-sign"></span>
-        <strong>If you reset your authenticator key your authenticator app will not work until you reconfigure it.</strong>
-    </p>
+<h3 class="tw:mb-4 tw:text-lg tw:font-semibold tw:text-slate-900">@ViewData["Title"]</h3>
+<div class="tw:mb-4 tw:rounded-md tw:bg-amber-50 tw:p-3 tw:text-sm tw:text-amber-800" role="alert">
+    <p class="tw:mb-1"><strong>If you reset your authenticator key your authenticator app will not work until you reconfigure it.</strong></p>
     <p>
         This process disables 2FA until you verify your authenticator app.
         If you do not complete your authenticator app configuration you may lose access to your account.
     </p>
 </div>
-<div>
-    <form id="reset-authenticator-form" method="post">
-        <button id="reset-authenticator-button" class="btn btn-danger" type="submit">Reset authenticator key</button>
-    </form>
-</div>
+<form id="reset-authenticator-form" method="post">
+    <button id="reset-authenticator-button" class="@btnDanger" type="submit">Reset authenticator key</button>
+</form>
