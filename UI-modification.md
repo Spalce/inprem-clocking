@@ -238,6 +238,58 @@ appear; switching away hides them again), and loaded `VolunteerClockPage` direct
 staff record and clocking row created by the duplicate-check test (id 23, test email) were
 removed from the dev DB afterward, with explicit confirmation before running the delete.
 
+## Phase 4 status: pages converted, asset removal pending (see below)
+
+Converted every remaining page: `BackOffice.cshtml` (dashboard), `Settings.cshtml`, and all of
+`Areas/Identity/Pages/**` — Login, Register, the password-reset/confirmation flow, 2FA
+(enable/disable/recovery codes/reset), external logins, personal data, and the full "Manage
+Account" section (~30 files in total). Converted the two shared Identity layout shells first
+(`Pages/Shared/_Login.cshtml`, the centered card shell used by Login/Register/most auth pages;
+`Areas/Identity/Pages/Account/Manage/_Layout.cshtml` + `_ManageNav.cshtml`, the sidebar-nav
+shell used by all Manage Account subpages) — same "convert shared chrome first" approach as
+Phase 1, so every page nested under either shell got most of its new look from two file edits
+before any page-specific content was touched. Bootstrap's `form-floating` pattern (floating
+label overlapping the input) was replaced with the plain label-above-input pattern used
+everywhere else in the app, since Tailwind has no equivalent utility and matching it exactly
+would need custom peer-selector CSS not worth it for this internal app.
+
+**Found a second `@source` gap while compiling.** `tailwind-input.css`'s `@source` line only
+covered `../../Pages/**/*.cshtml`; the Identity pages live under `Areas/Identity/Pages/`, a
+sibling directory `@source` never reached, so none of the ~30 files' new `tw:` classes were in
+the compiled stylesheet until a second line (`@source "../../Areas/**/*.cshtml";`) was added.
+Same category of bug as the original Phase 0 finding, different directory this time — worth
+remembering that any *new* top-level content directory outside `Pages/` needs its own `@source`
+line; nothing has reached this problem twice within the same directory since.
+
+**Verified live in the browser**, both directly and by clicking through: Login (page render;
+did not attempt a real credential submission), Register, AccessDenied, BackOffice (colored
+dashboard cards), Settings, and the Manage Account section end-to-end — clicked through
+Profile → Email → Two-factor authentication → Personal data via the sidebar nav and confirmed
+the active-link highlighting (`ManageNavPages.*NavClass`) still works, then opened
+`EnableAuthenticator` (the most structurally complex Manage page: ordered list, info callouts,
+a form) and `ChangePassword`. All render correctly with 0 console errors from app code.
+
+**Asset removal (Bootstrap 4/AdminLTE/jQuery UI) is not done yet — it can't be, safely, until
+two remaining dependencies are dealt with:**
+1. The Edit/Add **modals on `Staff.cshtml`/`Volunteer.cshtml`** still use Bootstrap's actual
+   modal *mechanics* (the `.modal`/`.fade`/`.show` CSS transitions, backdrop, and the jQuery
+   `.modal('show'/'hide')` calls from `bootstrap.bundle.min.js`) — only their inner content was
+   restyled in Phase 2, by deliberate scope decision at the time ("a full modal rebuild is a
+   later phase"). Removing Bootstrap's CSS/JS now would leave these modals unable to open or
+   close.
+2. The **jQuery UI autocomplete widgets** on the "Existing Staff"/"Existing Volunteer" search
+   boxes (`StaffAttendance.cshtml`/`VolunteerAttendance.cshtml`) still load `jquery-ui.min.css`/
+   `.js` from a CDN and call `.autocomplete(...)` — flagged for replacement with the
+   custom-dropdown pattern already used elsewhere (e.g. the staff/volunteer lookup in Phase 2's
+   clocking-report pages) back when the phased plan was first written.
+
+Both are real, scoped pieces of work (rebuild 2 modals as plain Tailwind dialogs; swap 2 search
+inputs to the existing custom-dropdown JS pattern), not blockers on principle — they were
+identified and deliberately deferred, not missed. Given they touch interactive JS behavior
+(modal open/close, autocomplete selection) rather than pure markup/class changes like everything
+else in this phase, they carry more regression risk and are called out here for an explicit
+go/no-go before starting, rather than folded silently into "Phase 4 done."
+
 ## Phased plan
 
 **Phase 0 — Foundation (no visible change)**
