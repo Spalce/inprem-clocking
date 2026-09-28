@@ -7,53 +7,29 @@
   Layout = "Shared/_MainLayout";
   ViewData["Title"] = "Volunteer Clocking Controls";
   var id = (long?)ViewData["id"] ?? 0;
+  var kioskBtn = "tw:block tw:w-full tw:cursor-pointer tw:rounded-lg tw:border-0 tw:px-6 tw:py-5 tw:text-center tw:text-lg tw:font-semibold tw:text-white tw:shadow-sm";
 }
 
-<div class="content-wrapper">
-  <div class="content-header">
-    <div class="container-fluid">
-      <div class="row mb-2">
-        <div class="col-sm-6">
-          <h1 class="m-0">Volunteer Clocking System</h1>
-        </div>
-        <div class="col-sm-6">
-          <ol class="breadcrumb float-sm-right">
-            <li class="breadcrumb-item"><a href="#">Home</a></li>
-            <li class="breadcrumb-item active">Clocking System</li>
-          </ol>
-        </div>
-      </div>
-    </div>
+<div class="tw:mx-auto tw:max-w-7xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
+  <div class="tw:mb-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4">
+    <h1 class="tw:text-2xl tw:font-semibold tw:text-slate-900">Volunteer Clocking System</h1>
+    <nav class="tw:text-sm tw:text-slate-500">
+      <a href="#" class="tw:hover:text-slate-700">Home</a>
+      <span class="tw:mx-1">/</span>
+      <span class="tw:text-slate-700">Clocking System</span>
+    </nav>
   </div>
-  <div class="content">
-    <div class="container-fluid">
-      <div class="auth-container d-flex align-items-center">
-          <div class="col-lg-4 mx-auto">
-              <div class="auth-form">
-                  <div class="text-block text-center my-3">
-                      <span class="text-small font-weight-500">Please clock in</span>
-                  </div>
-                  <div class="text-block text-center my-3">
-                      <span id="current-date" class="text-small font-weight-500">@OrgClock.NowLocal().ToString("dd-MM-yyyy")</span>
-                  </div>
-                  <div class="text-block text-center my-3">
-                      <span id="current-time" class="text-small font-weight-500">@OrgClock.NowLocal().ToString("HH:mm:ss")</span>
-                  </div>
-                  <div class="form-group">
-                      <a class="btn btn-success submit-btn btn-block" id="clockin">ClockIn</a>
-                  </div>
-                  <div class="form-group">
-                      <a class="btn btn-primary submit-btn btn-block" id="leavein">Leave for Break</a>
-                  </div>
-                  <div class="form-group">
-                      <a class="btn btn-warning submit-btn btn-block" id="leaveout">Return from Break</a>
-                  </div>
-                  <div class="form-group">
-                      <a class="btn btn-danger submit-btn btn-block" id="clockout">Clock Out</a>
-                  </div>
-              </div>
-          </div>
-       </div>
+
+  <div class="tw:mx-auto tw:max-w-md tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:p-8 tw:shadow-sm">
+    <p class="tw:text-center tw:text-base tw:font-medium tw:text-slate-600">Please clock in</p>
+    <p id="current-date" class="tw:mt-2 tw:text-center tw:text-lg tw:font-semibold tw:text-slate-900">@OrgClock.NowLocal().ToString("dd-MM-yyyy")</p>
+    <p id="current-time" class="tw:mb-6 tw:text-center tw:text-lg tw:font-semibold tw:text-slate-900">@OrgClock.NowLocal().ToString("HH:mm:ss")</p>
+
+    <div class="tw:flex tw:flex-col tw:gap-3">
+      <a class="@kioskBtn tw:bg-emerald-600 tw:hover:bg-emerald-700" id="clockin">Clock In</a>
+      <a class="@kioskBtn tw:bg-blue-600 tw:hover:bg-blue-700" id="leavein">Leave for Break</a>
+      <a class="@kioskBtn tw:bg-amber-500 tw:hover:bg-amber-600" id="leaveout">Return from Break</a>
+      <a class="@kioskBtn tw:bg-red-600 tw:hover:bg-red-700" id="clockout">Clock Out</a>
     </div>
   </div>
 </div>

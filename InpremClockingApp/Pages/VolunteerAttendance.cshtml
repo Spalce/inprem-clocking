@@ -6,6 +6,11 @@
 @{
     Layout = "Shared/_MainLayout";
     ViewData["Title"] = "Volunteer Clocking";
+    var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
+    var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
+    var validation = "tw:mt-1 tw:block tw:text-xs tw:text-red-600";
+    var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
+    var btnWhite = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-slate-300 tw:bg-white tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-slate-700 tw:hover:bg-slate-50";
 }
 
 
@@ -13,170 +18,132 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
 
-<div class="content-wrapper">
-  <div class="content-header">
-    <div class="container-fluid">
-      <div class="row mb-2">
-        <div class="col-sm-6">
-          <h1 class="m-0">Volunteer Clocking</h1>
-        </div>
-        <div class="col-sm-6">
-          <ol class="breadcrumb float-sm-right">
-            <li class="breadcrumb-item"><a href="#">Home</a></li>
-            <li class="breadcrumb-item active">Volunteer Clocking</li>
-          </ol>
-        </div>
+<div class="tw:mx-auto tw:max-w-7xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
+  <div class="tw:mb-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4">
+    <h1 class="tw:text-2xl tw:font-semibold tw:text-slate-900">Volunteer Clocking</h1>
+    <nav class="tw:text-sm tw:text-slate-500">
+      <a href="#" class="tw:hover:text-slate-700">Home</a>
+      <span class="tw:mx-1">/</span>
+      <span class="tw:text-slate-700">Volunteer Clocking</span>
+    </nav>
+  </div>
+
+  <p class="tw:mb-6 tw:text-sm tw:text-red-600">If you need your hours verified please send an email to inpremcc@gmail.com. Provide your full name, email used for registration and dates</p>
+
+  <div class="tw:grid tw:grid-cols-1 tw:gap-6 tw:lg:grid-cols-2">
+    <div class="tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:shadow-sm">
+      <div class="tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+        <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">New Volunteer</h2>
+      </div>
+      <div class="tw:p-4">
+        @if (TempData["Message"] != null)
+        {
+          <div class="tw:mb-4 tw:rounded-md tw:bg-emerald-50 tw:px-3 tw:py-2 tw:text-sm tw:text-emerald-700">@TempData["Message"]</div>
+        }
+
+        <form id="registerForm" method="post">
+          <div asp-validation-summary="ModelOnly" class="tw:mb-3 tw:text-sm tw:text-red-600"></div>
+
+          @if (Model.NameConflict)
+          {
+            <div class="tw:mb-4 tw:rounded-md tw:bg-amber-50 tw:p-3">
+              <p class="tw:mb-2 tw:text-sm tw:text-amber-800">A volunteer named <strong>@Model.ExistingName</strong> is already registered. Is this you?</p>
+              <div class="tw:flex tw:gap-2">
+                <a href="/volunteer-clockin/@Model.ExistingId" class="@btnPrimary">Yes, that's me</a>
+                <button type="submit" name="ConfirmDifferentPerson" value="true" class="@btnWhite">No, this is a different person</button>
+              </div>
+            </div>
+          }
+
+          <div class="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2">
+            <div>
+              <label asp-for="Input!.FirstName" class="@label"></label>
+              <input asp-for="Input!.FirstName" class="@input" autocomplete="first name" aria-required="true"/>
+              <span asp-validation-for="Input!.FirstName" class="@validation"></span>
+            </div>
+            <div>
+              <label asp-for="Input!.LastName" class="@label"></label>
+              <input asp-for="Input!.LastName" class="@input" autocomplete="user name" aria-required="true"/>
+              <span asp-validation-for="Input!.LastName" class="@validation"></span>
+            </div>
+            <div>
+              <label asp-for="Input!.EmailAddress" class="@label"></label>
+              <input asp-for="Input!.EmailAddress" class="@input" autocomplete="email" aria-required="true"/>
+              <span asp-validation-for="Input!.EmailAddress" class="@validation"></span>
+            </div>
+            <div>
+              <label asp-for="Input!.ZipCode" class="@label"></label>
+              <input asp-for="Input!.ZipCode" class="@input" autocomplete="zip code" aria-required="true"/>
+              <span asp-validation-for="Input!.ZipCode" class="@validation"></span>
+            </div>
+            <div>
+              <label asp-for="Input!.PhoneNumber" class="@label"></label>
+              <input asp-for="Input!.PhoneNumber" class="@input" autocomplete="phone number" aria-required="true"/>
+              <span asp-validation-for="Input!.PhoneNumber" class="@validation"></span>
+            </div>
+            <div>
+              <label asp-for="Input!.Gender" class="@label"></label>
+              <select asp-for="Input!.Gender" class="@input" placeholder="Gender">
+                <option value=''>Gender</option>
+                <option value='M'>Male</option>
+                <option value='F'>Female</option>
+              </select>
+              <span asp-validation-for="Input!.Gender" class="@validation"></span>
+            </div>
+            <div class="tw:sm:col-span-2">
+              <label asp-for="Input!.VolunteerCategory" class="@label">Which volunteer category do you fall under?</label>
+              <select asp-for="Input!.VolunteerCategory" class="@input" required>
+                <option value="">-- Select category --</option>
+                <option value="@VolunteerCategories.MandatedCommunityHours">Mandated Community Hours</option>
+                <option value="@VolunteerCategories.MofcVolunteerHub">MOFC Volunteer Hub</option>
+                <option value="@VolunteerCategories.EducationalPurposes">Educational Purposes</option>
+                <option value="@VolunteerCategories.CorporateVolunteering">Corporate Volunteering</option>
+                <option value="@VolunteerCategories.PersonalOrIndividualVolunteering">Personal or Individual Volunteering</option>
+              </select>
+              <span asp-validation-for="Input!.VolunteerCategory" class="@validation"></span>
+            </div>
+            <div class="tw:sm:col-span-2" id="mandateTypeGroup" style="display:none;">
+              <label asp-for="Input!.MandateType" class="@label">Which of these applies to you?</label>
+              <select asp-for="Input!.MandateType" class="@input">
+                <option value="">-- Select --</option>
+                <option value="@VolunteerMandateTypes.CourtOrders">Court orders</option>
+                <option value="@VolunteerMandateTypes.Diversion">Diversion</option>
+                <option value="@VolunteerMandateTypes.YouthDetention">Youth Detention</option>
+              </select>
+              <span asp-validation-for="Input!.MandateType" class="@validation"></span>
+            </div>
+            <div id="institutionGroup" style="display:none;">
+              <label asp-for="Input!.InstitutionName" class="@label"></label>
+              <input asp-for="Input!.InstitutionName" class="@input" />
+              <span asp-validation-for="Input!.InstitutionName" class="@validation"></span>
+            </div>
+            <div id="placeOfWorkGroup" style="display:none;">
+              <label asp-for="Input!.PlaceOfWork" class="@label"></label>
+              <input asp-for="Input!.PlaceOfWork" class="@input" />
+              <span asp-validation-for="Input!.PlaceOfWork" class="@validation"></span>
+            </div>
+            <div id="contactPersonGroup" style="display:none;">
+              <label asp-for="Input!.ContactPerson" class="@label"></label>
+              <input asp-for="Input!.ContactPerson" class="@input" />
+              <span asp-validation-for="Input!.ContactPerson" class="@validation"></span>
+            </div>
+          </div>
+
+          <button id="registerSubmit" type="submit" class="@btnPrimary tw:mt-5 tw:w-full tw:py-3 tw:text-base">Register</button>
+        </form>
       </div>
     </div>
-  </div>
-  <div class="content">
-      <div class="container-fluid">
-          <p class="text-danger">If you need your hours verified please send an email to inpremcc@gmail.com. Provide your full name,
-              email used for registration and dates</p>
-          <div class="row">
-              <div class="col-md-6">
-                  <div class="card card-primary card-outline">
-                      <div class="card-header">
-                          <h5 class="m-0">New Volunteer</h5>
-                      </div>
-                      <div class="card-body">
-                          @if (TempData["Message"] != null)
-                          {
-                              <div class="alert alert-success">@TempData["Message"]</div>
-                          }
 
-                          <form id="registerForm" method="post" class="form-row">
-                              <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
-                              @if (Model.NameConflict)
-                              {
-                                  <div class="col-md-12">
-                                      <div class="alert alert-warning">
-                                          <p class="mb-2">A volunteer named <strong>@Model.ExistingName</strong> is already registered. Is this you?</p>
-                                          <a href="/volunteer-clockin/@Model.ExistingId" class="btn btn-sm btn-primary">Yes, that's me</a>
-                                          <button type="submit" name="ConfirmDifferentPerson" value="true" class="btn btn-sm btn-secondary">No, this is a different person</button>
-                                      </div>
-                                  </div>
-                              }
-
-                              <div class="col-md-6">
-                                  <div class="form-floating">
-                                      <label asp-for="Input!.FirstName" class="small"></label>
-                                      <input asp-for="Input!.FirstName" class="form-control form-control-sm" autocomplete="first name" aria-required="true"/>
-                                      <span asp-validation-for="Input!.FirstName" class="text-danger small"></span>
-                                  </div>
-                              </div>
-                              <div class="col-md-6">
-                                  <div class="form-floating">
-                                      <label asp-for="Input!.LastName" class="small"></label>
-                                      <input asp-for="Input!.LastName" class="form-control form-control-sm" autocomplete="user name" aria-required="true"/>
-                                      <span asp-validation-for="Input!.LastName" class="text-danger small"></span>
-                                  </div>
-                              </div>
-                              <div class="col-md-6">
-                                  <div class="form-floating">
-                                      <label asp-for="Input!.EmailAddress" class="small"></label>
-                                      <input asp-for="Input!.EmailAddress" class="form-control form-control-sm" autocomplete="email" aria-required="true"/>
-                                      <span asp-validation-for="Input!.EmailAddress" class="text-danger small"></span>
-                                  </div>
-                              </div>
-                              <div class="col-md-6">
-                                  <div class="form-floating">
-                                      <label asp-for="Input!.ZipCode" class="small"></label>
-                                      <input asp-for="Input!.ZipCode" class="form-control form-control-sm" autocomplete="zip code" aria-required="true"/>
-                                      <span asp-validation-for="Input!.ZipCode" class="text-danger small"></span>
-                                  </div>
-                              </div>
-                              <div class="col-md-6">
-                                  <div class="form-floating">
-                                      <label asp-for="Input!.PhoneNumber" class="small"></label>
-                                      <input asp-for="Input!.PhoneNumber" class="form-control form-control-sm" autocomplete="phone number" aria-required="true"/>
-                                      <span asp-validation-for="Input!.PhoneNumber" class="text-danger small"></span>
-                                  </div>
-                              </div>
-                              <div class="col-md-6">
-                                  <div class="form-floating">
-                                      <label asp-for="Input!.Gender" class="small"></label>
-                                      <select asp-for="Input!.Gender" class="form-control form-control-sm" placeholder="Gender">
-                                          <option value=''>Gender</option>
-                                          <option value='M'>Male</option>
-                                          <option value='F'>Female</option>
-                                      </select>
-                                      <span asp-validation-for="Input!.Gender" class="text-danger small"></span>
-                                  </div>
-                              </div>
-                              <div class="col-md-12">
-                                  <div class="form-floating">
-                                      <label asp-for="Input!.VolunteerCategory" class="small">Which volunteer category do you fall under?</label>
-                                      <select asp-for="Input!.VolunteerCategory" class="form-control form-control-sm" required>
-                                          <option value="">-- Select category --</option>
-                                          <option value="@VolunteerCategories.MandatedCommunityHours">Mandated Community Hours</option>
-                                          <option value="@VolunteerCategories.MofcVolunteerHub">MOFC Volunteer Hub</option>
-                                          <option value="@VolunteerCategories.EducationalPurposes">Educational Purposes</option>
-                                          <option value="@VolunteerCategories.CorporateVolunteering">Corporate Volunteering</option>
-                                          <option value="@VolunteerCategories.PersonalOrIndividualVolunteering">Personal or Individual Volunteering</option>
-                                      </select>
-                                      <span asp-validation-for="Input!.VolunteerCategory" class="text-danger small"></span>
-                                  </div>
-                              </div>
-                              <div class="col-md-12" id="mandateTypeGroup" style="display:none;">
-                                  <div class="form-floating">
-                                      <label asp-for="Input!.MandateType" class="small">Which of these applies to you?</label>
-                                      <select asp-for="Input!.MandateType" class="form-control form-control-sm">
-                                          <option value="">-- Select --</option>
-                                          <option value="@VolunteerMandateTypes.CourtOrders">Court orders</option>
-                                          <option value="@VolunteerMandateTypes.Diversion">Diversion</option>
-                                          <option value="@VolunteerMandateTypes.YouthDetention">Youth Detention</option>
-                                      </select>
-                                      <span asp-validation-for="Input!.MandateType" class="text-danger small"></span>
-                                  </div>
-                              </div>
-                              <div class="col-md-6" id="institutionGroup" style="display:none;">
-                                  <div class="form-floating">
-                                      <label asp-for="Input!.InstitutionName" class="small"></label>
-                                      <input asp-for="Input!.InstitutionName" class="form-control form-control-sm" />
-                                      <span asp-validation-for="Input!.InstitutionName" class="text-danger small"></span>
-                                  </div>
-                              </div>
-                              <div class="col-md-6" id="placeOfWorkGroup" style="display:none;">
-                                  <div class="form-floating">
-                                      <label asp-for="Input!.PlaceOfWork" class="small"></label>
-                                      <input asp-for="Input!.PlaceOfWork" class="form-control form-control-sm" />
-                                      <span asp-validation-for="Input!.PlaceOfWork" class="text-danger small"></span>
-                                  </div>
-                              </div>
-                              <div class="col-md-6" id="contactPersonGroup" style="display:none;">
-                                  <div class="form-floating">
-                                      <label asp-for="Input!.ContactPerson" class="small"></label>
-                                      <input asp-for="Input!.ContactPerson" class="form-control form-control-sm" />
-                                      <span asp-validation-for="Input!.ContactPerson" class="text-danger small"></span>
-                                  </div>
-                              </div>
-                              <div class="col-md-12" style="margin-top: 20px;">
-                                  <button id="registerSubmit" type="submit" class="w-100 btn btn-sm btn-primary">Register</button>
-                              </div>
-                          </form>
-                      </div>
-                  </div>
-              </div>
-              <div class="col-md-6">
-                  <div class="card card-danger card-outline">
-                      <div class="card-header">
-                          <h5 class="m-0">Existing Volunteer</h5>
-                      </div>
-                      <div class="card-body">
-                          <form method="get">
-                              <fieldset class="form-group">
-                                  <div class="input-group col-xs-12">
-                                        <input type="text" class="form-control" id="volunteerSearch" name="volunteerSearch" placeholder="Search Volunteer">
-                                  </div>
-                              </fieldset>
-                          </form>
-                      </div>
-                  </div>
-              </div>
-          </div>
+    <div class="tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:shadow-sm">
+      <div class="tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+        <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">Existing Volunteer</h2>
       </div>
+      <div class="tw:p-4">
+        <form method="get">
+          <input type="text" class="@input tw:py-3 tw:text-base" id="volunteerSearch" name="volunteerSearch" placeholder="Search Volunteer">
+        </form>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -236,4 +203,3 @@
       },
     });
 </script>
-

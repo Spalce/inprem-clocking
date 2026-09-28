@@ -200,6 +200,44 @@ Two console `[EXCEPTION] Object` entries observed during testing were confirmed 
 from third-party Chrome extensions active in the test browser profile (maxai, Quillbot, and
 similar), not from the app — they fire on every page load regardless of app code.
 
+## Phase 3 status: done
+
+Converted the four kiosk-facing pages: `StaffAttendance.cshtml`/`VolunteerAttendance.cshtml`
+(sign-up forms) and `StaffClockPage.cshtml`/`VolunteerClockPage.cshtml` (clock-in screens),
+using the "simpler, larger-touch-target" treatment the plan called for — big, full-width,
+solid-color action buttons (`py-5`, `text-lg`) instead of the admin design system's compact
+`btnPrimary`/`btnDanger` buttons, since these screens are meant to be tapped on a walk-up
+device rather than clicked precisely with a mouse. Sign-up forms reuse the same
+`input`/`label`/`btnPrimary`/`btnWhite` classes as the admin CRUD pages for the form fields
+themselves (labels, text inputs, selects) — only the primary submit and clock actions get the
+oversized kiosk treatment.
+
+**No JavaScript logic was touched.** The duplicate-check confirmation flow (email/phone exact
+match → redirect with a message; name-only match → in-page warning with "Yes, that's me" /
+"No, different person") and the volunteer-category conditional fields
+(`mandateTypeGroup`/`institutionGroup`/`placeOfWorkGroup`/`contactPersonGroup`, shown/hidden via
+inline `style.display` toggling in a small script block) were left exactly as they were — the
+conditional-fields script still directly sets `element.style.display`, so those divs keep their
+original inline `style="display:none;"` starting state rather than switching to a `tw:hidden`
+class (a class-based hidden state would fight with the inline-style toggle and silently break
+the show/hide behavior for two independent reasons: a class doesn't get removed by setting
+`style.display=''`, and it wasn't necessary to touch working logic for a presentation-only
+phase). Same for the jQuery UI autocomplete widgets on the "Existing Staff"/"Existing Volunteer"
+search boxes — kept as-is; replacing them with the custom dropdown pattern from Phase 2 is
+explicitly deferred to Phase 4 per the original plan.
+
+**Verified live in the browser**, including the one flow most likely to break from a markup
+change: filled out `StaffAttendance` with a first/last name that already exists in the DB
+(different email/phone) and confirmed the amber "already registered, is this you?" prompt
+renders correctly with both buttons; clicked "No, this is a different person" and confirmed the
+registration completed and redirected to the new kiosk clock-in screen; clicked "Clock In" and
+confirmed the AJAX call, `showToast()`, and the post-clock-in redirect all still work. Also
+exercised the volunteer sign-up's conditional fields end-to-end (Mandated Community Hours →
+mandate-type dropdown appears; Educational Purposes → institution + contact-person fields
+appear; switching away hides them again), and loaded `VolunteerClockPage` directly. The one
+staff record and clocking row created by the duplicate-check test (id 23, test email) were
+removed from the dev DB afterward, with explicit confirmation before running the delete.
+
 ## Phased plan
 
 **Phase 0 — Foundation (no visible change)**
