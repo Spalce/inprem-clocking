@@ -238,7 +238,7 @@ appear; switching away hides them again), and loaded `VolunteerClockPage` direct
 staff record and clocking row created by the duplicate-check test (id 23, test email) were
 removed from the dev DB afterward, with explicit confirmation before running the delete.
 
-## Phase 4 status: pages converted, asset removal pending (see below)
+## Phase 4 status: done
 
 Converted every remaining page: `BackOffice.cshtml` (dashboard), `Settings.cshtml`, and all of
 `Areas/Identity/Pages/**` — Login, Register, the password-reset/confirmation flow, 2FA
@@ -269,26 +269,50 @@ the active-link highlighting (`ManageNavPages.*NavClass`) still works, then open
 `EnableAuthenticator` (the most structurally complex Manage page: ordered list, info callouts,
 a form) and `ChangePassword`. All render correctly with 0 console errors from app code.
 
-**Asset removal (Bootstrap 4/AdminLTE/jQuery UI) is not done yet — it can't be, safely, until
-two remaining dependencies are dealt with:**
-1. The Edit/Add **modals on `Staff.cshtml`/`Volunteer.cshtml`** still use Bootstrap's actual
-   modal *mechanics* (the `.modal`/`.fade`/`.show` CSS transitions, backdrop, and the jQuery
-   `.modal('show'/'hide')` calls from `bootstrap.bundle.min.js`) — only their inner content was
-   restyled in Phase 2, by deliberate scope decision at the time ("a full modal rebuild is a
-   later phase"). Removing Bootstrap's CSS/JS now would leave these modals unable to open or
-   close.
-2. The **jQuery UI autocomplete widgets** on the "Existing Staff"/"Existing Volunteer" search
-   boxes (`StaffAttendance.cshtml`/`VolunteerAttendance.cshtml`) still load `jquery-ui.min.css`/
-   `.js` from a CDN and call `.autocomplete(...)` — flagged for replacement with the
-   custom-dropdown pattern already used elsewhere (e.g. the staff/volunteer lookup in Phase 2's
-   clocking-report pages) back when the phased plan was first written.
+**Asset removal completed as a follow-up within this same phase, after explicit go-ahead.**
+Two things blocked it and were resolved first:
 
-Both are real, scoped pieces of work (rebuild 2 modals as plain Tailwind dialogs; swap 2 search
-inputs to the existing custom-dropdown JS pattern), not blockers on principle — they were
-identified and deliberately deferred, not missed. Given they touch interactive JS behavior
-(modal open/close, autocomplete selection) rather than pure markup/class changes like everything
-else in this phase, they carry more regression risk and are called out here for an explicit
-go/no-go before starting, rather than folded silently into "Phase 4 done."
+1. The Edit/Add **modals on `Staff.cshtml`/`Volunteer.cshtml`** used Bootstrap's actual modal
+   *mechanics* (`.modal`/`.fade`/`.show` transitions, backdrop, `$(...).modal('show'/'hide')`)
+   — only their inner content was restyled in Phase 2. Rebuilt as a small native implementation:
+   `openModal(id)`/`closeModal(id)` plus a `data-modal-dismiss="<id>"` attribute for
+   close-buttons and the backdrop, added to `layout.js` (dismiss-on-click and dismiss-on-Escape
+   handled once, generically, via event delegation — not duplicated per modal). **Found and
+   fixed a real bug while testing this**: the modal's flex centering wrapper (`fixed inset-0
+   flex items-center justify-center`) sits *in front of* the backdrop div in paint order and,
+   having no background of its own, still intercepts clicks in the empty space around the
+   panel — so clicking outside the panel to dismiss did nothing, the click just hit the
+   wrapper instead of reaching the backdrop underneath. Fixed with `pointer-events-none` on the
+   wrapper and `pointer-events-auto` on the inner panel, so empty-space clicks fall through to
+   the backdrop's dismiss handler while clicks on the actual dialog content still work normally.
+2. The **jQuery UI autocomplete widgets** on the "Existing Staff"/"Existing Volunteer" search
+   boxes (`StaffAttendance.cshtml`/`VolunteerAttendance.cshtml`) were replaced with the same
+   custom-dropdown pattern used elsewhere in the app (debounced fetch, a JS-built suggestion
+   list, click-outside-to-close) — reusing the existing `/api/search/staff`,
+   `/api/search/staff-data/{email}` endpoints unchanged (and the `volunteer` equivalents), so no
+   controller or route changes were needed.
+
+With both gone, nothing in the app depended on Bootstrap or AdminLTE anymore. Removed the
+`<link>`/`<script>` references to both from all three shared layouts (`_Layout.cshtml`,
+`_MainLayout.cshtml`, `_Login.cshtml`) and deleted the vendored asset directories
+(`wwwroot/lib/bootstrap/`, `wwwroot/dist/`) via `git rm`, after grepping the whole `Pages`/`Areas`
+tree first to confirm nothing else referenced Bootstrap classes, `data-dismiss="modal"`, jQuery
+UI, or any `~/dist/...` asset path. jQuery itself stays — `showToast()` (used by every page) and
+the kiosk clock pages' `$.ajax` calls still depend on it.
+
+**Verified live**: Edit-modal open with correct prefill, close via the × button, close via
+backdrop click (specifically re-tested after the pointer-events fix), close via Escape, and a
+full round trip through a server-side validation error to a successful Save that persisted and
+reloaded — done for both Staff and Volunteer. The replacement search dropdown on both sign-up
+pages, including the click-to-redirect to the matched person's kiosk clock-in page.
+
+Preflight (Tailwind's base CSS reset) is intentionally **not** being enabled yet even though its
+original trigger condition ("once Bootstrap/AdminLTE is fully removed") is now met — every page
+already has explicit utility classes for spacing/color/typography rather than relying on
+Bootstrap or Preflight defaults, so nothing needs it, and turning it on now would be a new,
+untested visual change (default margins/list styles/button chrome resetting everywhere) applied
+for its own sake right after a large asset-removal change, rather than something actually asked
+for. Left as an optional future polish item, not carried forward as an open task.
 
 ## Phased plan
 
