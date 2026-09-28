@@ -1,19 +1,53 @@
 /*
-  Tailwind is intentionally imported without Preflight (its base CSS reset) while the app
-  still runs on Bootstrap/AdminLTE. Preflight resets default browser styling for headings,
-  lists, buttons, etc., which would visually clash with Bootstrap's own reset on every page
-  not yet converted. Preflight gets added once Bootstrap/AdminLTE is fully removed
-  (see UI-modification.md, Phase 4).
+  Tailwind is intentionally imported without Preflight (its base CSS reset). Originally this
+  was because the app still ran on Bootstrap/AdminLTE, whose own reset would have visually
+  clashed with Preflight's. Bootstrap/AdminLTE were fully removed in Phase 4, but Preflight is
+  still deliberately left off: most of its resets (headings, lists, margins) would be a new,
+  untested visual change with no corresponding bug report, since every converted page already
+  sets its own explicit Tailwind classes for those. See UI-modification.md, Phase 4/5 notes.
 
   Deliberately NOT using Tailwind's `layer(theme)`/`layer(utilities)` wrappers here: CSS
-  Cascade Layers always lose to unlayered styles regardless of specificity or source order,
-  and Bootstrap/AdminLTE's CSS is unlayered - wrapping Tailwind in a layer would make every
-  Tailwind utility silently lose to something as generic as Bootstrap's `a { color: ... }`.
-  Importing unlayered puts Tailwind back on normal specificity/order rules, where its class
-  selectors correctly beat Bootstrap's plainer selectors.
+  Cascade Layers always lose to unlayered styles regardless of specificity or source order.
+  That mattered while Bootstrap's unlayered CSS was still loaded (see git history for the
+  concrete collision this caused); with Bootstrap gone the risk is moot, but there's no benefit
+  to reintroducing the layer wrapper now either, so it stays unlayered.
 */
 @import "tailwindcss/theme" prefix(tw);
 @import "tailwindcss/utilities" prefix(tw);
+
+/*
+  Two specific resets Bootstrap used to provide for free, and which Preflight would also
+  provide - needed now that neither is loaded, found via a real bug report (overlapping
+  boxes/cards/buttons across the app, and underlines under every sidebar/pagination/button
+  link). This is intentionally NOT full Preflight: it's the minimal, universally-safe subset
+  that every CSS reset (Bootstrap, normalize.css, Preflight) agrees on, without touching
+  headings/lists/margins the way full Preflight would.
+
+  1. `box-sizing: border-box` - the actual bug. Every Tailwind utility (`w-full`, `px-*`,
+     `border`) is authored assuming border-box sizing (this is what Preflight's first rule
+     sets, and what Bootstrap also set globally). Without it, the browser default
+     `content-box` adds an element's padding and border ON TOP of a `w-full`/percentage width
+     instead of inside it, so anything with both `w-full` and padding/border (every input,
+     button, and card in this app) renders wider than its container and overlaps its
+     neighbor - confirmed via getComputedStyle on the Staff-page search box: the input
+     measured 244.6px inside a 218.6px parent, a 26px overflow exactly matching its
+     padding+border.
+  2. `a { text-decoration: none }` - anchors used as nav items/pagination/buttons throughout
+     the app never had their default browser underline suppressed; Bootstrap did this
+     globally, nothing does now. `color: inherit` alongside it so an unstyled link picks up
+     its surrounding text color rather than the browser's default link blue. Actual hyperlinks
+     that should look like hyperlinks already carry an explicit `tw:text-blue-600
+     tw:hover:underline` class, which - being a class selector - still wins over this
+     lower-specificity element selector regardless of source order.
+*/
+* {
+  box-sizing: border-box;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
 
 /* Automatic content detection only walks downward from this file's directory, so it never
    reaches Pages/*.cshtml (outside wwwroot). Point it there explicitly. */
