@@ -36,3 +36,29 @@
         });
     });
 })();
+
+// Generic modal dialog show/hide - replaces Bootstrap's $(...).modal('show'/'hide') for the
+// Edit/Add dialogs on Manage Staff/Volunteer. A modal is any element with a unique id; open it
+// with openModal(id)/closeModal(id) from page script, or close it via a
+// data-modal-dismiss="<id>" button/backdrop anywhere inside it.
+function openModal(id) {
+    var modal = document.getElementById(id);
+    if (modal) modal.classList.remove('tw:hidden');
+}
+
+function closeModal(id) {
+    var modal = document.getElementById(id);
+    if (modal) modal.classList.add('tw:hidden');
+}
+
+document.addEventListener('click', function (e) {
+    var dismiss = e.target.closest('[data-modal-dismiss]');
+    if (dismiss) closeModal(dismiss.getAttribute('data-modal-dismiss'));
+});
+
+document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    document.querySelectorAll('[data-modal-root]').forEach(function (modal) {
+        if (!modal.classList.contains('tw:hidden')) modal.classList.add('tw:hidden');
+    });
+});

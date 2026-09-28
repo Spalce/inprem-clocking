@@ -13,11 +13,6 @@
     var btnWhite = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-slate-300 tw:bg-white tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-slate-700 tw:hover:bg-slate-50";
 }
 
-
-<link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
-
 <div class="tw:mx-auto tw:max-w-7xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
   <div class="tw:mb-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4">
     <h1 class="tw:text-2xl tw:font-semibold tw:text-slate-900">Volunteer Clocking</h1>
@@ -140,7 +135,9 @@
       </div>
       <div class="tw:p-4">
         <form method="get">
-          <input type="text" class="@input tw:py-3 tw:text-base" id="volunteerSearch" name="volunteerSearch" placeholder="Search Volunteer">
+          <div class="tw:relative">
+            <input type="text" class="@input tw:py-3 tw:text-base" id="volunteerSearch" name="volunteerSearch" placeholder="Search Volunteer" autocomplete="off">
+          </div>
         </form>
       </div>
     </div>
@@ -186,20 +183,57 @@
         updateConditionalFields();
     })();
 
-    $("#volunteerSearch").autocomplete({
-      source: '/api/search/volunteer',
-      autofocus: true,
-      minLength: 2,
-      select: function( event, ui ) {
-        // do something with the selected item
-        var selected = ui.item.value;
-        $.ajax({
-          url: '/api/search/volunteer-data/' + selected,
-          dataType: "json",
-          success: function( data ) {
-              window.location.assign('/volunteer-clockin/' + data.volunteerId);
-          }
+    (function () {
+        var input = document.getElementById('volunteerSearch');
+        var timer = null;
+        var container = null;
+
+        function ensureContainer() {
+            if (!container) {
+                container = document.createElement('div');
+                container.className = 'tw:absolute tw:z-10 tw:mt-1 tw:max-h-60 tw:w-full tw:overflow-y-auto tw:rounded-md tw:border tw:border-slate-200 tw:bg-white tw:shadow-lg';
+                input.parentNode.appendChild(container);
+            }
+            return container;
+        }
+
+        function renderSuggestions(emails) {
+            var c = ensureContainer();
+            c.innerHTML = '';
+            emails.forEach(function (email) {
+                var el = document.createElement('button');
+                el.type = 'button';
+                el.className = 'tw:block tw:w-full tw:cursor-pointer tw:border-0 tw:bg-transparent tw:px-3 tw:py-2 tw:text-left tw:text-sm tw:text-slate-700 tw:hover:bg-slate-50';
+                el.textContent = email;
+                el.addEventListener('click', function () {
+                    input.value = email;
+                    c.innerHTML = '';
+                    fetch('/api/search/volunteer-data/' + encodeURIComponent(email))
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            window.location.assign('/volunteer-clockin/' + data.volunteerId);
+                        });
+                });
+                c.appendChild(el);
+            });
+        }
+
+        input.addEventListener('input', function (e) {
+            var q = e.target.value;
+            if (timer) clearTimeout(timer);
+            if (!q || q.length < 2) { if (container) container.innerHTML = ''; return; }
+            timer = setTimeout(function () {
+                fetch('/api/search/volunteer?term=' + encodeURIComponent(q))
+                    .then(function (r) { return r.ok ? r.json() : []; })
+                    .then(renderSuggestions)
+                    .catch(function () { if (container) container.innerHTML = ''; });
+            }, 250);
         });
-      },
-    });
+
+        document.addEventListener('click', function (evt) {
+            if (container && !container.contains(evt.target) && evt.target !== input) {
+                container.innerHTML = '';
+            }
+        });
+    })();
 </script>

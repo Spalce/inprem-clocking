@@ -104,18 +104,17 @@
   </div>
 </div>
 
-@* Modals keep Bootstrap's structural classes/JS (data-dismiss, fade, backdrop) for show/hide -
-   only the inner content is restyled with Tailwind. A full modal rebuild is a later phase. *@
-<div class="modal fade" id="editorModal" tabindex="-1" role="dialog" aria-hidden="true">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content tw:rounded-lg">
-      <div class="modal-header tw:items-center tw:border-b tw:border-slate-200">
-        <h5 class="modal-title tw:text-base tw:font-semibold tw:text-slate-900">Edit Staff</h5>
-        <button type="button" class="close tw:cursor-pointer tw:border-0 tw:bg-transparent tw:text-xl tw:leading-none tw:text-slate-400 tw:hover:text-slate-600" data-dismiss="modal" aria-label="Close">
+<div id="editorModal" data-modal-root class="tw:fixed tw:inset-0 tw:z-50 tw:hidden">
+  <div class="tw:fixed tw:inset-0 tw:bg-black/50" data-modal-dismiss="editorModal"></div>
+  <div class="tw:pointer-events-none tw:fixed tw:inset-0 tw:flex tw:items-center tw:justify-center tw:p-4">
+    <div class="tw:pointer-events-auto tw:max-h-[90vh] tw:w-full tw:max-w-lg tw:overflow-y-auto tw:rounded-lg tw:bg-white tw:shadow-xl">
+      <div class="tw:flex tw:items-center tw:justify-between tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+        <h5 id="editorModalTitle" class="tw:text-base tw:font-semibold tw:text-slate-900">Edit Staff</h5>
+        <button type="button" class="tw:cursor-pointer tw:border-0 tw:bg-transparent tw:text-xl tw:leading-none tw:text-slate-400 tw:hover:text-slate-600" data-modal-dismiss="editorModal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
       </div>
-      <div class="modal-body">
+      <div class="tw:p-4">
         <div id="editorErrors" class="tw:mb-2"></div>
         <form id="editorForm">
           <input type="hidden" name="StaffId" id="StaffId" />
@@ -152,8 +151,8 @@
           </div>
         </form>
       </div>
-      <div class="modal-footer tw:border-t tw:border-slate-200">
-        <button type="button" class="@btnWhite" data-dismiss="modal">Close</button>
+      <div class="tw:flex tw:justify-end tw:gap-2 tw:border-t tw:border-slate-200 tw:px-4 tw:py-3">
+        <button type="button" class="@btnWhite" data-modal-dismiss="editorModal">Close</button>
         <button type="button" id="btnSave" class="@btnPrimary">Save</button>
       </div>
     </div>
@@ -204,7 +203,7 @@
         }
 
         function setModalTitle(text) {
-            document.querySelector('#editorModal .modal-title').innerText = text;
+            document.getElementById('editorModalTitle').innerText = text;
         }
 
         function openEditor(payload) {
@@ -218,7 +217,7 @@
             document.getElementById('Address').value = payload.Address || '';
             clearEditorErrors();
             setModalTitle(payload.StaffId ? 'Edit Staff' : 'New Staff');
-            $('#editorModal').modal('show');
+            openModal('editorModal');
         }
 
         // Rows are server-paginated, so search re-runs the query server-side (page reset to 1)
@@ -296,7 +295,7 @@
                 body: JSON.stringify(payload)
             }).then(function (response) {
                 if (response.ok || response.redirected) {
-                    $('#editorModal').modal('hide');
+                    closeModal('editorModal');
                     location.reload();
                     return;
                 }

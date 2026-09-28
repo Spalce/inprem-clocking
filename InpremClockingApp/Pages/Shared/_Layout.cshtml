@@ -9,12 +9,10 @@
   <link rel="stylesheet" href="~/lib/fontawesome-free/css/all.min.css">
   <!-- Material Icons (used by showToast() below) -->
   <link href="https://fonts.googleapis.com/css?family=Material+Icons%7CMaterial+Icons+Outlined%7CMaterial+Icons+Two+Tone%7CMaterial+Icons+Round%7CMaterial+Icons+Sharp" rel="stylesheet">
-  <!-- Theme style (still used by page-specific content not yet migrated to Tailwind) -->
-  <link rel="stylesheet" href="~/dist/css/adminlte.min.css">
   <link rel="stylesheet" href="~/css/site.css" asp-append-version="true"/>
   <link rel="stylesheet" href="~/InpremClockingApp.styles.css" asp-append-version="true"/>
-  <!-- Tailwind CSS (all classes prefixed "tw:" so they never collide with Bootstrap/AdminLTE
-       classes during the migration - see UI-modification.md) -->
+  <!-- Tailwind CSS (all classes prefixed "tw:" for historical reasons - the prefix predates
+       Bootstrap/AdminLTE's removal in Phase 4, see UI-modification.md) -->
   <link rel="stylesheet" href="~/css/tailwind.css" asp-append-version="true"/>
   <script src="~/lib/jquery/jquery.min.js"></script>
 </head>
@@ -32,10 +30,6 @@
   <partial name="_Footer"/>
 </div>
 
-<!-- Bootstrap 4 (still used by page-specific content not yet migrated to Tailwind) -->
-<script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
-<!-- AdminLTE App (still used by page-specific content not yet migrated to Tailwind) -->
-<script src="~/dist/js/adminlte.min.js"></script>
 <script src="~/js/layout.js" asp-append-version="true"></script>
 <script >
 	function showToast(text, duration, alertInfo) {
