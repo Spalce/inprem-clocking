@@ -314,6 +314,35 @@ untested visual change (default margins/list styles/button chrome resetting ever
 for its own sake right after a large asset-removal change, rather than something actually asked
 for. Left as an optional future polish item, not carried forward as an open task.
 
+## Phase 5 status: done
+
+Final review pass across the whole app before handing the branch back for merge review.
+
+**Automated sweep:**
+- `dotnet build InpremClockingApp.sln` — 0 errors, 0 warnings (a clean incremental build; the
+  17 pre-existing warnings noted throughout earlier phases only re-surface when their specific
+  files are recompiled, not on every build).
+- Grepped the entire `Pages`/`Areas` tree for any remaining raw Bootstrap markup
+  (`btn btn-`, `card-header`, `card-body`, `form-control`, `content-wrapper`, `form-floating`,
+  `list-group`, `breadcrumb`, `input-group`, `modal fade`, `data-dismiss="modal"`) and any
+  reference to the removed asset paths (`~/dist/`, `~/lib/bootstrap`, `adminlte`,
+  `bootstrap.bundle`, `jquery-ui`) — zero matches on both.
+- Confirmed `wwwroot/dist/` and `wwwroot/lib/bootstrap/` no longer exist on disk.
+- Confirmed `git status` is clean, `main` is untouched at its original commit, and
+  `ui/tailwind-modernization` is 17 commits ahead with the full migration history intact.
+
+**Live click-through**, done as a full navigation pass (clicking sidebar links, not typing
+URLs, to also catch any broken route wiring) rather than re-verifying each page in isolation
+(already done per-phase): Dashboard → Staff Clocking → Volunteer Clocking → Manage Staff →
+Manage Volunteers → Admins → Logout Settings → Reports (submenu expand + Staff Clocking Report
++ Individual Staff Clocking Report) → Manage Account (Profile) → Logout, ending back at a clean
+Login page. Also re-tested the mobile drawer (420px viewport: hamburger opens the sidebar with
+a dimming backdrop, clicking the backdrop closes it) specifically because `layout.js` was
+modified in Phase 4 to add the modal helpers - confirmed the sidebar behavior added in Phase 1
+still works unchanged.
+
+No visual or functional regressions found. The branch is ready for review.
+
 ## Phased plan
 
 **Phase 0 — Foundation (no visible change)**
