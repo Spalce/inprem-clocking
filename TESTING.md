@@ -202,14 +202,6 @@ Reach this via **Hours** on any row in Manage Staff/Volunteers.
       up. Click **Download PDF**.
 - [ ] Leave the person field blank and filter by date range only - should show
       everyone's clockings in that range.
-- [ ] **Ind. Staff Clocking** / **Ind. Volunteer Clocking** (sidebar links):
-      clicking these from the sidebar lands on an empty table, because the
-      page needs a specific ID in the URL that the sidebar link doesn't
-      provide - this is a pre-existing gap, not something introduced by the
-      recent changes. To see it actually populated, add the ID manually, e.g.
-      `/OneStaffClockingReport?staffId=24` (James Smith) or
-      `/OneVolunteerClockingReport?volunteerId=25` (James Garcia) - adjust the
-      IDs to match what's actually in your database if you've reseeded.
 
 ## 8. Kiosk pages (sign-up + clock-in)
 

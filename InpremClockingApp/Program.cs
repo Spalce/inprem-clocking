@@ -67,10 +67,8 @@ builder.Services.AddRazorPages()
             "/VolunteerClocking",
             "/StaffReport",
             "/StaffClockingReport",
-            "/OneStaffClockingReport",
             "/VolunteerReport",
             "/VolunteerClockingReport",
-            "/OneVolunteerClockingReport",
             "/HoursWorked",
         };
         foreach (var page in adminOnlyPages)
