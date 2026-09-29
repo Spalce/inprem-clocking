@@ -2,13 +2,14 @@
 
 ## Status (2026-09-29)
 
-Phases 0 through 4 are done, committed on `feature/multi-tenancy`, and verified end-to-end -
+**All 5 phases are done**, committed on `feature/multi-tenancy`, and verified end-to-end -
 including creating a real second tenant entirely through the UI (SuperAdmin onboarding ->
 tenant admin login -> staff registration -> clock in/out -> report), confirming isolation and
-per-tenant timezone resolution both hold with no visibility into Inprem's data at any step.
-Data isolation and tenant onboarding are both live now, not just planned. Only Phase 5
-(hardening/docs pass) remains - see "What you'll need to handle" below for the checkpoint
-before continuing.
+per-tenant timezone resolution both hold with no visibility into Inprem's data at any step. The
+Phase 5 audit also caught and fixed a real cross-tenant branding leak (every PDF/report was
+hardcoded to Inprem's own name/address/contact info regardless of viewer) - see the Phase 5
+commit for details. TESTING.md has a "Multi-tenant isolation" section covering all of this.
+Nothing further is planned; this branch is ready for your review before any merge to `main`.
 
 ## Goal
 
