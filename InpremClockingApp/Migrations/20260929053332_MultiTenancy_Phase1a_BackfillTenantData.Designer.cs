@@ -4,6 +4,7 @@ using InpremClockingApp.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace InpremClockingApp.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260929053332_MultiTenancy_Phase1a_BackfillTenantData")]
+    partial class MultiTenancy_Phase1a_BackfillTenantData
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -51,7 +54,7 @@ namespace InpremClockingApp.Migrations
                     b.Property<DateTime?>("ReturnOnBreakTime")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("TenantId")
+                    b.Property<int?>("TenantId")
                         .HasColumnType("int");
 
                     b.Property<long>("VoluntId")
@@ -62,9 +65,9 @@ namespace InpremClockingApp.Migrations
 
                     b.HasKey("ClockingId");
 
-                    b.HasIndex("VoluntId");
+                    b.HasIndex("TenantId");
 
-                    b.HasIndex("TenantId", "VoluntId", "ClockDate")
+                    b.HasIndex("VoluntId", "ClockDate")
                         .IsUnique();
 
                     b.ToTable("Clockings");
@@ -102,7 +105,7 @@ namespace InpremClockingApp.Migrations
                     b.Property<long>("StafId")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("TenantId")
+                    b.Property<int?>("TenantId")
                         .HasColumnType("int");
 
                     b.Property<TimeSpan?>("WorkingHours")
@@ -110,9 +113,9 @@ namespace InpremClockingApp.Migrations
 
                     b.HasKey("ClockingStaffId");
 
-                    b.HasIndex("StafId");
+                    b.HasIndex("TenantId");
 
-                    b.HasIndex("TenantId", "StafId", "ClockDate")
+                    b.HasIndex("StafId", "ClockDate")
                         .IsUnique();
 
                     b.ToTable("ClockingsStaff");
@@ -247,13 +250,12 @@ namespace InpremClockingApp.Migrations
                     b.Property<string>("Name")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("TenantId")
+                    b.Property<int?>("TenantId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId")
-                        .IsUnique();
+                    b.HasIndex("TenantId");
 
                     b.ToTable("Setting");
                 });
@@ -297,7 +299,7 @@ namespace InpremClockingApp.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<int>("TenantId")
+                    b.Property<int?>("TenantId")
                         .HasColumnType("int");
 
                     b.Property<string>("Type")
@@ -309,8 +311,10 @@ namespace InpremClockingApp.Migrations
 
                     b.HasKey("StaffId");
 
-                    b.HasIndex("TenantId", "EmailAddress")
+                    b.HasIndex("EmailAddress")
                         .IsUnique();
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("Staffs");
                 });
@@ -399,7 +403,7 @@ namespace InpremClockingApp.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<int>("TenantId")
+                    b.Property<int?>("TenantId")
                         .HasColumnType("int");
 
                     b.Property<string>("Type")
@@ -415,8 +419,10 @@ namespace InpremClockingApp.Migrations
 
                     b.HasKey("VolunteerId");
 
-                    b.HasIndex("TenantId", "EmailAddress")
+                    b.HasIndex("EmailAddress")
                         .IsUnique();
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("Volunteers");
                 });
@@ -536,8 +542,7 @@ namespace InpremClockingApp.Migrations
                     b.HasOne("InpremClockingApp.Models.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("InpremClockingApp.Models.Volunteer", "Volunteer")
                         .WithMany("Clockings")
@@ -559,8 +564,7 @@ namespace InpremClockingApp.Migrations
                     b.HasOne("InpremClockingApp.Models.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Staff");
                 });
@@ -578,8 +582,7 @@ namespace InpremClockingApp.Migrations
                     b.HasOne("InpremClockingApp.Models.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("InpremClockingApp.Models.Staff", b =>
@@ -587,8 +590,7 @@ namespace InpremClockingApp.Migrations
                     b.HasOne("InpremClockingApp.Models.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("InpremClockingApp.Models.Volunteer", b =>
@@ -596,8 +598,7 @@ namespace InpremClockingApp.Migrations
                     b.HasOne("InpremClockingApp.Models.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

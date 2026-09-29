@@ -5,15 +5,15 @@ using Newtonsoft.Json;
 
 namespace InpremClockingApp.Models;
 
-[Index(nameof(EmailAddress), IsUnique = true)]
+// Email is unique per tenant, not globally - two different organizations may register a
+// volunteer with the same email address. See multi-tenancy.md.
+[Index(nameof(TenantId), nameof(EmailAddress), IsUnique = true)]
 public class Volunteer
 {
     [Key]
     public long VolunteerId { get; set; }
 
-    // Nullable for now (multi-tenancy Phase 0) - backfilled and made required in Phase 1.
-    // See multi-tenancy.md.
-    public int? TenantId { get; set; }
+    public int TenantId { get; set; }
 
     [Required(AllowEmptyStrings = false, ErrorMessage = "Email address is required")]
     [DataType(DataType.EmailAddress, ErrorMessage = "Please enter a valid email address")]

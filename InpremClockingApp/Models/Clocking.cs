@@ -6,16 +6,15 @@ using Microsoft.EntityFrameworkCore;
 namespace InpremClockingApp.Models;
 
 // One session per volunteer per calendar day, enforced at the database level.
-[Index(nameof(VoluntId), nameof(ClockDate), IsUnique = true)]
+[Index(nameof(TenantId), nameof(VoluntId), nameof(ClockDate), IsUnique = true)]
 public class Clocking
 {
     [Key]
     public long ClockingId { get; set; }
 
-    // Nullable for now (multi-tenancy Phase 0) - backfilled and made required in Phase 1.
     // Denormalized here (rather than only on Volunteer) so the query filter (Phase 2) applies
     // directly to this table without needing a join. See multi-tenancy.md.
-    public int? TenantId { get; set; }
+    public int TenantId { get; set; }
 
     public long VoluntId { get; set; }
     [ForeignKey("VoluntId")]
