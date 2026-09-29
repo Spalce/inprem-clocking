@@ -195,11 +195,22 @@ Reach this via **Hours** on any row in Manage Staff/Volunteers.
 
 - [ ] **Staff List** / **Volunteer List**: table of all 25 people, pagination
       works, **Download PDF** produces a PDF list.
+- [ ] On **Staff List** / **Volunteer List**, type a partial **name** into the
+      search box and click **Search** (or press Enter) - list narrows to
+      matches, "Total" count updates, URL gets a `?Search=...` parameter.
+- [ ] Now type a full or partial **email address** into the same box - it
+      should match too (this used to only search by name). Typing also shows
+      a row of clickable email suggestions below the box; clicking one
+      searches by that email directly.
+- [ ] Clear the search box and search again - full list of 25 comes back.
 - [ ] **Staff Clocking** / **Volunteer Clocking** (the report pages, not the
-      manual-clocking pages from section 5): pick a specific person from the
-      "Select Staff/Volunteer" search box, set a date range covering the last
-      30 days, click **Filter** - only that person's rows in that range show
-      up. Click **Download PDF**.
+      manual-clocking pages from section 5): type a partial **name** into the
+      "Select Staff/Volunteer" box - a suggestion dropdown appears. Type a
+      partial **email** instead - matches should appear too, shown as
+      "Name (email)" in the dropdown (previously showed only the name, which
+      made it look like email search didn't work even though it did).
+      Pick one, set a date range covering the last 30 days, click **Filter** -
+      only that person's rows in that range show up. Click **Download PDF**.
 - [ ] Leave the person field blank and filter by date range only - should show
       everyone's clockings in that range.
 
