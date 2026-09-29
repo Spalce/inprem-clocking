@@ -7,14 +7,19 @@ using Microsoft.Extensions.Logging;
 namespace InpremClockingApp.Helpers;
 
 /// <summary>
-/// Ensures the "Admin" role exists and that a first admin account is provisioned from
-/// configuration (SeedAdmin:Email / SeedAdmin:Password), so a fresh deployment always has
-/// at least one working admin login without ever hardcoding credentials in source.
+/// Ensures the "Admin" and "SuperAdmin" roles exist and that a first admin account is
+/// provisioned from configuration (SeedAdmin:Email / SeedAdmin:Password), so a fresh deployment
+/// always has at least one working admin login without ever hardcoding credentials in source.
 /// Safe to run on every startup: it does nothing once an admin account already exists.
 /// </summary>
 public static class IdentitySeeder
 {
     public const string AdminRole = "Admin";
+
+    // Platform-operator role for tenant onboarding (multi-tenancy.md Phase 4/decision #6) -
+    // not scoped to any one tenant (AppUser.TenantId stays null for these accounts), and never
+    // assignable through the ordinary /User "Create Admin" flow.
+    public const string SuperAdminRole = "SuperAdmin";
 
     public static async Task SeedAsync(IServiceProvider services, IConfiguration configuration)
     {
@@ -26,6 +31,13 @@ public static class IdentitySeeder
         {
             await roleManager.CreateAsync(new AppRole { Name = AdminRole, Description = "Full back-office access" });
         }
+
+        if (!await roleManager.RoleExistsAsync(SuperAdminRole))
+        {
+            await roleManager.CreateAsync(new AppRole { Name = SuperAdminRole, Description = "Platform operator - creates and manages tenants" });
+        }
+
+        await SeedSuperAdminAsync(services, configuration, logger, userManager);
 
         var email = configuration["SeedAdmin:Email"];
         var password = configuration["SeedAdmin:Password"];
@@ -74,6 +86,49 @@ public static class IdentitySeeder
         if (!await userManager.IsInRoleAsync(user, AdminRole))
         {
             await userManager.AddToRoleAsync(user, AdminRole);
+        }
+    }
+
+    // Mirrors the SeedAdmin pattern above, but this account is intentionally never given a
+    // TenantId - a SuperAdmin operates outside every tenant's data, not inside one of them.
+    // Optional: without SeedSuperAdmin:Email/Password configured, tenant onboarding (Phase 4)
+    // simply isn't reachable yet, which is a fine default until someone needs it.
+    private static async Task SeedSuperAdminAsync(
+        IServiceProvider services, IConfiguration configuration, ILogger logger, UserManager<AppUser> userManager)
+    {
+        var email = configuration["SeedSuperAdmin:Email"];
+        var password = configuration["SeedSuperAdmin:Password"];
+
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        {
+            return;
+        }
+
+        var user = await userManager.FindByEmailAsync(email);
+        if (user == null)
+        {
+            user = new AppUser
+            {
+                UserName = email,
+                Email = email,
+                EmailConfirmed = true,
+                Type = SuperAdminRole,
+            };
+
+            var create = await userManager.CreateAsync(user, password);
+            if (!create.Succeeded)
+            {
+                logger.LogError("Failed to seed super-admin account {Email}: {Errors}", email,
+                    string.Join("; ", create.Errors.Select(e => e.Description)));
+                return;
+            }
+
+            logger.LogInformation("Seeded initial super-admin account {Email}.", email);
+        }
+
+        if (!await userManager.IsInRoleAsync(user, SuperAdminRole))
+        {
+            await userManager.AddToRoleAsync(user, SuperAdminRole);
         }
     }
 }

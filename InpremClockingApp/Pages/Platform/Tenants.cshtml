@@ -1,0 +1,90 @@
+@page
+@model InpremClockingApp.Pages.Platform.Tenants
+@{
+    ViewData["Title"] = "Tenants";
+    var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
+    var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
+    var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
+}
+
+<div class="tw:mx-auto tw:max-w-7xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
+  <div class="tw:mb-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4">
+    <h1 class="tw:text-2xl tw:font-semibold tw:text-slate-900">Tenants (Total: @Model.AllTenants.Count)</h1>
+    <nav class="tw:text-sm tw:text-slate-500">
+      <a href="#" class="tw:hover:text-slate-700">Home</a>
+      <span class="tw:mx-1">/</span>
+      <span class="tw:text-slate-700">Tenants</span>
+    </nav>
+  </div>
+
+  <div class="tw:mb-6 tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:shadow-sm">
+    <div class="tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+      <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">Create Tenant</h2>
+    </div>
+    <div class="tw:p-4">
+      @if (TempData["Message"] != null)
+      {
+        <div class="tw:mb-3 tw:rounded-md tw:bg-emerald-50 tw:px-3 tw:py-2 tw:text-sm tw:text-emerald-700">@TempData["Message"]</div>
+      }
+      <div asp-validation-summary="All" class="tw:mb-3 tw:text-sm tw:text-red-600"></div>
+      <form method="post">
+        <div class="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2 tw:lg:grid-cols-3">
+          <div>
+            <label asp-for="Input.TenantName" class="@label"></label>
+            <input asp-for="Input.TenantName" class="@input" />
+          </div>
+          <div>
+            <label asp-for="Input.TimeZoneId" class="@label"></label>
+            <input asp-for="Input.TimeZoneId" class="@input" />
+          </div>
+          <div></div>
+          <div>
+            <label asp-for="Input.AdminFirstName" class="@label"></label>
+            <input asp-for="Input.AdminFirstName" class="@input" />
+          </div>
+          <div>
+            <label asp-for="Input.AdminLastName" class="@label"></label>
+            <input asp-for="Input.AdminLastName" class="@input" />
+          </div>
+          <div>
+            <label asp-for="Input.AdminEmail" class="@label"></label>
+            <input asp-for="Input.AdminEmail" class="@input" />
+          </div>
+          <div>
+            <label asp-for="Input.AdminPassword" class="@label"></label>
+            <input asp-for="Input.AdminPassword" class="@input" />
+          </div>
+          <div class="tw:flex tw:items-end">
+            <button type="submit" class="@btnPrimary tw:w-full">Create Tenant</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="tw:overflow-hidden tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white">
+    <div class="tw:overflow-x-auto">
+      <table class="tw:min-w-full tw:divide-y tw:divide-slate-200">
+        <thead class="tw:bg-slate-50">
+          <tr>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Name</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Timezone</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Active</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Created</th>
+          </tr>
+        </thead>
+        <tbody class="tw:divide-y tw:divide-slate-100">
+          @foreach (var t in Model.AllTenants)
+          {
+            <tr class="tw:hover:bg-slate-50">
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@t.Name</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@t.TimeZoneId</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(t.IsActive ? "Yes" : "No")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@t.CreatedAt.ToString("yyyy-MM-dd")</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
