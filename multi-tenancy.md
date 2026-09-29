@@ -2,12 +2,12 @@
 
 ## Status (2026-09-29)
 
-Phases 0, 1, and 2 are done, committed on `feature/multi-tenancy`, and verified end-to-end
+Phases 0, 1, 2, and 3 are done, committed on `feature/multi-tenancy`, and verified end-to-end
 (including a real second tenant created and torn down during testing, confirming isolation
-holds through the UI, direct ID guessing, and new-row creation). Data isolation is live -
-this is no longer just a plan for those three phases. Phases 3 (timezone), 4 (tenant
-management UI), and 5 (hardening/docs) have not been started - see "What you'll need to
-handle" below for the checkpoint before continuing.
+holds through the UI, direct ID guessing, and new-row creation). Data isolation is live, and
+the static OrgClock has been fully replaced by a per-tenant ITenantClock - this is no longer
+just a plan for those four phases. Phases 4 (tenant management UI) and 5 (hardening/docs) have
+not been started - see "What you'll need to handle" below for the checkpoint before continuing.
 
 ## Goal
 
