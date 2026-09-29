@@ -11,6 +11,10 @@ public class Staff
     [Key]
     public long StaffId { get; set; }
 
+    // Nullable for now (multi-tenancy Phase 0) - backfilled and made required in Phase 1.
+    // See multi-tenancy.md.
+    public int? TenantId { get; set; }
+
     [Required(AllowEmptyStrings = false, ErrorMessage = "Email address is required")]
     [DataType(DataType.EmailAddress, ErrorMessage = "Please enter a valid email address")]
     [DisplayName("Email Address")]

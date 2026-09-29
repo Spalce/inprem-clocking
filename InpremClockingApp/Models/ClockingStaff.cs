@@ -12,6 +12,11 @@ public class ClockingStaff
     [Key]
     public long ClockingStaffId { get; set; }
 
+    // Nullable for now (multi-tenancy Phase 0) - backfilled and made required in Phase 1.
+    // Denormalized here (rather than only on Staff) so the query filter (Phase 2) applies
+    // directly to this table without needing a join. See multi-tenancy.md.
+    public int? TenantId { get; set; }
+
     [ForeignKey("StafId")]
     public Staff? Staff { get; set; }
     public long StafId { get; set; }
