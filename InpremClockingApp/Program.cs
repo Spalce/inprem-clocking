@@ -27,6 +27,11 @@ builder.Services.AddScoped<SettingService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<EmailService>();
 
+// Multi-tenancy (see multi-tenancy.md): resolves the signed-in user's tenant from a claim on
+// their auth cookie, and is the sole source ApplicationDbContext's query filters read from.
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentTenantService, CurrentTenantService>();
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
@@ -41,6 +46,10 @@ builder.Services.AddDataProtection()
 builder.Services.AddDefaultIdentity<AppUser>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddRoles<AppRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
+
+// Registered after AddDefaultIdentity so it overrides Identity's default factory - stamps the
+// TenantId claim onto every sign-in (see AppUserClaimsPrincipalFactory, multi-tenancy.md).
+builder.Services.AddScoped<IUserClaimsPrincipalFactory<AppUser>, AppUserClaimsPrincipalFactory>();
 
 builder.Services.AddAuthorization(options =>
 {

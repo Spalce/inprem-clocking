@@ -1,5 +1,7 @@
+using InpremClockingApp.Data;
 using InpremClockingApp.Models.Identity;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace InpremClockingApp.Helpers;
@@ -38,12 +40,24 @@ public static class IdentitySeeder
         var user = await userManager.FindByEmailAsync(email);
         if (user == null)
         {
+            // This seeder runs at startup, outside any HTTP request, so there's no signed-in
+            // user for ApplicationDbContext's TenantId auto-stamp to key off - the new admin's
+            // tenant has to be set explicitly here instead. IgnoreQueryFilters() is required
+            // for the same reason (CurrentTenantService.TenantId is null this early, which
+            // would otherwise filter the Tenants table down to nothing). Assigns to the first
+            // tenant that exists; once tenant onboarding (multi-tenancy.md Phase 4) exists,
+            // that flow creates a tenant and its first admin together instead of relying on
+            // this generic seeder.
+            var db = services.GetRequiredService<ApplicationDbContext>();
+            var firstTenant = await db.Tenants.IgnoreQueryFilters().OrderBy(t => t.Id).FirstOrDefaultAsync();
+
             user = new AppUser
             {
                 UserName = email,
                 Email = email,
                 EmailConfirmed = true,
                 Type = AdminRole,
+                TenantId = firstTenant?.Id,
             };
 
             var create = await userManager.CreateAsync(user, password);
