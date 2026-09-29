@@ -1,7 +1,7 @@
 
 using InpremClockingApp.Data;
-using InpremClockingApp.Helpers;
 using InpremClockingApp.Models;
+using InpremClockingApp.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,18 +12,20 @@ namespace InpremClockingApp.Controllers;
 public class ReportsController : Controller
 {
     private readonly ApplicationDbContext _db;
+    private readonly ITenantClock _tenantClock;
 
-    public ReportsController(ApplicationDbContext db)
+    public ReportsController(ApplicationDbContext db, ITenantClock tenantClock)
     {
         _db = db;
+        _tenantClock = tenantClock;
     }
 
-    // model.StartDate/EndDate are org-local calendar-day boundaries picked by the user;
+    // model.StartDate/EndDate are tenant-local calendar-day boundaries picked by the user;
     // convert to UTC before querying since CreatedAt/clock times are stored in UTC.
-    private static (DateTime? StartUtc, DateTime? EndUtcExclusive) LocalRangeToUtc(ReportModel model)
+    private (DateTime? StartUtc, DateTime? EndUtcExclusive) LocalRangeToUtc(ReportModel model)
     {
-        var startUtc = OrgClock.ToUtc(model.StartDate?.Date);
-        var endUtc = OrgClock.ToUtc(model.EndDate?.Date.AddDays(1));
+        var startUtc = _tenantClock.ToUtc(model.StartDate?.Date);
+        var endUtc = _tenantClock.ToUtc(model.EndDate?.Date.AddDays(1));
         return (startUtc, endUtc);
     }
 
@@ -46,7 +48,7 @@ public class ReportsController : Controller
                     Phone = e.PhoneNumber,
                     Email = e.EmailAddress,
                     Gender = e.Gender.ToString(),
-                    Date = OrgClock.ToLocal(e.CreatedAt)?.ToString("dd-MM-yyyy"),
+                    Date = _tenantClock.ToLocal(e.CreatedAt)?.ToString("dd-MM-yyyy"),
                     Zip = e.ZipCode,
                     Address = e.Address
                 }).ToList();
@@ -99,7 +101,7 @@ public class ReportsController : Controller
                     Phone = e.PhoneNumber,
                     Email = e.EmailAddress,
                     Gender = e.Gender.ToString(),
-                    Date = OrgClock.ToLocal(e.CreatedAt)?.ToString("dd-MM-yyyy")
+                    Date = _tenantClock.ToLocal(e.CreatedAt)?.ToString("dd-MM-yyyy")
                 }).ToList();
 
                 return Ok(new ReportDataSet<Content>
@@ -147,11 +149,11 @@ public class ReportsController : Controller
                 var list = record.Select(e => new Clockings
                 {
                     Name = e.FullName,
-                    Date = OrgClock.ToLocal(e.CreatedAt)?.ToString("dd-MM-yyyy"),
-                    ClockIn = OrgClock.ToLocal(e.ClockInTime)?.ToString("HH:mm:ss"),
-                    ClockOut = OrgClock.ToLocal(e.ClockOutTime)?.ToString("HH:mm:ss"),
-                    BreakStart = OrgClock.ToLocal(e.LeaveOnBreakTime)?.ToString("HH:mm:ss"),
-                    BreakEnd = OrgClock.ToLocal(e.ReturnOnBreakTime)?.ToString("HH:mm:ss"),
+                    Date = _tenantClock.ToLocal(e.CreatedAt)?.ToString("dd-MM-yyyy"),
+                    ClockIn = _tenantClock.ToLocal(e.ClockInTime)?.ToString("HH:mm:ss"),
+                    ClockOut = _tenantClock.ToLocal(e.ClockOutTime)?.ToString("HH:mm:ss"),
+                    BreakStart = _tenantClock.ToLocal(e.LeaveOnBreakTime)?.ToString("HH:mm:ss"),
+                    BreakEnd = _tenantClock.ToLocal(e.ReturnOnBreakTime)?.ToString("HH:mm:ss"),
                     Hours = e.WorkingHours != null ? $"{e.WorkingHours!.Value.Hours} hours {e.WorkingHours.Value.Minutes} minutes" : null
                 }).ToList();
 
@@ -204,11 +206,11 @@ public class ReportsController : Controller
                 var list = record.Select(e => new Clockings
                 {
                     Name = e.FullName,
-                    Date = OrgClock.ToLocal(e.CreatedAt)?.ToString("dd-MM-yyyy"),
-                    ClockIn = OrgClock.ToLocal(e.ClockInTime)?.ToString("HH:mm:ss"),
-                    ClockOut = OrgClock.ToLocal(e.ClockOutTime)?.ToString("HH:mm:ss"),
-                    BreakStart = OrgClock.ToLocal(e.LeaveOnBreakTime)?.ToString("HH:mm:ss"),
-                    BreakEnd = OrgClock.ToLocal(e.ReturnOnBreakTime)?.ToString("HH:mm:ss"),
+                    Date = _tenantClock.ToLocal(e.CreatedAt)?.ToString("dd-MM-yyyy"),
+                    ClockIn = _tenantClock.ToLocal(e.ClockInTime)?.ToString("HH:mm:ss"),
+                    ClockOut = _tenantClock.ToLocal(e.ClockOutTime)?.ToString("HH:mm:ss"),
+                    BreakStart = _tenantClock.ToLocal(e.LeaveOnBreakTime)?.ToString("HH:mm:ss"),
+                    BreakEnd = _tenantClock.ToLocal(e.ReturnOnBreakTime)?.ToString("HH:mm:ss"),
                     Hours = e.WorkingHours != null ? $"{e.WorkingHours!.Value.Hours} hours {e.WorkingHours.Value.Minutes} minutes" : null
                 }).ToList();
 
@@ -261,11 +263,11 @@ public class ReportsController : Controller
                 var list = record.Select(e => new Clockings
                 {
                     Name = e.FullName,
-                    Date = OrgClock.ToLocal(e.CreatedAt)?.ToString("dd-MM-yyyy"),
-                    ClockIn = OrgClock.ToLocal(e.ClockInTime)?.ToString("HH:mm:ss"),
-                    ClockOut = OrgClock.ToLocal(e.ClockOutTime)?.ToString("HH:mm:ss"),
-                    BreakStart = OrgClock.ToLocal(e.LeaveOnBreakTime)?.ToString("HH:mm:ss"),
-                    BreakEnd = OrgClock.ToLocal(e.ReturnOnBreakTime)?.ToString("HH:mm:ss"),
+                    Date = _tenantClock.ToLocal(e.CreatedAt)?.ToString("dd-MM-yyyy"),
+                    ClockIn = _tenantClock.ToLocal(e.ClockInTime)?.ToString("HH:mm:ss"),
+                    ClockOut = _tenantClock.ToLocal(e.ClockOutTime)?.ToString("HH:mm:ss"),
+                    BreakStart = _tenantClock.ToLocal(e.LeaveOnBreakTime)?.ToString("HH:mm:ss"),
+                    BreakEnd = _tenantClock.ToLocal(e.ReturnOnBreakTime)?.ToString("HH:mm:ss"),
                     Hours = e.WorkingHours != null ? $"{e.WorkingHours!.Value.Hours} hours {e.WorkingHours.Value.Minutes} minutes" : null
                 }).ToList();
 
@@ -319,11 +321,11 @@ public class ReportsController : Controller
             {
                 var line = string.Join(",",
                     EscapeCsv(e.FullName),
-                    OrgClock.ToLocal(e.CreatedAt)?.ToString("yyyy-MM-dd"),
-                    OrgClock.ToLocal(e.ClockInTime)?.ToString("HH:mm:ss"),
-                    OrgClock.ToLocal(e.ClockOutTime)?.ToString("HH:mm:ss"),
-                    OrgClock.ToLocal(e.LeaveOnBreakTime)?.ToString("HH:mm:ss"),
-                    OrgClock.ToLocal(e.ReturnOnBreakTime)?.ToString("HH:mm:ss"),
+                    _tenantClock.ToLocal(e.CreatedAt)?.ToString("yyyy-MM-dd"),
+                    _tenantClock.ToLocal(e.ClockInTime)?.ToString("HH:mm:ss"),
+                    _tenantClock.ToLocal(e.ClockOutTime)?.ToString("HH:mm:ss"),
+                    _tenantClock.ToLocal(e.LeaveOnBreakTime)?.ToString("HH:mm:ss"),
+                    _tenantClock.ToLocal(e.ReturnOnBreakTime)?.ToString("HH:mm:ss"),
                     e.WorkingHours != null ? e.WorkingHours.Value.ToString() : "");
                 sb.AppendLine(line);
             }
@@ -352,11 +354,11 @@ public class ReportsController : Controller
             {
                 var line = string.Join(",",
                     EscapeCsv(e.FullName),
-                    OrgClock.ToLocal(e.CreatedAt)?.ToString("yyyy-MM-dd"),
-                    OrgClock.ToLocal(e.ClockInTime)?.ToString("HH:mm:ss"),
-                    OrgClock.ToLocal(e.ClockOutTime)?.ToString("HH:mm:ss"),
-                    OrgClock.ToLocal(e.LeaveOnBreakTime)?.ToString("HH:mm:ss"),
-                    OrgClock.ToLocal(e.ReturnOnBreakTime)?.ToString("HH:mm:ss"),
+                    _tenantClock.ToLocal(e.CreatedAt)?.ToString("yyyy-MM-dd"),
+                    _tenantClock.ToLocal(e.ClockInTime)?.ToString("HH:mm:ss"),
+                    _tenantClock.ToLocal(e.ClockOutTime)?.ToString("HH:mm:ss"),
+                    _tenantClock.ToLocal(e.LeaveOnBreakTime)?.ToString("HH:mm:ss"),
+                    _tenantClock.ToLocal(e.ReturnOnBreakTime)?.ToString("HH:mm:ss"),
                     e.WorkingHours != null ? e.WorkingHours.Value.ToString() : "");
                 sb.AppendLine(line);
             }
@@ -394,11 +396,11 @@ public class ReportsController : Controller
                 var list = record.Select(e => new Clockings
                 {
                     Name = e.FullName,
-                    Date = OrgClock.ToLocal(e.CreatedAt)?.ToString("dd-MM-yyyy"),
-                    ClockIn = OrgClock.ToLocal(e.ClockInTime)?.ToString("HH:mm:ss"),
-                    ClockOut = OrgClock.ToLocal(e.ClockOutTime)?.ToString("HH:mm:ss"),
-                    BreakStart = OrgClock.ToLocal(e.LeaveOnBreakTime)?.ToString("HH:mm:ss"),
-                    BreakEnd = OrgClock.ToLocal(e.ReturnOnBreakTime)?.ToString("HH:mm:ss"),
+                    Date = _tenantClock.ToLocal(e.CreatedAt)?.ToString("dd-MM-yyyy"),
+                    ClockIn = _tenantClock.ToLocal(e.ClockInTime)?.ToString("HH:mm:ss"),
+                    ClockOut = _tenantClock.ToLocal(e.ClockOutTime)?.ToString("HH:mm:ss"),
+                    BreakStart = _tenantClock.ToLocal(e.LeaveOnBreakTime)?.ToString("HH:mm:ss"),
+                    BreakEnd = _tenantClock.ToLocal(e.ReturnOnBreakTime)?.ToString("HH:mm:ss"),
                     Hours = e.WorkingHours != null ? $"{e.WorkingHours!.Value.Hours} hours {e.WorkingHours.Value.Minutes} minutes" : null
                 }).ToList();
 

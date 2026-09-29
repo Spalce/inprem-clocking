@@ -1,5 +1,6 @@
 @page
 @model StaffClocking
+@inject InpremClockingApp.Services.ITenantClock TenantClock
 @{
     ViewData["Title"] = "Staff Clocking";
     var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
@@ -72,11 +73,11 @@
           {
             <tr class="tw:hover:bg-slate-50">
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@c.FullName</td>
-              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@OrgClock.ToLocal(c.CreatedAt)?.ToString("yyyy-MM-dd")</td>
-              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(OrgClock.ToLocal(c.ClockInTime)?.ToString("HH:mm:ss") ?? "")</td>
-              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(OrgClock.ToLocal(c.ClockOutTime)?.ToString("HH:mm:ss") ?? "")</td>
-              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(OrgClock.ToLocal(c.LeaveOnBreakTime)?.ToString("HH:mm:ss") ?? "")</td>
-              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(OrgClock.ToLocal(c.ReturnOnBreakTime)?.ToString("HH:mm:ss") ?? "")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@TenantClock.ToLocal(c.CreatedAt)?.ToString("yyyy-MM-dd")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(TenantClock.ToLocal(c.ClockInTime)?.ToString("HH:mm:ss") ?? "")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(TenantClock.ToLocal(c.ClockOutTime)?.ToString("HH:mm:ss") ?? "")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(TenantClock.ToLocal(c.LeaveOnBreakTime)?.ToString("HH:mm:ss") ?? "")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(TenantClock.ToLocal(c.ReturnOnBreakTime)?.ToString("HH:mm:ss") ?? "")</td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(c.WorkingHours?.ToString(@"hh\:mm\:ss") ?? "")</td>
               <td class="tw:px-4 tw:py-3 tw:whitespace-nowrap">
                 <div class="tw:relative tw:inline-block" data-dropdown>

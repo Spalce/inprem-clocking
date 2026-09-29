@@ -1,5 +1,4 @@
 using InpremClockingApp.Data;
-using InpremClockingApp.Helpers;
 using InpremClockingApp.Models;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -9,18 +8,20 @@ namespace InpremClockingApp.Services;
 public class StaffClockingService
 {
     private readonly ApplicationDbContext _db;
+    private readonly ITenantClock _tenantClock;
 
-    public StaffClockingService(ApplicationDbContext db)
+    public StaffClockingService(ApplicationDbContext db, ITenantClock tenantClock)
     {
         _db = db;
+        _tenantClock = tenantClock;
     }
 
     // New helper to return report rows for staff clocking.
     // start/end are org-local wall-clock boundaries (e.g. from a date picker); converted to UTC for the query.
     public async Task<List<ClockingStaff>> GetClockingReport(DateTime start, DateTime end)
     {
-        var startUtc = OrgClock.ToUtc(start);
-        var endUtc = OrgClock.ToUtc(end);
+        var startUtc = _tenantClock.ToUtc(start);
+        var endUtc = _tenantClock.ToUtc(end);
 
         // include records where clock-in or clock-out falls within the range
         var record = await _db.ClockingsStaff
@@ -32,8 +33,8 @@ public class StaffClockingService
 
     public async Task<List<ClockingStaff>> GetClockingReportForStaff(int staffId, DateTime start, DateTime end)
     {
-        var startUtc = OrgClock.ToUtc(start);
-        var endUtc = OrgClock.ToUtc(end);
+        var startUtc = _tenantClock.ToUtc(start);
+        var endUtc = _tenantClock.ToUtc(end);
 
         var record = await _db.ClockingsStaff
             .Where(e => e.StafId == staffId && ((e.ClockInTime >= startUtc && e.ClockInTime <= endUtc) || (e.ClockOutTime != null && e.ClockOutTime >= startUtc && e.ClockOutTime <= endUtc)))
@@ -54,8 +55,8 @@ public class StaffClockingService
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 20;
 
-        var startUtc = OrgClock.ToUtc(start);
-        var endUtc = OrgClock.ToUtc(end);
+        var startUtc = _tenantClock.ToUtc(start);
+        var endUtc = _tenantClock.ToUtc(end);
 
         var query = _db.ClockingsStaff
             .Where(e => (e.ClockInTime >= startUtc && e.ClockInTime <= endUtc) || (e.ClockOutTime != null && e.ClockOutTime >= startUtc && e.ClockOutTime <= endUtc));
@@ -90,13 +91,13 @@ public class StaffClockingService
 
         if (start.HasValue)
         {
-            var startUtc = OrgClock.ToUtc(start.Value);
+            var startUtc = _tenantClock.ToUtc(start.Value);
             query = query.Where(e => e.ClockInTime >= startUtc);
         }
 
         if (end.HasValue)
         {
-            var endUtc = OrgClock.ToUtc(end.Value);
+            var endUtc = _tenantClock.ToUtc(end.Value);
             query = query.Where(e => e.ClockInTime <= endUtc);
         }
 
@@ -116,7 +117,7 @@ public class StaffClockingService
 
     public async Task<IEnumerable<ClockingStaff>> GetAllToday()
     {
-        var today = OrgClock.TodayLocalDate();
+        var today = _tenantClock.TodayLocalDate();
         return await _db.ClockingsStaff.Where(e => e.ClockDate == today).ToListAsync().ConfigureAwait(false);
     }
 
@@ -132,7 +133,7 @@ public class StaffClockingService
     // should mutate, so there's exactly one place that defines what "today's session" means.
     public async Task<ClockingStaff?> GetTodayRecord(long staffId)
     {
-        var today = OrgClock.TodayLocalDate();
+        var today = _tenantClock.TodayLocalDate();
         return await _db.ClockingsStaff
             .FirstOrDefaultAsync(e => e.StafId == staffId && e.ClockDate == today)
             .ConfigureAwait(false);
@@ -258,7 +259,7 @@ public class StaffClockingService
 
     public async Task<bool> CheckToday(ClockingStaff model)
     {
-        var today = OrgClock.TodayLocalDate();
+        var today = _tenantClock.TodayLocalDate();
         return await _db.ClockingsStaff
             .AnyAsync(e => e.StafId == model.StafId && e.ClockDate == today)
             .ConfigureAwait(false);
@@ -268,7 +269,7 @@ public class StaffClockingService
     {
         try
         {
-            model.ClockDate = OrgClock.TodayLocalDate();
+            model.ClockDate = _tenantClock.TodayLocalDate();
 
             var exists = await _db.ClockingsStaff
                 .AnyAsync(e => e.StafId == model.StafId && e.ClockDate == model.ClockDate)

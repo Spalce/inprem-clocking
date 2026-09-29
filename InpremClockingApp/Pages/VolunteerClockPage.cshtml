@@ -1,6 +1,7 @@
 @page "/volunteer-clockin/{id:long}"
 @model VolunteerClockPage
 @using Microsoft.AspNetCore.Authorization;
+@inject InpremClockingApp.Services.ITenantClock TenantClock
 @attribute [Authorize]
 
 @{
@@ -22,8 +23,8 @@
 
   <div class="tw:mx-auto tw:max-w-md tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:p-8 tw:shadow-sm">
     <p class="tw:text-center tw:text-base tw:font-medium tw:text-slate-600">Please clock in</p>
-    <p id="current-date" class="tw:mt-2 tw:text-center tw:text-lg tw:font-semibold tw:text-slate-900">@OrgClock.NowLocal().ToString("dd-MM-yyyy")</p>
-    <p id="current-time" class="tw:mb-6 tw:text-center tw:text-lg tw:font-semibold tw:text-slate-900">@OrgClock.NowLocal().ToString("HH:mm:ss")</p>
+    <p id="current-date" class="tw:mt-2 tw:text-center tw:text-lg tw:font-semibold tw:text-slate-900">@TenantClock.NowLocal().ToString("dd-MM-yyyy")</p>
+    <p id="current-time" class="tw:mb-6 tw:text-center tw:text-lg tw:font-semibold tw:text-slate-900">@TenantClock.NowLocal().ToString("HH:mm:ss")</p>
 
     <div class="tw:flex tw:flex-col tw:gap-3">
       <a class="@kioskBtn tw:bg-emerald-600 tw:hover:bg-emerald-700" id="clockin">Clock In</a>

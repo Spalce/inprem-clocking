@@ -1,4 +1,3 @@
-using InpremClockingApp.Helpers;
 using InpremClockingApp.Models;
 using InpremClockingApp.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -12,17 +11,20 @@ public class HoursWorkedModel : PageModel
     private readonly VolunteerService _volunteerService;
     private readonly StaffClockingService _staffClockingService;
     private readonly StaffService _staffService;
+    private readonly ITenantClock _tenantClock;
 
     public HoursWorkedModel(
         VolunteerClockingService volunteerClockingService,
         VolunteerService volunteerService,
         StaffClockingService staffClockingService,
-        StaffService staffService)
+        StaffService staffService,
+        ITenantClock tenantClock)
     {
         _volunteerClockingService = volunteerClockingService;
         _volunteerService = volunteerService;
         _staffClockingService = staffClockingService;
         _staffService = staffService;
+        _tenantClock = tenantClock;
     }
 
     public Models.Volunteer? Volunteer { get; set; }
@@ -179,6 +181,6 @@ public class HoursWorkedModel : PageModel
 
     public string FormatDateTime(DateTime? value)
     {
-        return OrgClock.ToLocal(value)?.ToString("dd/MM/yyyy HH:mm") ?? "-";
+        return _tenantClock.ToLocal(value)?.ToString("dd/MM/yyyy HH:mm") ?? "-";
     }
 }

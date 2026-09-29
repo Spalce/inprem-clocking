@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using InpremClockingApp.Helpers;
 using InpremClockingApp.Services;
 using InpremClockingApp.Models;
 
@@ -10,6 +9,7 @@ public class VolunteerClockingReport : PageModel
 {
     private readonly VolunteerClockingService _service;
     private readonly VolunteerService _volunteerService;
+    private readonly ITenantClock _tenantClock;
     public List<VolunteerClockingVm> ReportRows { get; set; } = new List<VolunteerClockingVm>();
     public IEnumerable<InpremClockingApp.Models.Volunteer>? Volunteers { get; set; }
 
@@ -31,16 +31,17 @@ public class VolunteerClockingReport : PageModel
     [BindProperty(SupportsGet = true)]
     public int PageSize { get; set; } = 20;
 
-    public VolunteerClockingReport(VolunteerClockingService service, VolunteerService volunteerService)
+    public VolunteerClockingReport(VolunteerClockingService service, VolunteerService volunteerService, ITenantClock tenantClock)
     {
         _service = service;
         _volunteerService = volunteerService;
+        _tenantClock = tenantClock;
     }
 
     public async Task<IActionResult> OnGetAsync()
     {
-        var start = Start ?? OrgClock.NowLocal().Date.AddDays(-30);
-        var end = End ?? OrgClock.NowLocal().Date.AddDays(1).AddTicks(-1);
+        var start = Start ?? _tenantClock.NowLocal().Date.AddDays(-30);
+        var end = End ?? _tenantClock.NowLocal().Date.AddDays(1).AddTicks(-1);
 
         ViewData["VolunteerId"] = VolunteerId;
         ViewData["Start"] = start.ToString("yyyy-MM-ddTHH:mm");

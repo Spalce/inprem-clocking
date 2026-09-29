@@ -1,4 +1,3 @@
-using InpremClockingApp.Helpers;
 using InpremClockingApp.Models;
 using InpremClockingApp.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -13,20 +12,22 @@ public class StaffReportsController : ControllerBase
 {
     private readonly StaffClockingService _clocking;
     private readonly StaffService _staff;
+    private readonly ITenantClock _tenantClock;
 
-    public StaffReportsController(StaffClockingService clocking, StaffService staff)
+    public StaffReportsController(StaffClockingService clocking, StaffService staff, ITenantClock tenantClock)
     {
         _clocking = clocking;
         _staff = staff;
+        _tenantClock = tenantClock;
     }
 
     [HttpGet("staff-hours")]
     public async Task<IActionResult> GetStaffHours([FromQuery] int id, [FromQuery] DateTime? start, [FromQuery] DateTime? end)
     {
         if (id <= 0) return BadRequest(new { error = "Invalid id" });
-        var s = start?.Date ?? OrgClock.NowLocal().Date.AddDays(-30);
+        var s = start?.Date ?? _tenantClock.NowLocal().Date.AddDays(-30);
         var e = end?.Date.AddDays(1).AddTicks(-1)
-                ?? OrgClock.NowLocal().Date.AddDays(1).AddTicks(-1);
+                ?? _tenantClock.NowLocal().Date.AddDays(1).AddTicks(-1);
         var rows = await _clocking.GetClockingReportForStaff(id, s, e);
         // compute total hours from returned rows
         double totalClockedHours = 0;
@@ -86,8 +87,8 @@ public class StaffReportsController : ControllerBase
         if (id <= 0)
             return BadRequest(new { error = "Invalid id" });
 
-        var s = start ?? OrgClock.NowLocal().Date.AddDays(-30);
-        var e = end ?? OrgClock.NowLocal().Date.AddDays(1).AddTicks(-1);
+        var s = start ?? _tenantClock.NowLocal().Date.AddDays(-30);
+        var e = end ?? _tenantClock.NowLocal().Date.AddDays(1).AddTicks(-1);
 
         // Get staff
         var staff = await _staff.GetById(id);
@@ -264,8 +265,8 @@ public class StaffReportsController : ControllerBase
         [FromQuery] DateTime? start,
         [FromQuery] DateTime? end)
     {
-        var s = start ?? OrgClock.NowLocal().Date.AddDays(-30);
-        var e = end ?? OrgClock.NowLocal().Date.AddDays(1).AddTicks(-1);
+        var s = start ?? _tenantClock.NowLocal().Date.AddDays(-30);
+        var e = end ?? _tenantClock.NowLocal().Date.AddDays(1).AddTicks(-1);
 
         string? staffName = null;
         if (staffId.HasValue && staffId.Value > 0)
@@ -345,9 +346,9 @@ public class StaffReportsController : ControllerBase
                                 foreach (var row in rows)
                                 {
                                     table.Cell().Text(row.FullName ?? "");
-                                    table.Cell().Text(OrgClock.ToLocal(row.CreatedAt)?.ToString("yyyy-MM-dd") ?? "");
-                                    table.Cell().Text(OrgClock.ToLocal(row.ClockInTime)?.ToString("HH:mm:ss") ?? "");
-                                    table.Cell().Text(OrgClock.ToLocal(row.ClockOutTime)?.ToString("HH:mm:ss") ?? "");
+                                    table.Cell().Text(_tenantClock.ToLocal(row.CreatedAt)?.ToString("yyyy-MM-dd") ?? "");
+                                    table.Cell().Text(_tenantClock.ToLocal(row.ClockInTime)?.ToString("HH:mm:ss") ?? "");
+                                    table.Cell().Text(_tenantClock.ToLocal(row.ClockOutTime)?.ToString("HH:mm:ss") ?? "");
                                     table.Cell().Text(row.WorkingHours?.ToString(@"hh\:mm\:ss") ?? "");
                                 }
                             });

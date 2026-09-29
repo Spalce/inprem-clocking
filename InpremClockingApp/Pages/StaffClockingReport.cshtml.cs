@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using InpremClockingApp.Helpers;
 using InpremClockingApp.Services;
 using InpremClockingApp.Models;
 using System;
@@ -13,6 +12,7 @@ public class StaffClockingReport : PageModel
 {
     private readonly StaffClockingService _service;
     private readonly StaffService _staffService;
+    private readonly ITenantClock _tenantClock;
     public List<ClockingStaff> ReportRows { get; set; } = new List<ClockingStaff>();
     public IEnumerable<InpremClockingApp.Models.Staff>? Staffs { get; set; }
 
@@ -34,17 +34,18 @@ public class StaffClockingReport : PageModel
     [BindProperty(SupportsGet = true)]
     public int PageSize { get; set; } = 20;
 
-    public StaffClockingReport(StaffClockingService service, StaffService staffService)
+    public StaffClockingReport(StaffClockingService service, StaffService staffService, ITenantClock tenantClock)
     {
         _service = service;
         _staffService = staffService;
+        _tenantClock = tenantClock;
     }
 
     public async Task<IActionResult> OnGetAsync()
     {
         // default last 30 days
-        var start = Start ?? OrgClock.NowLocal().Date.AddDays(-30);
-        var end = End ?? OrgClock.NowLocal().Date.AddDays(1).AddTicks(-1); // include full end day if only date provided
+        var start = Start ?? _tenantClock.NowLocal().Date.AddDays(-30);
+        var end = End ?? _tenantClock.NowLocal().Date.AddDays(1).AddTicks(-1); // include full end day if only date provided
 
         ViewData["StaffId"] = StaffId;
         ViewData["Start"] = start.ToString("yyyy-MM-ddTHH:mm");

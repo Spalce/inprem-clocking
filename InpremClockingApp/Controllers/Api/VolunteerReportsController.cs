@@ -1,4 +1,3 @@
-using InpremClockingApp.Helpers;
 using InpremClockingApp.Services;
 using Microsoft.AspNetCore.Mvc;
 using QuestPDF.Fluent;
@@ -12,20 +11,22 @@ public class VolunteerReportsController : ControllerBase
 {
     private readonly VolunteerClockingService _clocking;
     private readonly VolunteerService _volunteer;
+    private readonly ITenantClock _tenantClock;
 
-    public VolunteerReportsController(VolunteerClockingService clocking, VolunteerService volunteer)
+    public VolunteerReportsController(VolunteerClockingService clocking, VolunteerService volunteer, ITenantClock tenantClock)
     {
         _clocking = clocking;
         _volunteer = volunteer;
+        _tenantClock = tenantClock;
     }
 
     [HttpGet("volunteer-hours")]
     public async Task<IActionResult> GetVolunteerHours([FromQuery] int id, [FromQuery] DateTime? start, [FromQuery] DateTime? end)
     {
         if (id <= 0) return BadRequest(new { error = "Invalid id" });
-        var s = start?.Date ?? OrgClock.NowLocal().Date.AddDays(-30);
+        var s = start?.Date ?? _tenantClock.NowLocal().Date.AddDays(-30);
         var e = end?.Date.AddDays(1).AddTicks(-1)
-                ?? OrgClock.NowLocal().Date.AddDays(1).AddTicks(-1);
+                ?? _tenantClock.NowLocal().Date.AddDays(1).AddTicks(-1);
         var rows = await _clocking.GetClockingReportForVolunteer(id, s, e);
         // compute total hours from returned rows
         double totalClockedHours = 0;
@@ -96,8 +97,8 @@ public class VolunteerReportsController : ControllerBase
         if (id <= 0)
             return BadRequest(new { error = "Invalid id" });
 
-        var s = start ?? OrgClock.NowLocal().Date.AddDays(-30);
-        var e = end ?? OrgClock.NowLocal().Date.AddDays(1).AddTicks(-1);
+        var s = start ?? _tenantClock.NowLocal().Date.AddDays(-30);
+        var e = end ?? _tenantClock.NowLocal().Date.AddDays(1).AddTicks(-1);
 
         // Get volunteer
         var volunteer = await _volunteer.GetById(id);
@@ -274,8 +275,8 @@ public class VolunteerReportsController : ControllerBase
         [FromQuery] DateTime? start,
         [FromQuery] DateTime? end)
     {
-        var s = start ?? OrgClock.NowLocal().Date.AddDays(-30);
-        var e = end ?? OrgClock.NowLocal().Date.AddDays(1).AddTicks(-1);
+        var s = start ?? _tenantClock.NowLocal().Date.AddDays(-30);
+        var e = end ?? _tenantClock.NowLocal().Date.AddDays(1).AddTicks(-1);
 
         string? volunteerName = null;
         if (volunteerId.HasValue && volunteerId.Value > 0)
@@ -357,9 +358,9 @@ public class VolunteerReportsController : ControllerBase
                                 {
                                     var item = vm.Clocking?.FirstOrDefault();
                                     table.Cell().Text(item?.FullName ?? "");
-                                    table.Cell().Text(OrgClock.ToLocal(item?.CreatedAt)?.ToString("yyyy-MM-dd") ?? "");
-                                    table.Cell().Text(OrgClock.ToLocal(item?.ClockInTime)?.ToString("HH:mm:ss") ?? "");
-                                    table.Cell().Text(OrgClock.ToLocal(item?.ClockOutTime)?.ToString("HH:mm:ss") ?? "");
+                                    table.Cell().Text(_tenantClock.ToLocal(item?.CreatedAt)?.ToString("yyyy-MM-dd") ?? "");
+                                    table.Cell().Text(_tenantClock.ToLocal(item?.ClockInTime)?.ToString("HH:mm:ss") ?? "");
+                                    table.Cell().Text(_tenantClock.ToLocal(item?.ClockOutTime)?.ToString("HH:mm:ss") ?? "");
                                     table.Cell().Text(item?.WorkingHours?.ToString(@"hh\:mm\:ss") ?? "");
                                 }
                             });

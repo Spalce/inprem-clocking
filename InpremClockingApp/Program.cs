@@ -13,7 +13,6 @@ using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
-OrgClock.Configure(builder.Configuration);
 
 // var connection = "Server=.\SQLEXPRESS;Initial Catalog=DB_A65635_inpremdb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True";
 // var connection = "Server=VMI1066750\\SQLEXPRESS;initial catalog=InpemTestDb;";
@@ -31,6 +30,7 @@ builder.Services.AddScoped<EmailService>();
 // their auth cookie, and is the sole source ApplicationDbContext's query filters read from.
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentTenantService, CurrentTenantService>();
+builder.Services.AddScoped<ITenantClock, TenantClock>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
