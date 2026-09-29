@@ -48,9 +48,9 @@ public class VolunteerService
         return await _db.Volunteers.FindAsync(id).ConfigureAwait(false)!;
     }
 
-    public async Task<Staff> GetByEmail(string email)
+    public async Task<Volunteer> GetByEmail(string email)
     {
-        return await _db.Staffs.FirstOrDefaultAsync(e => e.EmailAddress == email).ConfigureAwait(false)!;
+        return await _db.Volunteers.FirstOrDefaultAsync(e => e.EmailAddress == email).ConfigureAwait(false)!;
     }
 
     public async Task<Volunteer> Create(Volunteer model)

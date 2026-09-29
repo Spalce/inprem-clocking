@@ -64,10 +64,10 @@ public class Volunteer : PageModel
         if (string.IsNullOrWhiteSpace(model.FirstName)) model.FirstName = string.Empty;
         if (string.IsNullOrWhiteSpace(model.LastName)) model.LastName = string.Empty;
 
-        var staff = await _service.GetByEmail(model.EmailAddress).ConfigureAwait(true);
-        if (staff != null)
+        var volunteer = await _service.GetByEmail(model.EmailAddress).ConfigureAwait(true);
+        if (volunteer != null)
         {
-            ModelState.AddModelError("EmailAddress", "A staff with this email already exists");
+            ModelState.AddModelError("EmailAddress", "A volunteer with this email already exists");
         }
 
         if (!ModelState.IsValid)
