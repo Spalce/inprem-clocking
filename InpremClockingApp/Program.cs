@@ -32,6 +32,7 @@ builder.Services.AddScoped<TenantAdminService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentTenantService, CurrentTenantService>();
 builder.Services.AddScoped<ITenantClock, TenantClock>();
+builder.Services.AddScoped<ICurrentTenantProfile, CurrentTenantProfile>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>

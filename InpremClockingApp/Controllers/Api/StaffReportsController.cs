@@ -13,12 +13,14 @@ public class StaffReportsController : ControllerBase
     private readonly StaffClockingService _clocking;
     private readonly StaffService _staff;
     private readonly ITenantClock _tenantClock;
+    private readonly ICurrentTenantProfile _tenantProfile;
 
-    public StaffReportsController(StaffClockingService clocking, StaffService staff, ITenantClock tenantClock)
+    public StaffReportsController(StaffClockingService clocking, StaffService staff, ITenantClock tenantClock, ICurrentTenantProfile tenantProfile)
     {
         _clocking = clocking;
         _staff = staff;
         _tenantClock = tenantClock;
+        _tenantProfile = tenantProfile;
     }
 
     [HttpGet("staff-hours")]
@@ -165,7 +167,7 @@ public class StaffReportsController : ControllerBase
 
                         header.Item()
                             .AlignCenter()
-                            .Text("Inprem Holistic Community Resource Center")
+                            .Text(_tenantProfile.Name)
                             .FontSize(18)
                             .Bold();
 
@@ -191,9 +193,7 @@ public class StaffReportsController : ControllerBase
                                     .Bold()
                                     .FontSize(11);
 
-                                text.Span(
-                                    " at Inprem Holistic Community Resource Center, " +
-                                    "5757 Karl Rd, Columbus Ohio.")
+                                text.Span($" at {_tenantProfile.Name}" + (string.IsNullOrWhiteSpace(_tenantProfile.Address) ? "." : $", {_tenantProfile.Address}."))
                                     .FontSize(11);
                             });
 
@@ -300,7 +300,7 @@ public class StaffReportsController : ControllerBase
 
                         header.Item()
                             .AlignCenter()
-                            .Text("Inprem Holistic Community Resource Center")
+                            .Text(_tenantProfile.Name)
                             .FontSize(18)
                             .Bold();
 
@@ -396,7 +396,7 @@ public class StaffReportsController : ControllerBase
 
                         header.Item()
                             .AlignCenter()
-                            .Text("Inprem Holistic Community Resource Center")
+                            .Text(_tenantProfile.Name)
                             .FontSize(18)
                             .Bold();
 

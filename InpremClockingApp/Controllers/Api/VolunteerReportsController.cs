@@ -12,12 +12,14 @@ public class VolunteerReportsController : ControllerBase
     private readonly VolunteerClockingService _clocking;
     private readonly VolunteerService _volunteer;
     private readonly ITenantClock _tenantClock;
+    private readonly ICurrentTenantProfile _tenantProfile;
 
-    public VolunteerReportsController(VolunteerClockingService clocking, VolunteerService volunteer, ITenantClock tenantClock)
+    public VolunteerReportsController(VolunteerClockingService clocking, VolunteerService volunteer, ITenantClock tenantClock, ICurrentTenantProfile tenantProfile)
     {
         _clocking = clocking;
         _volunteer = volunteer;
         _tenantClock = tenantClock;
+        _tenantProfile = tenantProfile;
     }
 
     [HttpGet("volunteer-hours")]
@@ -175,7 +177,7 @@ public class VolunteerReportsController : ControllerBase
 
                         header.Item()
                             .AlignCenter()
-                            .Text("Inprem Holistic Community Resource Center")
+                            .Text(_tenantProfile.Name)
                             .FontSize(18)
                             .Bold();
 
@@ -201,9 +203,7 @@ public class VolunteerReportsController : ControllerBase
                                     .Bold()
                                     .FontSize(11);
 
-                                text.Span(
-                                    " at Inprem Holistic Community Resource Center, " +
-                                    "5757 Karl Rd, Columbus Ohio.")
+                                text.Span($" at {_tenantProfile.Name}" + (string.IsNullOrWhiteSpace(_tenantProfile.Address) ? "." : $", {_tenantProfile.Address}."))
                                     .FontSize(11);
                             });
 
@@ -311,7 +311,7 @@ public class VolunteerReportsController : ControllerBase
 
                         header.Item()
                             .AlignCenter()
-                            .Text("Inprem Holistic Community Resource Center")
+                            .Text(_tenantProfile.Name)
                             .FontSize(18)
                             .Bold();
 
@@ -408,7 +408,7 @@ public class VolunteerReportsController : ControllerBase
 
                         header.Item()
                             .AlignCenter()
-                            .Text("Inprem Holistic Community Resource Center")
+                            .Text(_tenantProfile.Name)
                             .FontSize(18)
                             .Bold();
 

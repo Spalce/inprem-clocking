@@ -20,4 +20,14 @@ public class Tenant
     public bool IsActive { get; set; } = true;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    // Shown on PDF reports and the Hours Worked page (multi-tenancy.md Phase 5 hardening) -
+    // these used to be hardcoded to Inprem's own address/contact everywhere, which meant every
+    // other tenant's official documents incorrectly showed Inprem's details. Nullable since not
+    // every tenant will fill them in immediately.
+    [StringLength(255)]
+    public string? Address { get; set; }
+
+    [StringLength(255)]
+    public string? ContactInfo { get; set; }
 }

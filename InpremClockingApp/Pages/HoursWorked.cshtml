@@ -1,5 +1,6 @@
 @page "/HoursWorked"
 @model InpremClockingApp.Pages.HoursWorkedModel
+@inject InpremClockingApp.Services.ICurrentTenantProfile TenantProfile
 @{
     ViewData["Title"] = "Hours Worked";
     var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
@@ -24,7 +25,7 @@
     <h4 class="tw:text-lg tw:font-semibold tw:text-slate-900">@personName</h4>
     <p class="tw:mt-2 tw:text-sm tw:text-slate-600">
       This is a confirmation of volunteer hours worked by <strong>@personName</strong>
-      at Inprem Holistic Community Resource Center, 5757 Karl Rd, Columbus Ohio.
+      at @TenantProfile.Name@(string.IsNullOrWhiteSpace(TenantProfile.Address) ? "." : $", {TenantProfile.Address}.")
     </p>
   </div>
 

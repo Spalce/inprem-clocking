@@ -13,11 +13,13 @@ public class ReportsController : Controller
 {
     private readonly ApplicationDbContext _db;
     private readonly ITenantClock _tenantClock;
+    private readonly ICurrentTenantProfile _tenantProfile;
 
-    public ReportsController(ApplicationDbContext db, ITenantClock tenantClock)
+    public ReportsController(ApplicationDbContext db, ITenantClock tenantClock, ICurrentTenantProfile tenantProfile)
     {
         _db = db;
         _tenantClock = tenantClock;
+        _tenantProfile = tenantProfile;
     }
 
     // model.StartDate/EndDate are tenant-local calendar-day boundaries picked by the user;
@@ -58,9 +60,9 @@ public class ReportsController : Controller
                     Success = true,
                     Detail = new Detail
                     {
-                        Company = "Inprem Holistic Community Resource Center",
-                        Address = "5757 Karl Road, Columbus, OH 43229",
-                        Contact = "614-516-1812 | Inpremcommunitycenter@yahoo.com",
+                        Company = _tenantProfile.Name,
+                        Address = _tenantProfile.Address,
+                        Contact = _tenantProfile.ContactInfo,
                         Duration = $"{model.StartDate!.Value.Date:dd-MM-yyyy} To {model.EndDate!.Value.Date:dd-MM-yyyy}"
                     },
                     Contents = list
@@ -109,9 +111,9 @@ public class ReportsController : Controller
                     Success = true,
                     Detail = new Detail
                     {
-                        Company = "Inprem Holistic Community Resource Center",
-                        Address = "5757 Karl Road, Columbus, OH 43229",
-                        Contact = "614-516-1812 | Inpremcommunitycenter@yahoo.com",
+                        Company = _tenantProfile.Name,
+                        Address = _tenantProfile.Address,
+                        Contact = _tenantProfile.ContactInfo,
                         Duration = $"{model.StartDate!.Value.Date:dd-MM-yyyy} To {model.EndDate!.Value.Date:dd-MM-yyyy}"
                     },
                     Contents = list
@@ -166,9 +168,9 @@ public class ReportsController : Controller
                     Success = true,
                     Detail = new Detail
                     {
-                        Company = "Inprem Holistic Community Resource Center",
-                        Address = "5757 Karl Road, Columbus, OH 43229",
-                        Contact = "614-516-1812 | Inpremcommunitycenter@yahoo.com",
+                        Company = _tenantProfile.Name,
+                        Address = _tenantProfile.Address,
+                        Contact = _tenantProfile.ContactInfo,
                         Duration = total
                     },
                     Contents = list
@@ -223,9 +225,9 @@ public class ReportsController : Controller
                     Success = true,
                     Detail = new Detail
                     {
-                        Company = "Inprem Holistic Community Resource Center",
-                        Address = "5757 Karl Road, Columbus, OH 43229",
-                        Contact = "614-516-1812 | Inpremcommunitycenter@yahoo.com",
+                        Company = _tenantProfile.Name,
+                        Address = _tenantProfile.Address,
+                        Contact = _tenantProfile.ContactInfo,
                         Duration = total
                     },
                     Contents = list
@@ -280,9 +282,9 @@ public class ReportsController : Controller
                     Success = true,
                     Detail = new Detail
                     {
-                        Company = "Inprem Holistic Community Resource Center",
-                        Address = "5757 Karl Road, Columbus, OH 43229",
-                        Contact = "614-516-1812 | Inpremcommunitycenter@yahoo.com",
+                        Company = _tenantProfile.Name,
+                        Address = _tenantProfile.Address,
+                        Contact = _tenantProfile.ContactInfo,
                         Duration = total
                     },
                     Contents = list
@@ -413,9 +415,9 @@ public class ReportsController : Controller
                     Success = true,
                     Detail = new Detail
                     {
-                        Company = "Inprem Holistic Community Resource Center",
-                        Address = "5757 Karl Road, Columbus, OH 43229",
-                        Contact = "614-516-1812 | Inpremcommunitycenter@yahoo.com",
+                        Company = _tenantProfile.Name,
+                        Address = _tenantProfile.Address,
+                        Contact = _tenantProfile.ContactInfo,
                         Duration = total
                     },
                     Contents = list
