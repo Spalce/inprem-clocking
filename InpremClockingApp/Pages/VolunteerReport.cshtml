@@ -2,6 +2,8 @@
 @model VolunteerReport
 @{
     ViewData["Title"] = "Volunteer Report";
+    var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
+    var btnWhite = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-slate-300 tw:bg-white tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:text-slate-700 tw:hover:bg-slate-50";
     var btnDanger = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-red-600 tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-red-700";
 }
 
@@ -15,6 +17,16 @@
         <span class="tw:text-slate-700">Volunteer Report</span>
       </nav>
       <button type="button" id="btnDownloadPdf" class="@btnDanger">Download PDF</button>
+    </div>
+  </div>
+
+  <div class="tw:mb-4 tw:flex tw:flex-col tw:gap-3 tw:sm:flex-row tw:sm:items-start tw:sm:justify-between">
+    <div class="tw:flex tw:flex-1 tw:items-start tw:gap-2">
+      <div class="tw:relative tw:flex-1">
+        <input id="emailSearch" placeholder="Search by name or email..." class="@input" autocomplete="off" value="@ViewData["Search"]" />
+        <div id="emailHint" class="tw:mt-1 tw:text-xs tw:text-slate-500">Type to search all volunteers</div>
+      </div>
+      <button id="btnSearch" class="@btnWhite">Search</button>
     </div>
   </div>
 
@@ -54,22 +66,23 @@
           <option value="100" selected="@(sel100 ? "selected" : null)">100</option>
         </select>
         <input type="hidden" name="pageNumber" value="1" />
+        <input type="hidden" name="Search" value="@ViewData["Search"]" />
       </form>
 
       <nav aria-label="Page navigation">
         <ul class="tw:flex tw:items-center tw:gap-1">
           @{ var current = (int)(ViewData["Page"] ?? 1); var total = (int)(ViewData["TotalPages"] ?? 1); var size = (int)(ViewData["PageSize"] ?? 20); }
           <li>
-            <a class="tw:rounded-md tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium @(current == 1 ? "tw:pointer-events-none tw:text-slate-300" : "tw:text-slate-600 tw:hover:bg-slate-100")" asp-page="./VolunteerReport" asp-route-pageNumber="@(current-1)" asp-route-pageSize="@size">Previous</a>
+            <a class="tw:rounded-md tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium @(current == 1 ? "tw:pointer-events-none tw:text-slate-300" : "tw:text-slate-600 tw:hover:bg-slate-100")" asp-page="./VolunteerReport" asp-route-pageNumber="@(current-1)" asp-route-pageSize="@size" asp-route-Search="@ViewData["Search"]">Previous</a>
           </li>
           @for (int i = 1; i <= total; i++)
           {
             <li>
-              <a class="tw:rounded-md tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium @(i == current ? "tw:bg-blue-600 tw:text-white" : "tw:text-slate-600 tw:hover:bg-slate-100")" asp-page="./VolunteerReport" asp-route-pageNumber="@i" asp-route-pageSize="@size">@i</a>
+              <a class="tw:rounded-md tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium @(i == current ? "tw:bg-blue-600 tw:text-white" : "tw:text-slate-600 tw:hover:bg-slate-100")" asp-page="./VolunteerReport" asp-route-pageNumber="@i" asp-route-pageSize="@size" asp-route-Search="@ViewData["Search"]">@i</a>
             </li>
           }
           <li>
-            <a class="tw:rounded-md tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium @(current == total ? "tw:pointer-events-none tw:text-slate-300" : "tw:text-slate-600 tw:hover:bg-slate-100")" asp-page="./VolunteerReport" asp-route-pageNumber="@(current+1)" asp-route-pageSize="@size">Next</a>
+            <a class="tw:rounded-md tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium @(current == total ? "tw:pointer-events-none tw:text-slate-300" : "tw:text-slate-600 tw:hover:bg-slate-100")" asp-page="./VolunteerReport" asp-route-pageNumber="@(current+1)" asp-route-pageSize="@size" asp-route-Search="@ViewData["Search"]">Next</a>
           </li>
         </ul>
       </nav>
@@ -93,4 +106,61 @@
             })
             .catch(function () { alert('Failed to download PDF'); });
     });
+
+    (function () {
+        var searchInput = document.getElementById('emailSearch');
+        var hint = document.getElementById('emailHint');
+        var timer = null;
+
+        // Rows are server-paginated, so search re-runs the query server-side (page reset to 1)
+        // rather than filtering rows already in the DOM - a client-only filter would only ever
+        // see whichever page happens to be loaded.
+        function navigateSearch(value) {
+            var params = new URLSearchParams(window.location.search);
+            if (value) params.set('Search', value); else params.delete('Search');
+            params.set('pageNumber', '1');
+            window.location.href = window.location.pathname + '?' + params.toString();
+        }
+
+        function showHints(list) {
+            hint.innerHTML = '';
+            list.slice(0, 10).forEach(function (email) {
+                var button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'tw:mr-2 tw:cursor-pointer tw:border-0 tw:bg-transparent tw:p-0 tw:text-sm tw:text-blue-600 tw:hover:underline';
+                button.textContent = email;
+                button.addEventListener('click', function () {
+                    navigateSearch(email);
+                });
+                hint.appendChild(button);
+            });
+        }
+
+        document.getElementById('btnSearch').addEventListener('click', function () {
+            navigateSearch(searchInput.value || '');
+        });
+
+        searchInput.addEventListener('input', function () {
+            var value = searchInput.value || '';
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(function () {
+                if (!value) {
+                    hint.innerText = 'Type to search all volunteers';
+                    return;
+                }
+                fetch('/api/people/emails?q=' + encodeURIComponent(value))
+                    .then(function (response) { return response.ok ? response.json() : []; })
+                    .then(showHints)
+                    .catch(function () { hint.innerHTML = ''; });
+            }, 250);
+        });
+
+        searchInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (timer) clearTimeout(timer);
+                navigateSearch(searchInput.value || '');
+            }
+        });
+    })();
 </script>

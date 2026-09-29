@@ -20,6 +20,9 @@ public class StaffReport : PageModel
     [BindProperty(SupportsGet = true)]
     public int PageSize { get; set; } = 20;
 
+    [BindProperty(SupportsGet = true)]
+    public string? Search { get; set; }
+
     public StaffReport(StaffService service)
     {
         _service = service;
@@ -27,9 +30,10 @@ public class StaffReport : PageModel
 
     public async Task OnGetAsync()
     {
-        var result = await _service.SearchByName(null, PageNumber, PageSize).ConfigureAwait(false);
+        var result = await _service.SearchByName(Search, PageNumber, PageSize).ConfigureAwait(false);
         StaffList = result.Items.ToList();
 
+        ViewData["Search"] = Search;
         ViewData["TotalCount"] = result.TotalCount;
         ViewData["Page"] = result.Page;
         ViewData["PageSize"] = result.PageSize;

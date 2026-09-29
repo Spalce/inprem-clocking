@@ -36,7 +36,7 @@
                 <option value="@v.VolunteerId" selected="@(isSelected ? "selected" : null)">@v.FullName</option>
             }
           </select>
-          <input type="text" id="volunteerLookup" class="@input" placeholder="Search volunteer..." />
+          <input type="text" id="volunteerLookup" class="@input" placeholder="Search by name or email..." />
           <input type="hidden" name="VolunteerId" id="VolunteerIdHidden" value="@(ViewData["VolunteerId"] ?? "")" />
         </div>
         <div>
@@ -144,7 +144,7 @@
         const el = document.createElement('button');
         el.type = 'button';
         el.className = 'tw:block tw:w-full tw:cursor-pointer tw:border-0 tw:bg-transparent tw:px-3 tw:py-2 tw:text-left tw:text-sm tw:text-slate-700 tw:hover:bg-slate-50';
-        el.textContent = i.text;
+        el.textContent = i.email ? `${i.text} (${i.email})` : i.text;
         el.addEventListener('click', function(){
           // set hidden id and navigate using querystring to ensure server receives the VolunteerId
           input.value = i.text;
