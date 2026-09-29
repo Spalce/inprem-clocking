@@ -2,12 +2,13 @@
 
 ## Status (2026-09-29)
 
-Phases 0, 1, 2, and 3 are done, committed on `feature/multi-tenancy`, and verified end-to-end
-(including a real second tenant created and torn down during testing, confirming isolation
-holds through the UI, direct ID guessing, and new-row creation). Data isolation is live, and
-the static OrgClock has been fully replaced by a per-tenant ITenantClock - this is no longer
-just a plan for those four phases. Phases 4 (tenant management UI) and 5 (hardening/docs) have
-not been started - see "What you'll need to handle" below for the checkpoint before continuing.
+Phases 0 through 4 are done, committed on `feature/multi-tenancy`, and verified end-to-end -
+including creating a real second tenant entirely through the UI (SuperAdmin onboarding ->
+tenant admin login -> staff registration -> clock in/out -> report), confirming isolation and
+per-tenant timezone resolution both hold with no visibility into Inprem's data at any step.
+Data isolation and tenant onboarding are both live now, not just planned. Only Phase 5
+(hardening/docs pass) remains - see "What you'll need to handle" below for the checkpoint
+before continuing.
 
 ## Goal
 
