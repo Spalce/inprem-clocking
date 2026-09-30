@@ -1,8 +1,13 @@
 using InpremClockingApp.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace InpremClockingApp.Controllers.Api;
 
+// All callers (StaffClocking/VolunteerClocking, StaffClockingReport/VolunteerClockingReport)
+// are AdminOnly pages. See ROLES.md "Known gaps" - this controller previously had no
+// [Authorize] at all.
+[Authorize(Policy = "AdminOnly")]
 [ApiController]
 [Route("api/[controller]")]
 public class PeopleController : ControllerBase

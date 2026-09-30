@@ -2,11 +2,16 @@
 using InpremClockingApp.Data;
 using InpremClockingApp.Models;
 using InpremClockingApp.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace InpremClockingApp.Controllers;
 
+// Matches the kiosk pages that call these endpoints (StaffClockPage/VolunteerClockPage), which
+// are gated with a plain [Authorize] too, not AdminOnly - any signed-in account may clock
+// in/out. See ROLES.md "Known gaps" - this controller previously had no [Authorize] at all.
+[Authorize]
 [Route("api/[controller]")]
 public class ControlsController : Controller
 {

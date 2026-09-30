@@ -2,11 +2,16 @@
 using InpremClockingApp.Data;
 using InpremClockingApp.Models;
 using InpremClockingApp.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace InpremClockingApp.Controllers;
 
+// Not currently called by any page in the UI, but the route is live and reachable regardless -
+// gated the same as the back-office report pages it's shaped for. See ROLES.md "Known gaps" -
+// this controller previously had no [Authorize] at all.
+[Authorize(Policy = "AdminOnly")]
 [Route("api/[controller]")]
 [ApiController]
 public class ReportsController : Controller

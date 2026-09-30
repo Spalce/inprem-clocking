@@ -1,10 +1,14 @@
 using InpremClockingApp.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 
 namespace InpremClockingApp.Controllers.Api;
 
+// All callers (HoursWorked, VolunteerClockingReport, VolunteerReport) are AdminOnly pages. See
+// ROLES.md "Known gaps" - this controller previously had no [Authorize] at all.
+[Authorize(Policy = "AdminOnly")]
 [ApiController]
 [Route("api/people")]
 public class VolunteerReportsController : ControllerBase

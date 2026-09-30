@@ -2,11 +2,17 @@
 using InpremClockingApp.Data;
 using InpremClockingApp.Models;
 using InpremClockingApp.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using InpremClockingApp.Helpers;
 
 namespace InpremClockingApp.Controllers;
 
+// Not currently called by any page in the UI (Manage Staff/Volunteers now uses Razor Page
+// handlers directly), but this performs Staff/Volunteer create/move and the route is live and
+// reachable regardless - gated the same as Manage Staff/Volunteers itself. See ROLES.md
+// "Known gaps" - this controller previously had no [Authorize] at all.
+[Authorize(Policy = "AdminOnly")]
 [Route("api/[controller]")]
 public class StaffController : Controller
 {

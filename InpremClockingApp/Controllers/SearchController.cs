@@ -1,9 +1,14 @@
 using InpremClockingApp.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace InpremClockingApp.Controllers;
 
+// Matches its only callers (StaffAttendance/VolunteerAttendance), which are gated with a plain
+// [Authorize] too, not AdminOnly. See ROLES.md "Known gaps" - this controller previously had no
+// [Authorize] at all.
+[Authorize]
 [Route("api/[controller]")]
 public class SearchController : Controller
 {
