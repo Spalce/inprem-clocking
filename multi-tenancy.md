@@ -10,11 +10,13 @@ step. `TESTING.md` has a "Multi-tenant isolation" section covering this. Also fi
 way: `VolunteerService.GetByEmail` querying the wrong table, email search added to Reports, and
 every API controller now carries its own `[Authorize]`/`AdminOnly` gate (see `ROLES.md`).
 
-**Part 2 — SaaS platform extension — is newly planned, not yet started.** The app is moving from
-"multiple organizations share one deployment" to "this is a product other organizations pay to
-use." That requires a real provider portal, billing/invoicing, and renewal handling on top of
-the tenant isolation Part 1 already built. Nothing in Part 2 has been coded yet — this document
-is the plan, scoped per your answers below, pending your go-ahead to start Phase 6.
+**Part 2 — SaaS platform extension — Phase 6 is done.** The app is moving from "multiple
+organizations share one deployment" to "this is a product other organizations pay to use."
+That requires a real provider portal, billing/invoicing, and renewal handling on top of the
+tenant isolation Part 1 already built. Phase 6 added the `Subscription`/`Invoice` tables (purely
+additive, same query-filter isolation as every other business table) and seeded every existing
+tenant with a placeholder `$0`/month `Active` subscription so none are left undefined once
+enforcement lands in Phase 9. No UI or billing logic exists yet — that starts with Phase 7.
 
 ## Goal
 
@@ -164,12 +166,18 @@ Called out so it's clear what's being deferred rather than overlooked:
 
 ## Phased plan (Part 2)
 
-**Phase 6 — Billing data model**
-Add `Subscription` and `Invoice` entities + migration (additive only), wire both into the
-existing tenant query-filter mechanism, seed Inprem's own tenant with an `Active` subscription
-(so it isn't left in a null/undefined billing state once Phase 9's gate goes live). No UI yet.
-Verify: app builds and behaves identically; the two new tables exist and are correctly
-tenant-filtered (confirmed via the same ID-guessing isolation check Part 1 used).
+**Phase 6 — Billing data model — done (2026-10-01)**
+Added `Subscription` and `Invoice` entities (`Models/Billing/`) + two migrations
+(`MultiTenancy_Phase6a_AddBillingTables` for schema, `MultiTenancy_Phase6b_SeedSubscriptions` for
+data), wired into the existing tenant query-filter mechanism and enum-to-string conversions
+(so `Status`/`BillingCycle` read as text, not bare ints, when inspected directly in SSMS). Every
+existing tenant (Inprem plus the Part 1 test tenant) was seeded with a placeholder `$0`/month
+`Active` subscription — a real amount (or a decision to exempt Inprem as the house account) is
+still an open item for you, tracked under "What you'll need to handle" below. No UI yet.
+Verified: full solution build succeeds; migration applies cleanly against the local DB with no
+EF warnings; a live smoke test confirmed the app still serves pages normally with the new
+tables in place; both tables carry working `TenantId` foreign keys and the same query-filter
+construct already proven in Part 1.
 
 **Phase 7 — Provider portal expansion**
 `/Platform/Tenants/{id}` detail/edit page (name/timezone/address/contact edit, admins-per-tenant
