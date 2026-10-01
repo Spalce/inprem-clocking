@@ -9,11 +9,14 @@
     // already populated identically whether this is a fresh visit or a redirect from an
     // [Authorize]-protected page; this just reads that existing value to pick which look to
     // render. Kiosk-bound destinations are the sign-up/clock-in pages a walk-up device lands
-    // on; everything else (including the default "no specific destination" case, which today
-    // falls back to VolunteerAttendance) is treated as kiosk too, since that fallback itself
-    // is kiosk-oriented - only an explicit back-office ReturnUrl renders the admin look.
+    // on; everything else (including the "no real destination" case - empty, or "/" from
+    // hitting the root Index page while signed out) is treated as kiosk too, since
+    // OnPostAsync below already falls back to VolunteerAttendance for exactly those two
+    // cases (`string.IsNullOrEmpty(returnUrl) || returnUrl == "/"`) - this mirrors that same
+    // condition so the page shown here never disagrees with where sign-in actually lands.
     var kioskReturnPrefixes = new[] { "/staff-clockin", "/volunteer-clockin", "/staffattendance", "/volunteerattendance" };
     var isKioskLogin = string.IsNullOrEmpty(Model.ReturnUrl)
+        || Model.ReturnUrl == "/"
         || kioskReturnPrefixes.Any(p => Model.ReturnUrl.StartsWith(p, StringComparison.OrdinalIgnoreCase));
 
     var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
