@@ -6,7 +6,7 @@
 end-to-end: a real second tenant was created entirely through the UI (SuperAdmin onboarding ->
 tenant admin login -> staff registration -> clock in/out -> report), confirming isolation and
 per-tenant timezone resolution both hold with no visibility into another tenant's data at any
-step. `TESTING.md` has a "Multi-tenant isolation" section covering this. Also fixed along the
+step. `Test.md` has a dedicated section covering this. Also fixed along the
 way: `VolunteerService.GetByEmail` querying the wrong table, email search added to Reports, and
 every API controller now carries its own `[Authorize]`/`AdminOnly` gate (see `ROLES.md`).
 

@@ -295,43 +295,12 @@ Reach via **Hello admin@inprem.org** (top-right) → your account, or
       installed - ad blockers, Grammarly, etc. - are not this app's problem,
       just check the source file in the error).
 
-## 12. Multi-tenant isolation (`feature/multi-tenancy` branch only)
+## 12. Multi-tenancy & SaaS platform (`feature/multi-tenancy` branch only)
 
-Only applicable once this branch is merged - `main` as of this writing is still
-single-tenant. Requires a SuperAdmin account (`SeedSuperAdmin:Email` /
-`SeedSuperAdmin:Password` config, or promote an existing account to the
-`SuperAdmin` role directly in `AspNetUserRoles`).
-
-- [ ] Log in as the SuperAdmin. The sidebar shows a **Tenants** link that an
-      ordinary Admin never sees. An ordinary Admin navigating directly to
-      `/Platform/Tenants` gets an Access Denied page, not the page itself.
-- [ ] On `/Platform/Tenants`, create a new tenant with its own name, a
-      different timezone than Inprem's (e.g. `America/Chicago` or
-      `America/Los_Angeles`), and a first admin account. It should appear in
-      the tenant list immediately.
-- [ ] Log out, log in as the new tenant's admin. Dashboard shows **0** staff,
-      **0** volunteers, and exactly **1** admin (itself) - none of Inprem's
-      25/25/2.
-- [ ] Register a new staff member and clock them in/out through the kiosk
-      flow, entirely within this new tenant's session. Confirm the displayed
-      kiosk time matches the new tenant's own timezone (not Inprem's) -
-      e.g. for `America/Chicago` it should read exactly one hour behind
-      Eastern at the same instant.
-- [ ] Download that staff member's PDF report - the header/company name and
-      address should show the **new tenant's own name/address** (or blank,
-      if left empty at creation), never "Inprem Holistic Community Resource
-      Center".
-- [ ] Try to reach one of Inprem's real Staff/Volunteer IDs directly by URL
-      while signed in as the new tenant's admin (e.g. `/staff-clockin/1`,
-      or `/HoursWorked?Id=1&Type=staff`) - this must fail (not found /
-      no data), never show Inprem's actual record.
-- [ ] Register a person using an email address that's already used by one of
-      Inprem's staff/volunteers - this should succeed under the new tenant
-      (two different organizations are allowed to share an email address;
-      only a duplicate within the *same* tenant is blocked).
-- [ ] Switch back to Inprem's own admin account and confirm nothing changed
-      for Inprem - same dashboard counts, same clocking behavior, same PDF
-      branding as before this branch existed.
+Moved to its own dedicated guide: see **`Test.md`** at the repo root. It covers
+tenant isolation, the SuperAdmin provider portal, billing/invoicing, and the
+renewal/suspension background job - everything built on this branch, including a
+documented set of test accounts/tenants kept specifically for this purpose.
 
 ---
 
