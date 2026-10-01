@@ -42,19 +42,41 @@ namespace InpremClockingApp.Data
             builder.Entity<Setting>().HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             builder.Entity<AppUser>().HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
 
-            // NOTE on admin-account uniqueness (code review, 2026-10-01): AppUser deliberately
-            // keeps Identity's default GLOBAL-unique index on NormalizedUserName, unlike
-            // Staff/Volunteer's tenant-scoped uniqueness (Phase 1b). This was tried and reverted
-            // - see the commit history for the full story. In short: SignInManager resolves an
-            // account at login by username ALONE (UserManager.FindByNameAsync, with no tenant
-            // selector anywhere in the login form), via an unordered `TOP(1)` query - allowing
-            // two tenants to share a username makes login pick an arbitrary one of the matching
-            // accounts, silently authenticating the wrong tenant's admin or failing with
-            // "Invalid login attempt" depending on which row the query happens to return.
-            // Fixing this properly would mean adding a real tenant-selection step to login
-            // (e.g. an organization code), which is a product decision and a bigger change than
-            // this hardening pass - out of scope here. Global uniqueness is the correct,
-            // necessary behavior given today's login flow, not a bug.
+            // Identity's own base.OnModelCreating() above configures a single global-unique
+            // index on NormalizedUserName ("UserNameIndex") - loosened to non-unique here and
+            // replaced with two filtered indexes, matching Staff/Volunteer's Phase 1b redesign:
+            // one scoping uniqueness to each tenant, one keeping SuperAdmin accounts
+            // (TenantId null) uniquely named platform-wide, since there's no tenant to scope
+            // those to. Two indexes rather than one (TenantId, NormalizedUserName) composite,
+            // because SQL Server's unique indexes never treat two NULLs as equal - a single
+            // composite would silently stop enforcing uniqueness among SuperAdmins altogether.
+            // UserName is always the admin's email in this app, so without this, two different
+            // organizations couldn't have an admin sharing an email address. Calling HasIndex
+            // on the plain NormalizedUserName property reconfigures Identity's existing index
+            // rather than adding a second one; the two filtered ones below need explicit names
+            // via the HasIndex(properties, name) overload specifically because EF Core would
+            // otherwise treat them as configuring that same single-property index too.
+            //
+            // IMPORTANT: this alone is not a safe fix. The first attempt at this (2026-10-01)
+            // was shipped with only this index + TenantAwareUserValidator and reverted within the
+            // hour, because SignInManager resolves an account at login by username ALONE
+            // (UserManager.FindByNameAsync, no tenant selector anywhere in the login form) via an
+            // unordered `TOP(1)` query - two tenants sharing a username made login pick an
+            // arbitrary one of the matching accounts. The fix that makes this safe lives in
+            // Login.cshtml.cs (disambiguates by password), ForgotPassword.cshtml.cs (emails a
+            // separate reset link per matching account), and ResetPassword.cshtml.cs
+            // (disambiguates by which candidate the reset token actually validates against) -
+            // all three MUST be kept in sync with this index; do not reintroduce tenant-scoped
+            // username uniqueness without them.
+            builder.Entity<AppUser>().HasIndex(u => u.NormalizedUserName).IsUnique(false);
+            builder.Entity<AppUser>()
+                .HasIndex(new[] { nameof(AppUser.TenantId), nameof(AppUser.NormalizedUserName) }, "TenantNormalizedUserNameIndex")
+                .IsUnique()
+                .HasFilter("[TenantId] IS NOT NULL");
+            builder.Entity<AppUser>()
+                .HasIndex(new[] { nameof(AppUser.TenantId), nameof(AppUser.NormalizedUserName) }, "SuperAdminNormalizedUserNameIndex")
+                .IsUnique()
+                .HasFilter("[TenantId] IS NULL");
 
             // Multi-tenancy Part 2, Phase 6 (see multi-tenancy.md): billing tables join the same
             // tenant-scoping mechanism as every other business table - no new isolation

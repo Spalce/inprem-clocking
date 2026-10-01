@@ -8,10 +8,12 @@ namespace InpremClockingApp.Services;
 public class AuthService
 {
     private readonly UserManager<AppUser> _userManager;
+    private readonly ICurrentTenantService _currentTenant;
 
-    public AuthService(UserManager<AppUser> userManager)
+    public AuthService(UserManager<AppUser> userManager, ICurrentTenantService currentTenant)
     {
         _userManager = userManager;
+        _currentTenant = currentTenant;
     }
 
     public async Task<IEnumerable<AppUser>> GetAll()
@@ -45,6 +47,10 @@ public class AuthService
     /// </summary>
     public async Task<IdentityResult> CreateAdmin(string email, string firstName, string lastName, string password)
     {
+        // Set explicitly (not left for ApplicationDbContext's auto-stamp) because
+        // TenantAwareUserValidator needs the real TenantId at validation time, which runs
+        // before the SaveChanges call where auto-stamping would otherwise happen - by then it
+        // would be too late to scope the uniqueness check to the right tenant.
         var user = new AppUser
         {
             UserName = email,
@@ -53,6 +59,7 @@ public class AuthService
             FirstName = firstName,
             LastName = lastName,
             Type = IdentitySeeder.AdminRole,
+            TenantId = _currentTenant.TenantId,
         };
 
         var result = await _userManager.CreateAsync(user, password).ConfigureAwait(false);

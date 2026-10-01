@@ -14,7 +14,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using InpremClockingApp.Data;
 using InpremClockingApp.Helpers;
 using InpremClockingApp.Services;
 
@@ -23,11 +25,13 @@ namespace InpremClockingApp.Areas.Identity.Pages.Account
     public class LoginModel : PageModel
     {
         private readonly SignInManager<AppUser> _signInManager;
+        private readonly ApplicationDbContext _db;
         private readonly ILogger<LoginModel> _logger;
 
-        public LoginModel(SignInManager<AppUser> signInManager, ILogger<LoginModel> logger)
+        public LoginModel(SignInManager<AppUser> signInManager, ApplicationDbContext db, ILogger<LoginModel> logger)
         {
             _signInManager = signInManager;
+            _db = db;
             _logger = logger;
         }
 
@@ -136,9 +140,19 @@ namespace InpremClockingApp.Areas.Identity.Pages.Account
 
             if (ModelState.IsValid)
             {
+                // AppUser.NormalizedUserName is only unique per-tenant, not globally (see
+                // ApplicationDbContext) - two different organizations' admins can share a
+                // username/email. Resolves which specific account "Input.Email" means here,
+                // since plain SignInManager.PasswordSignInAsync(string userName, ...) would
+                // otherwise pick an arbitrary one of the matching rows (an unordered TOP(1)
+                // query under the hood) with no way to know which tenant was actually intended.
+                var candidate = await ResolveLoginCandidateAsync(Input.Email, Input.Password).ConfigureAwait(false);
+
                 // This doesn't count login failures towards account lockout
                 // To enable password failures to trigger account lockout, set lockoutOnFailure: true
-                var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+                var result = candidate == null
+                    ? Microsoft.AspNetCore.Identity.SignInResult.Failed
+                    : await _signInManager.PasswordSignInAsync(candidate, Input.Password, Input.RememberMe, lockoutOnFailure: false);
                 if (result.Succeeded)
                 {
                     // The kiosk fallback above predates the SuperAdmin role (multi-tenancy.md) -
@@ -146,13 +160,9 @@ namespace InpremClockingApp.Areas.Identity.Pages.Account
                     // destination for one. Only overrides the generic fallback, never an explicit
                     // destination (e.g. being challenged from /Platform/Tenants itself already
                     // produces that exact returnUrl above, untouched by this).
-                    if (usedKioskFallback)
+                    if (usedKioskFallback && await _signInManager.UserManager.IsInRoleAsync(candidate, IdentitySeeder.SuperAdminRole))
                     {
-                        var user = await _signInManager.UserManager.FindByEmailAsync(Input.Email);
-                        if (user != null && await _signInManager.UserManager.IsInRoleAsync(user, IdentitySeeder.SuperAdminRole))
-                        {
-                            returnUrl = Url.Content("~/Platform/Tenants");
-                        }
+                        returnUrl = Url.Content("~/Platform/Tenants");
                     }
 
                     return LocalRedirect(returnUrl);
@@ -174,6 +184,37 @@ namespace InpremClockingApp.Areas.Identity.Pages.Account
 
             // If we got this far, something failed, redisplay form
             return Page();
+        }
+
+        // Resolves which account "userName" refers to now that it's only unique per-tenant
+        // (TenantAwareUserValidator/ApplicationDbContext). Zero or one match behaves exactly
+        // like a plain FindByNameAsync lookup - the only case that changes is more than one
+        // tenant sharing a username, where the supplied password is what disambiguates which
+        // account was meant (CheckPasswordAsync here doesn't touch lockout state - only the
+        // eventual PasswordSignInAsync call against the resolved candidate does that, same as
+        // for any other login attempt). If no candidate's password matches, falls through to a
+        // deterministic (lowest Id) candidate so PasswordSignInAsync still runs its normal
+        // failure/lockout handling against a real account, instead of silently skipping it the
+        // way returning null for "account doesn't exist" would.
+        private async Task<AppUser> ResolveLoginCandidateAsync(string userName, string password)
+        {
+            var normalized = _signInManager.UserManager.NormalizeName(userName);
+            var candidates = await _db.Users.IgnoreQueryFilters()
+                .Where(u => u.NormalizedUserName == normalized)
+                .OrderBy(u => u.Id)
+                .ToListAsync().ConfigureAwait(false);
+
+            if (candidates.Count <= 1) return candidates.FirstOrDefault();
+
+            foreach (var account in candidates)
+            {
+                if (await _signInManager.UserManager.CheckPasswordAsync(account, password).ConfigureAwait(false))
+                {
+                    return account;
+                }
+            }
+
+            return candidates[0];
         }
     }
 }

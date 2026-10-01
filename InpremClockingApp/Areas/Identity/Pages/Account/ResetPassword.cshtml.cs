@@ -7,21 +7,25 @@ using System.ComponentModel.DataAnnotations;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using InpremClockingApp.Data;
 using InpremClockingApp.Models.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 
 namespace InpremClockingApp.Areas.Identity.Pages.Account
 {
     public class ResetPasswordModel : PageModel
     {
         private readonly UserManager<AppUser> _userManager;
+        private readonly ApplicationDbContext _db;
 
-        public ResetPasswordModel(UserManager<AppUser> userManager)
+        public ResetPasswordModel(UserManager<AppUser> userManager, ApplicationDbContext db)
         {
             _userManager = userManager;
+            _db = db;
         }
 
         /// <summary>
@@ -95,14 +99,29 @@ namespace InpremClockingApp.Areas.Identity.Pages.Account
                 return Page();
             }
 
-            var user = await _userManager.FindByEmailAsync(Input.Email);
-            if (user == null)
+            // AppUser.NormalizedEmail is only unique per-tenant, not globally (see
+            // ApplicationDbContext) - FindByEmailAsync could resolve to the wrong one of several
+            // accounts sharing this address. The reset token itself is tied to a specific
+            // account (it embeds that user's security stamp), so instead of guessing via email,
+            // every candidate is tried and only the one the code actually belongs to succeeds -
+            // ResetPasswordAsync fails harmlessly ("InvalidToken") against every other candidate.
+            var candidates = await _db.Users.IgnoreQueryFilters()
+                .Where(u => u.NormalizedEmail == _userManager.NormalizeEmail(Input.Email))
+                .ToListAsync();
+
+            if (candidates.Count == 0)
             {
                 // Don't reveal that the user does not exist
                 return RedirectToPage("./ResetPasswordConfirmation");
             }
 
-            var result = await _userManager.ResetPasswordAsync(user, Input.Code, Input.Password);
+            IdentityResult result = IdentityResult.Failed();
+            foreach (var user in candidates)
+            {
+                result = await _userManager.ResetPasswordAsync(user, Input.Code, Input.Password);
+                if (result.Succeeded) break;
+            }
+
             if (result.Succeeded)
             {
                 return RedirectToPage("./ResetPasswordConfirmation");

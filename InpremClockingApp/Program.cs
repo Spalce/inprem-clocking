@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using System;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -54,6 +55,15 @@ builder.Services.AddDefaultIdentity<AppUser>(options => options.SignIn.RequireCo
 // Registered after AddDefaultIdentity so it overrides Identity's default factory - stamps the
 // TenantId claim onto every sign-in (see AppUserClaimsPrincipalFactory, multi-tenancy.md).
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<AppUser>, AppUserClaimsPrincipalFactory>();
+
+// Replaces Identity's default IUserValidator<AppUser>, whose username-uniqueness check is
+// global across every tenant - see TenantAwareUserValidator for why that's wrong for a SaaS
+// platform where two different organizations may share an admin's email, and what else (Login,
+// ForgotPassword, ResetPassword) had to change alongside it to make that safe. RemoveAll first
+// since AddDefaultIdentity above already registered the default one, and UserManager runs every
+// registered IUserValidator<T>, not just the last one added.
+builder.Services.RemoveAll<IUserValidator<AppUser>>();
+builder.Services.AddScoped<IUserValidator<AppUser>, TenantAwareUserValidator>();
 
 builder.Services.AddAuthorization(options =>
 {
