@@ -105,7 +105,11 @@ testing).
   circumstances — enforced at the data layer, not just hidden in the UI.
 - Two different tenants *can* register a person with the same email address (this is allowed,
   intentionally) — but within their own tenant, an Admin still cannot create a duplicate
-  Staff/Volunteer email or username; that's enforced by a tenant-scoped unique index.
+  Staff/Volunteer email or username; that's enforced by a tenant-scoped unique index. The same
+  now holds for Admin accounts themselves (code review fix, 2026-10-01): two tenants can have an
+  admin sharing an email, disambiguated at login by password and at password-reset by which
+  account the reset token actually belongs to (see `TenantAwareUserValidator` and
+  `Login`/`ForgotPassword`/`ResetPassword.cshtml.cs`).
 
 ## 3. Kiosk sign-in (not a separate role)
 
