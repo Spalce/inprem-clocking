@@ -10,13 +10,14 @@ step. `TESTING.md` has a "Multi-tenant isolation" section covering this. Also fi
 way: `VolunteerService.GetByEmail` querying the wrong table, email search added to Reports, and
 every API controller now carries its own `[Authorize]`/`AdminOnly` gate (see `ROLES.md`).
 
-**Part 2 — SaaS platform extension — Phases 6 and 7 are done.** The app is moving from "multiple
-organizations share one deployment" to "this is a product other organizations pay to use."
-That requires a real provider portal, billing/invoicing, and renewal handling on top of the
-tenant isolation Part 1 already built. Phase 6 added the `Subscription`/`Invoice` tables; Phase 7
-expanded the provider portal with a per-tenant detail/edit page (profile, active/suspended
-toggle, admins list, subscription editing) and a billing-status badge on the tenant list. No
-invoicing workflow exists yet — that starts with Phase 8.
+**Part 2 — SaaS platform extension — Phases 6, 7, and 8 are done.** The app is moving from
+"multiple organizations share one deployment" to "this is a product other organizations pay to
+use." Phase 6 added the `Subscription`/`Invoice` tables; Phase 7 expanded the provider portal
+with a per-tenant detail/edit page; Phase 8 made billing actually do something — a
+`BillingService` that generates/pays/voids invoices and renews subscription periods, plus the
+app's first background job running a daily sweep that generates upcoming invoices and escalates
+non-payment from `Active` → `PastDue` → `Suspended`. Nothing yet *enforces* a `Suspended`
+subscription — that's Phase 9.
 
 ## Goal
 
@@ -200,14 +201,28 @@ database; a regular Admin gets redirected to `AccessDenied` on both `/Platform/T
 new detail route; creating a tenant through the portal produces a working placeholder
 subscription automatically (smoke-tested, then cleaned up).
 
-**Phase 8 — Invoicing & renewals**
-`BillingService` (generate invoice, mark paid, void, renew-period), `/Platform/Invoices` queue
-page, PDF invoice generation (QuestPDF, same pattern as hour reports), and the
-`BillingBackgroundService` daily job (generate upcoming invoices, flag past-due/suspended per
-decision #10).
-Verify: manually generate and mark an invoice paid end-to-end through the UI; confirm the
-background job correctly advances a test subscription's period and flags a second,
-intentionally-unpaid test subscription as `PastDue` then `Suspended` on schedule.
+**Phase 8 — Invoicing & renewals — done (2026-10-01)**
+Added `BillingService` (`GenerateInvoiceAsync` — idempotent per period, `MarkInvoicePaidAsync` —
+also clears a `PastDue`/`Suspended` subscription back to `Active`, `VoidInvoiceAsync`,
+`RenewSubscriptionAsync` — advances the period by one `BillingCycle` and generates the next
+invoice, `RunDailySweepAsync` — the renewal + overdue/grace-period logic), the app's first
+background job (`BillingBackgroundService`, a 24-hour-interval `BackgroundService`), the
+`/Platform/Invoices` cross-tenant queue page (generate/mark-paid/void/PDF download), a read-only
+invoice history on `TenantDetail`, and `InvoicesController` (`api/invoices/{id}/pdf`,
+`SuperAdminOnly`) generating the PDF from the platform operator's own identity — new
+`appsettings.json` `Platform:OperatorName`/`OperatorAddress`/`OperatorContactInfo` keys, distinct
+from a tenant's own `ICurrentTenantProfile` since an invoice is billed *from* the provider *to*
+a tenant. Also fixed a Phase 7 inconsistency: the placeholder subscription created at tenant
+onboarding had a 1-year period paired with a `Monthly` cycle; now the period matches the cycle.
+Deliberately does not touch `Tenant.IsActive` or block anything — that's Phase 9.
+Verified live end-to-end: generated an invoice (confirmed idempotent when generated twice for
+the same period), downloaded its PDF, marked it paid, and voided a second one; manually forced
+an invoice overdue and confirmed the sweep correctly escalates `Active` → `PastDue` → `Suspended`
+across repeated app restarts (each restart runs one immediate sweep), then resets to `Active`
+once that invoice is paid; shrank a subscription's period to inside the renewal window and
+confirmed the sweep renews it (advances the period, generates the next invoice at the carried-
+over amount) without double-renewing on a second run; confirmed a regular Admin is still
+redirected to `AccessDenied` on both `/Platform/Invoices` and the invoice PDF endpoint.
 
 **Phase 9 — Enforcement & tenant-facing billing page**
 Wire `Subscription.Status`/`Tenant.IsActive` into a real access gate (decision #8) with the
