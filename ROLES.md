@@ -48,10 +48,10 @@ doesn't belong to any organization's data.
   `Admin` role specifically; having `SuperAdmin` does not satisfy that check. A SuperAdmin who
   navigates to e.g. `/BackOffice` gets Access Denied, the same as anyone else without the
   `Admin` role.
-- Cannot view, edit, or deactivate an existing tenant after creation, and cannot delete a
-  tenant — `/Platform/Tenants` currently only supports *create* and *list*. There's no UI yet
-  to see which admins belong to a given tenant, reset a tenant admin's password, or change a
-  tenant's timezone/address after the fact.
+- Cannot delete a tenant outright, or reset a tenant admin's password — there's no UI for
+  either yet. (Viewing/editing an existing tenant's details, force-activating/suspending it, and
+  seeing which admins belong to it *are* now possible, via `/Platform/Tenants/{id}` — see
+  multi-tenancy.md Part 2, Phase 7.)
 - Cannot see or touch any tenant's Staff/Volunteer/Clocking data, even though they technically
   could look at the `Tenants` table row for that org — the query filter on every business table
   still requires a matching `TenantId`, which a SuperAdmin's session never has.
@@ -143,7 +143,7 @@ session.
 |---|---|
 | `/BackOffice`, `/Staff`, `/Volunteer`, `/User`, `/Settings`, `/StaffClocking`, `/VolunteerClocking`, `/StaffReport`, `/StaffClockingReport`, `/VolunteerReport`, `/VolunteerClockingReport`, `/HoursWorked` | `AdminOnly` (role `Admin`) |
 | `/Identity/Account/Register` | `AdminOnly` (role `Admin`) |
-| `/Platform/Tenants` | `SuperAdminOnly` (role `SuperAdmin`) |
+| `/Platform/Tenants`, `/Platform/Tenants/{id}` | `SuperAdminOnly` (role `SuperAdmin`) — gated at the folder level (`AuthorizeFolder("/Platform", ...)`), so any future `/Platform/*` page is covered automatically |
 | `/StaffAttendance`, `/VolunteerAttendance`, `/staff-clockin/{id}`, `/volunteer-clockin/{id}`, `/Index`, `/Privacy` | `[Authorize]` only — any signed-in account |
 | Everything else under `/Identity/Account/...` (Login, Logout, forgot-password, 2FA, manage-account pages) | Identity's own built-in rules (e.g. Login/Logout/ForgotPassword are open to anonymous by necessity; Manage pages require being signed in as whoever they belong to) |
 
@@ -172,6 +172,8 @@ gate:
   read/write access to everything in their tenant — there's no "front-desk-only" or read-only
   role for someone who should only be allowed to use the kiosk pages, not Manage Staff/Settings/
   Reports.
-- **SuperAdmin tooling is create-and-list only.** No way yet to edit a tenant's name/timezone/
-  address, deactivate or delete a tenant, reset a tenant admin's password, or see which admins
-  belong to a given tenant.
+- ~~**SuperAdmin tooling is create-and-list only.**~~ **Mostly fixed.** `/Platform/Tenants/{id}`
+  (multi-tenancy.md Part 2, Phase 7) now supports editing a tenant's name/timezone/address/
+  contact, force-activating/suspending it, viewing its admins, and viewing/editing its
+  subscription. Still missing: deleting a tenant outright, and resetting a tenant admin's
+  password.
