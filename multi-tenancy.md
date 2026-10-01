@@ -10,13 +10,13 @@ step. `TESTING.md` has a "Multi-tenant isolation" section covering this. Also fi
 way: `VolunteerService.GetByEmail` querying the wrong table, email search added to Reports, and
 every API controller now carries its own `[Authorize]`/`AdminOnly` gate (see `ROLES.md`).
 
-**Part 2 — SaaS platform extension — Phase 6 is done.** The app is moving from "multiple
+**Part 2 — SaaS platform extension — Phases 6 and 7 are done.** The app is moving from "multiple
 organizations share one deployment" to "this is a product other organizations pay to use."
 That requires a real provider portal, billing/invoicing, and renewal handling on top of the
-tenant isolation Part 1 already built. Phase 6 added the `Subscription`/`Invoice` tables (purely
-additive, same query-filter isolation as every other business table) and seeded every existing
-tenant with a placeholder `$0`/month `Active` subscription so none are left undefined once
-enforcement lands in Phase 9. No UI or billing logic exists yet — that starts with Phase 7.
+tenant isolation Part 1 already built. Phase 6 added the `Subscription`/`Invoice` tables; Phase 7
+expanded the provider portal with a per-tenant detail/edit page (profile, active/suspended
+toggle, admins list, subscription editing) and a billing-status badge on the tenant list. No
+invoicing workflow exists yet — that starts with Phase 8.
 
 ## Goal
 
@@ -179,12 +179,26 @@ EF warnings; a live smoke test confirmed the app still serves pages normally wit
 tables in place; both tables carry working `TenantId` foreign keys and the same query-filter
 construct already proven in Part 1.
 
-**Phase 7 — Provider portal expansion**
-`/Platform/Tenants/{id}` detail/edit page (name/timezone/address/contact edit, admins-per-tenant
-list, force-activate/suspend, view/edit that tenant's `Subscription`). Enhance the
-`/Platform/Tenants` list with a billing-status badge.
-Verify: SuperAdmin can edit an existing tenant's details and subscription amount; an Admin
-cannot reach any `/Platform/*` route (unchanged from today).
+**Phase 7 — Provider portal expansion — done (2026-10-01)**
+Added `/Platform/Tenants/{id}` (`TenantDetail.cshtml`/`.cs`): edit name/timezone/address/contact,
+force-activate/suspend (toggles `Tenant.IsActive` — not enforced anywhere yet, that's Phase 9),
+an admins-per-tenant list, and a subscription editor (amount/cycle/status/period dates, editing
+only — no invoice generation yet, that's Phase 8). The `/Platform/Tenants` list now shows a
+billing-status badge per tenant and links to the new page. `TenantAdminService` gained
+`GetAllTenantsWithSubscriptionsAsync`, `GetTenantByIdAsync`, `GetAdminsForTenantAsync`,
+`UpdateTenantDetailsAsync`, `SetTenantActiveAsync`, `GetSubscriptionForTenantAsync`, and
+`UpdateSubscriptionAsync` — all using the same `IgnoreQueryFilters()` bypass already audited for
+`GetAllTenantsAsync`. `CreateTenantWithAdminAsync` now also creates a placeholder subscription
+for every newly onboarded tenant (rolled back together with the tenant if admin creation fails),
+so a tenant created after Phase 6 is never left without one either. Authorization moved from a
+single `AuthorizePage("/Platform/Tenants", ...)` to `AuthorizeFolder("/Platform", "SuperAdminOnly")`
+so a future page under `/Platform/` is gated automatically, instead of needing its own explicit
+line the way the old API-controller gap (`ROLES.md`) required.
+Verified live via authenticated `curl` sessions: SuperAdmin can edit tenant details, toggle
+active/suspended, and edit subscription fields, with every change persisted correctly in the
+database; a regular Admin gets redirected to `AccessDenied` on both `/Platform/Tenants` and the
+new detail route; creating a tenant through the portal produces a working placeholder
+subscription automatically (smoke-tested, then cleaned up).
 
 **Phase 8 — Invoicing & renewals**
 `BillingService` (generate invoice, mark paid, void, renew-period), `/Platform/Invoices` queue
