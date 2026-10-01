@@ -18,8 +18,8 @@ public class Settings : PageModel
     
     public async Task<IActionResult> OnGet()
     {
-        var record = await _service.GetByIdAsync(1);
-        if (record != null!)
+        var record = await _service.GetForCurrentTenantAsync();
+        if (record != null)
             Model = record;
         return Page();
     }

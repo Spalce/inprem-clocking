@@ -122,6 +122,15 @@ public class TenantAdminService
     public async Task<IdentityResult> CreateTenantWithAdminAsync(
         string tenantName, string timeZoneId, string adminEmail, string adminFirstName, string adminLastName, string adminPassword)
     {
+        // Wraps every step (tenant, subscription, setting, admin account) in one transaction -
+        // UserManager.CreateAsync's own SaveChanges call shares this ApplicationDbContext
+        // instance (same DI scope), so it participates in the same transaction. This replaces
+        // the previous approach of manually Remove()-ing rows on a failed IdentityResult, which
+        // left an orphaned Tenant/Subscription behind if anything threw instead of merely
+        // failing (e.g. a transient DB error) - `await using` rolls back on any exception path,
+        // not just the one it anticipated.
+        await using var transaction = await _db.Database.BeginTransactionAsync().ConfigureAwait(false);
+
         var tenant = new Tenant
         {
             Name = tenantName,
@@ -129,7 +138,6 @@ public class TenantAdminService
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
         };
-
         await _db.Tenants.AddAsync(tenant).ConfigureAwait(false);
         await _db.SaveChangesAsync().ConfigureAwait(false);
 
@@ -149,6 +157,18 @@ public class TenantAdminService
             CreatedAt = DateTime.UtcNow,
         };
         await _db.Subscriptions.AddAsync(subscription).ConfigureAwait(false);
+
+        // Every tenant also needs its own logout-settings row (one per tenant, unique TenantId
+        // index) - a tenant with none would hit ControlsController.GetLogout's "No record
+        // found" failure on every kiosk clock-in. Defaults match Inprem's own long-standing
+        // values (logout after every clocking, i.e. no idle-duration timer).
+        var setting = new Setting
+        {
+            TenantId = tenant.Id,
+            Action = true,
+            Duration = 0,
+        };
+        await _db.Setting.AddAsync(setting).ConfigureAwait(false);
         await _db.SaveChangesAsync().ConfigureAwait(false);
 
         // The calling SuperAdmin has no TenantId of their own for the usual auto-stamp
@@ -166,21 +186,14 @@ public class TenantAdminService
         };
 
         var result = await _userManager.CreateAsync(admin, adminPassword).ConfigureAwait(false);
-        if (result.Succeeded)
+        if (!result.Succeeded)
         {
-            await _userManager.AddToRoleAsync(admin, IdentitySeeder.AdminRole).ConfigureAwait(false);
-        }
-        else
-        {
-            // Roll back the subscription and tenant too - a tenant with no admin able to sign
-            // into it is dead weight, and retrying the whole form is simpler than a
-            // partially-onboarded tenant. Subscription first: Invoice/Subscription FK to Tenant
-            // with Restrict delete, so Tenant can't be removed while it still exists.
-            _db.Subscriptions.Remove(subscription);
-            _db.Tenants.Remove(tenant);
-            await _db.SaveChangesAsync().ConfigureAwait(false);
+            await transaction.RollbackAsync().ConfigureAwait(false);
+            return result;
         }
 
+        await _userManager.AddToRoleAsync(admin, IdentitySeeder.AdminRole).ConfigureAwait(false);
+        await transaction.CommitAsync().ConfigureAwait(false);
         return result;
     }
 }

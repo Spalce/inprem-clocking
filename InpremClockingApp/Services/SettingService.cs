@@ -35,15 +35,13 @@ public class SettingService
         return null!;
     }
 
-    public async Task<Setting> GetByIdAsync(int id)
+    // Setting is one row per tenant (unique TenantId index) - this gets "my tenant's row" via
+    // the query filter, the same pattern ControlsController.GetLogout already uses. Replaces a
+    // former GetByIdAsync(1) that only ever worked for whichever tenant happened to own the row
+    // with database Id 1.
+    public async Task<Setting?> GetForCurrentTenantAsync()
     {
-        var record = await _db.Setting.FindAsync(id);
-        if (record != null!)
-        {
-            return record!;
-        }
-
-        return null!;
+        return await _db.Setting.FirstOrDefaultAsync().ConfigureAwait(false);
     }
 
     public async Task<Setting> Create(Setting model)
