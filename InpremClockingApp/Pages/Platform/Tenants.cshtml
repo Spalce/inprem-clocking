@@ -1,10 +1,22 @@
 @page
+@using InpremClockingApp.Models.Billing
 @model InpremClockingApp.Pages.Platform.Tenants
 @{
     ViewData["Title"] = "Tenants";
     var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
     var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
     var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
+
+    // Phase 7 (multi-tenancy.md Part 2) - purely a display mapping, no business logic lives here.
+    string BadgeClass(SubscriptionStatus status) => status switch
+    {
+        SubscriptionStatus.Active => "tw:bg-emerald-50 tw:text-emerald-700",
+        SubscriptionStatus.Trialing => "tw:bg-blue-50 tw:text-blue-700",
+        SubscriptionStatus.PastDue => "tw:bg-amber-50 tw:text-amber-700",
+        SubscriptionStatus.Suspended => "tw:bg-red-50 tw:text-red-700",
+        SubscriptionStatus.Canceled => "tw:bg-slate-100 tw:text-slate-500",
+        _ => "tw:bg-slate-100 tw:text-slate-500",
+    };
 }
 
 <div class="tw:mx-auto tw:max-w-7xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
@@ -70,17 +82,33 @@
             <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Name</th>
             <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Timezone</th>
             <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Active</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Billing</th>
             <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Created</th>
+            <th class="tw:px-4 tw:py-3"></th>
           </tr>
         </thead>
         <tbody class="tw:divide-y tw:divide-slate-100">
-          @foreach (var t in Model.AllTenants)
+          @foreach (var item in Model.AllTenants)
           {
+            var t = item.Tenant;
             <tr class="tw:hover:bg-slate-50">
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@t.Name</td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@t.TimeZoneId</td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(t.IsActive ? "Yes" : "No")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap">
+                @if (item.Subscription != null)
+                {
+                  <span class="tw:inline-flex tw:rounded-full tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium @BadgeClass(item.Subscription.Status)">@item.Subscription.Status</span>
+                }
+                else
+                {
+                  <span class="tw:text-xs tw:text-slate-400">No subscription</span>
+                }
+              </td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@t.CreatedAt.ToString("yyyy-MM-dd")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap">
+                <a asp-page="/Platform/TenantDetail" asp-route-id="@t.Id" class="tw:font-medium tw:text-blue-600 tw:hover:underline">Manage</a>
+              </td>
             </tr>
           }
         </tbody>

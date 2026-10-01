@@ -17,7 +17,7 @@ public class Tenants : PageModel
         _service = service;
     }
 
-    public List<Tenant> AllTenants { get; set; } = new();
+    public List<TenantListItem> AllTenants { get; set; } = new();
 
     [BindProperty]
     public CreateTenantInput Input { get; set; } = new();
@@ -51,7 +51,7 @@ public class Tenants : PageModel
 
     public async Task<IActionResult> OnGetAsync()
     {
-        AllTenants = await _service.GetAllTenantsAsync().ConfigureAwait(true);
+        AllTenants = await _service.GetAllTenantsWithSubscriptionsAsync().ConfigureAwait(true);
         return Page();
     }
 
@@ -64,7 +64,7 @@ public class Tenants : PageModel
 
         if (!ModelState.IsValid)
         {
-            AllTenants = await _service.GetAllTenantsAsync().ConfigureAwait(true);
+            AllTenants = await _service.GetAllTenantsWithSubscriptionsAsync().ConfigureAwait(true);
             return Page();
         }
 
@@ -77,7 +77,7 @@ public class Tenants : PageModel
             foreach (var error in result.Errors)
                 ModelState.AddModelError(string.Empty, error.Description);
 
-            AllTenants = await _service.GetAllTenantsAsync().ConfigureAwait(true);
+            AllTenants = await _service.GetAllTenantsWithSubscriptionsAsync().ConfigureAwait(true);
             return Page();
         }
 

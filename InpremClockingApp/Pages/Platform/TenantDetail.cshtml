@@ -1,0 +1,160 @@
+@page "/Platform/Tenants/{id:int}"
+@model InpremClockingApp.Pages.Platform.TenantDetail
+@using InpremClockingApp.Models.Billing
+@{
+    ViewData["Title"] = Model.Tenant?.Name ?? "Tenant";
+    var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
+    var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
+    var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
+    var btnDanger = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-red-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-red-700";
+    var btnSuccess = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-emerald-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-emerald-700";
+}
+
+<div class="tw:mx-auto tw:max-w-5xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
+  <div class="tw:mb-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4">
+    <h1 class="tw:text-2xl tw:font-semibold tw:text-slate-900">@Model.Tenant!.Name</h1>
+    <nav class="tw:text-sm tw:text-slate-500">
+      <a asp-page="/Platform/Tenants" class="tw:hover:text-slate-700">Tenants</a>
+      <span class="tw:mx-1">/</span>
+      <span class="tw:text-slate-700">@Model.Tenant.Name</span>
+    </nav>
+  </div>
+
+  @if (TempData["Message"] != null)
+  {
+    <div class="tw:mb-4 tw:rounded-md tw:bg-emerald-50 tw:px-3 tw:py-2 tw:text-sm tw:text-emerald-700">@TempData["Message"]</div>
+  }
+
+  <div class="tw:mb-6 tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:shadow-sm">
+    <div class="tw:flex tw:items-center tw:justify-between tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+      <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">Status</h2>
+      <form method="post" asp-page-handler="ToggleActive" asp-route-id="@Model.Id">
+        @if (Model.Tenant.IsActive)
+        {
+          <button type="submit" class="@btnDanger">Suspend Tenant</button>
+        }
+        else
+        {
+          <button type="submit" class="@btnSuccess">Activate Tenant</button>
+        }
+      </form>
+    </div>
+    <div class="tw:p-4 tw:text-sm tw:text-slate-700">
+      This tenant is currently
+      <span class="tw:font-semibold @(Model.Tenant.IsActive ? "tw:text-emerald-700" : "tw:text-red-700")">@(Model.Tenant.IsActive ? "Active" : "Suspended")</span>.
+      @if (!Model.Tenant.IsActive)
+      {
+        <span class="tw:text-slate-500">Suspending here is a manual override - it is not yet enforced anywhere else in the app (see multi-tenancy.md Part 2, Phase 9).</span>
+      }
+    </div>
+  </div>
+
+  <div class="tw:mb-6 tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:shadow-sm">
+    <div class="tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+      <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">Organization Details</h2>
+    </div>
+    <div class="tw:p-4">
+      <div asp-validation-summary="All" class="tw:mb-3 tw:text-sm tw:text-red-600"></div>
+      <form method="post" asp-page-handler="UpdateDetails" asp-route-id="@Model.Id">
+        <div class="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2">
+          <div>
+            <label asp-for="DetailsInput.Name" class="@label"></label>
+            <input asp-for="DetailsInput.Name" class="@input" />
+            <span asp-validation-for="DetailsInput.Name" class="tw:text-xs tw:text-red-600"></span>
+          </div>
+          <div>
+            <label asp-for="DetailsInput.TimeZoneId" class="@label"></label>
+            <input asp-for="DetailsInput.TimeZoneId" class="@input" />
+            <span asp-validation-for="DetailsInput.TimeZoneId" class="tw:text-xs tw:text-red-600"></span>
+          </div>
+          <div>
+            <label asp-for="DetailsInput.Address" class="@label"></label>
+            <input asp-for="DetailsInput.Address" class="@input" />
+          </div>
+          <div>
+            <label asp-for="DetailsInput.ContactInfo" class="@label"></label>
+            <input asp-for="DetailsInput.ContactInfo" class="@input" />
+          </div>
+        </div>
+        <div class="tw:mt-4">
+          <button type="submit" class="@btnPrimary">Save Details</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="tw:mb-6 tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:shadow-sm">
+    <div class="tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+      <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">Subscription</h2>
+    </div>
+    <div class="tw:p-4">
+      @if (Model.Subscription == null)
+      {
+        <p class="tw:text-sm tw:text-slate-500">No subscription row exists for this tenant - this shouldn't happen for a tenant created after Phase 7.</p>
+      }
+      else
+      {
+        <div asp-validation-summary="All" class="tw:mb-3 tw:text-sm tw:text-red-600"></div>
+        <form method="post" asp-page-handler="UpdateSubscription" asp-route-id="@Model.Id">
+          <div class="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2 tw:lg:grid-cols-4">
+            <div>
+              <label asp-for="SubInput.Amount" class="@label">Amount (USD / cycle)</label>
+              <input asp-for="SubInput.Amount" type="number" step="0.01" min="0" class="@input" />
+              <span asp-validation-for="SubInput.Amount" class="tw:text-xs tw:text-red-600"></span>
+            </div>
+            <div>
+              <label asp-for="SubInput.BillingCycle" class="@label"></label>
+              <select asp-for="SubInput.BillingCycle" asp-items="Html.GetEnumSelectList<BillingCycle>()" class="@input"></select>
+            </div>
+            <div>
+              <label asp-for="SubInput.Status" class="@label"></label>
+              <select asp-for="SubInput.Status" asp-items="Html.GetEnumSelectList<SubscriptionStatus>()" class="@input"></select>
+            </div>
+            <div></div>
+            <div>
+              <label asp-for="SubInput.CurrentPeriodStart" class="@label"></label>
+              <input asp-for="SubInput.CurrentPeriodStart" type="date" class="@input" />
+            </div>
+            <div>
+              <label asp-for="SubInput.CurrentPeriodEnd" class="@label"></label>
+              <input asp-for="SubInput.CurrentPeriodEnd" type="date" class="@input" />
+              <span asp-validation-for="SubInput.CurrentPeriodEnd" class="tw:text-xs tw:text-red-600"></span>
+            </div>
+          </div>
+          <p class="tw:mt-3 tw:text-xs tw:text-slate-500">
+            No invoices are generated from this form yet - that arrives with Phase 8's billing
+            workflow. This only records the tenant's current plan.
+          </p>
+          <div class="tw:mt-4">
+            <button type="submit" class="@btnPrimary">Save Subscription</button>
+          </div>
+        </form>
+      }
+    </div>
+  </div>
+
+  <div class="tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:shadow-sm">
+    <div class="tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+      <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">Admins (@Model.Admins.Count)</h2>
+    </div>
+    <div class="tw:overflow-x-auto">
+      <table class="tw:min-w-full tw:divide-y tw:divide-slate-200">
+        <thead class="tw:bg-slate-50">
+          <tr>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Name</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Email</th>
+          </tr>
+        </thead>
+        <tbody class="tw:divide-y tw:divide-slate-100">
+          @foreach (var admin in Model.Admins)
+          {
+            <tr class="tw:hover:bg-slate-50">
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@admin.FirstName @admin.LastName</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@admin.Email</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

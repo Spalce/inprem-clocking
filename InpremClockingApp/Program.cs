@@ -94,9 +94,13 @@ builder.Services.AddRazorPages()
         // Public self-registration is closed; only an existing Admin can create new accounts.
         options.Conventions.AuthorizeAreaPage("Identity", "/Account/Register", "AdminOnly");
 
-        // Tenant onboarding is platform-operator only, deliberately separate from AdminOnly -
-        // an ordinary tenant Admin must never reach this page. See multi-tenancy.md Phase 4.
-        options.Conventions.AuthorizePage("/Platform/Tenants", "SuperAdminOnly");
+        // Tenant onboarding/management is platform-operator only, deliberately separate from
+        // AdminOnly - an ordinary tenant Admin must never reach any /Platform/* page. Gated at
+        // the folder level (not per-page) so a future page added under /Platform/ is covered
+        // automatically - see ROLES.md's "Known gaps" history for why that matters: the API
+        // controllers were once left wide open exactly because each one needed its own explicit
+        // attribute. See multi-tenancy.md Phase 4 and Part 2, Phase 7.
+        options.Conventions.AuthorizeFolder("/Platform", "SuperAdminOnly");
     })
     .AddMvcOptions(option => option.EnableEndpointRouting = false);
 
