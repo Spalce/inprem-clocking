@@ -1,4 +1,5 @@
 using InpremClockingApp.Models;
+using InpremClockingApp.Models.Billing;
 using InpremClockingApp.Models.Identity;
 using InpremClockingApp.Services;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -22,6 +23,8 @@ namespace InpremClockingApp.Data
         public virtual DbSet<Volunteer> Volunteers { get; set; } = null!;
         public virtual DbSet<Setting> Setting { get; set; } = null!;
         public virtual DbSet<Tenant> Tenants { get; set; } = null!;
+        public virtual DbSet<Subscription> Subscriptions { get; set; } = null!;
+        public virtual DbSet<Invoice> Invoices { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -39,6 +42,23 @@ namespace InpremClockingApp.Data
             builder.Entity<Setting>().HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             builder.Entity<AppUser>().HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
 
+            // Multi-tenancy Part 2, Phase 6 (see multi-tenancy.md): billing tables join the same
+            // tenant-scoping mechanism as every other business table - no new isolation
+            // primitive. Invoice also FKs to Subscription directly, since an invoice always
+            // belongs to exactly one subscription period.
+            builder.Entity<Subscription>().HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            builder.Entity<Invoice>().HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            builder.Entity<Invoice>().HasOne<Subscription>().WithMany().HasForeignKey(e => e.SubscriptionId).OnDelete(DeleteBehavior.Restrict);
+
+            // Enums stored as strings, not the EF default int, so they stay legible when
+            // inspected directly in SSMS (e.g. during manual billing fixes) instead of showing
+            // up as bare numbers.
+            builder.Entity<Subscription>().Property(e => e.BillingCycle).HasConversion<string>().HasMaxLength(20);
+            builder.Entity<Subscription>().Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            builder.Entity<Invoice>().Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            builder.Entity<Subscription>().Property(e => e.Amount).HasPrecision(10, 2);
+            builder.Entity<Invoice>().Property(e => e.Amount).HasPrecision(10, 2);
+
             // Multi-tenancy Phase 2 (see multi-tenancy.md, decision #3): the actual isolation
             // mechanism. Applied automatically to every query against these DbSets, everywhere
             // in the app - a future `_db.Staffs.Where(...)` call cannot accidentally leak
@@ -48,6 +68,8 @@ namespace InpremClockingApp.Data
             builder.Entity<ClockingStaff>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
             builder.Entity<Clocking>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
             builder.Entity<Setting>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
+            builder.Entity<Subscription>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
+            builder.Entity<Invoice>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
 
             // A tenant-scoped user can only ever see their own Tenant row (defensive - nothing
             // reads this yet, but a future "Organization Settings" page would). SuperAdmin
