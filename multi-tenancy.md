@@ -1,212 +1,220 @@
-# Multi-Tenancy Implementation Plan
+# Multi-Tenancy & SaaS Platform Implementation Plan
 
-## Status (2026-09-29)
+## Status (2026-10-01)
 
-**All 5 phases are done**, committed on `feature/multi-tenancy`, and verified end-to-end -
-including creating a real second tenant entirely through the UI (SuperAdmin onboarding ->
+**Part 1 — core multi-tenancy — is done**, committed on `feature/multi-tenancy`, and verified
+end-to-end: a real second tenant was created entirely through the UI (SuperAdmin onboarding ->
 tenant admin login -> staff registration -> clock in/out -> report), confirming isolation and
-per-tenant timezone resolution both hold with no visibility into Inprem's data at any step. The
-Phase 5 audit also caught and fixed a real cross-tenant branding leak (every PDF/report was
-hardcoded to Inprem's own name/address/contact info regardless of viewer) - see the Phase 5
-commit for details. TESTING.md has a "Multi-tenant isolation" section covering all of this.
-Nothing further is planned; this branch is ready for your review before any merge to `main`.
+per-tenant timezone resolution both hold with no visibility into another tenant's data at any
+step. `TESTING.md` has a "Multi-tenant isolation" section covering this. Also fixed along the
+way: `VolunteerService.GetByEmail` querying the wrong table, email search added to Reports, and
+every API controller now carries its own `[Authorize]`/`AdminOnly` gate (see `ROLES.md`).
+
+**Part 2 — SaaS platform extension — is newly planned, not yet started.** The app is moving from
+"multiple organizations share one deployment" to "this is a product other organizations pay to
+use." That requires a real provider portal, billing/invoicing, and renewal handling on top of
+the tenant isolation Part 1 already built. Nothing in Part 2 has been coded yet — this document
+is the plan, scoped per your answers below, pending your go-ahead to start Phase 6.
 
 ## Goal
 
-Turn InpremClockingApp from a single-organization app (hardcoded to Inprem Holistic
-Community Resource Center) into a multi-tenant system where multiple organizations can use
-the same deployment, each with its own staff, volunteers, admins, clockings, reports, and
-settings — completely isolated from every other organization's data.
+Part 1 made the app multi-tenant. Part 2 makes it operable as a SaaS product: a provider
+(you) needs to see every tenant's subscription and payment status in one place, issue and track
+invoices, and have the system handle renewals and non-payment without hand-maintained
+spreadsheets. None of this changes how a tenant's own staff/volunteers/admins use the app day to
+day — it's entirely new surface area at the provider level, plus one new read-only page for
+tenant admins to see their own billing status.
 
-This is a **data and architecture change**, not a presentation change: it touches the schema,
-every query in the app, and authentication/authorization. It's also a retrofit onto a system
-with real, live data (Inprem's own records), not a green-field feature — so the guardrails
-below are stricter than the Tailwind UI work.
+## Decisions made for this pass (confirmed 2026-10-01)
 
-## Branch
+- **Billing is manual/assisted, not self-serve.** No payment gateway integration now — no
+  Stripe, no card capture, no online checkout. You set each tenant's price and generate
+  invoices; the tenant pays you outside the app (bank transfer, check, etc.) and you mark the
+  invoice paid. This mirrors the existing QuestPDF hour-report pattern rather than introducing a
+  payments vendor.
+- **The data model is shaped so a payment gateway can be added later without a redesign** (see
+  decision #9 below) — this is a modeling precaution, not a feature being built now. No
+  `IPaymentGateway` interface or Stripe stub is being written in Part 2; the seam is just that
+  invoice/subscription rows carry enough optional fields that a future webhook handler could
+  call the same `BillingService` methods a human clicks today.
+- **Pricing is a flat recurring fee, set per tenant, not a global price or tiered catalog.**
+  Each tenant's `Subscription` carries its own `Amount` directly — there's no `Plan` table yet.
+  Per-seat or tiered pricing is an explicitly deferred extension (decision #9), not built now.
+- **This pass produces the plan only.** No code changes in Part 2 until you review this
+  document and say go, same review discipline as Part 1.
 
-All work happens on `feature/multi-tenancy`, created off `main`. Nothing merges to `main`
-until every phase is complete, verified, and explicitly reviewed by you. Nothing is pushed to
-`origin` or merged by me.
+## Key architectural decisions (Part 2)
 
-## Guardrails (apply to every phase, no exceptions)
+### 7. New `Subscription` and `Invoice` entities — not fields bolted onto `Tenant`
 
-- **Back up the database before any migration that touches existing rows.** Unlike the earlier
-  full data wipe (which you explicitly asked for, on throwaway test data), the data this plan
-  operates on starts out as Inprem's real records — every schema change that backfills or
-  reshapes existing rows gets a `BACKUP DATABASE` step first, no exceptions.
-- Inprem's own data must keep working, unchanged, as the first tenant throughout. At no point
-  should Inprem staff/admins see broken pages, lost data, or altered behavior mid-rollout.
-- Every phase ends with a real `dotnet ef migrations add` + `dotnet ef database update` +
-  a live build-and-click-through verification before moving to the next phase — the same
-  discipline as `TESTING.md`, extended to cover tenant isolation specifically once that exists.
-- No phase ships tenant *data* isolation without an accompanying isolation *test*: log in as
-  one tenant's admin and confirm another tenant's records are invisible, both through the UI
-  and by guessing IDs directly in the URL (e.g. `/OneStaffClockingReport`-style ID tampering,
-  even though that specific page was removed — any page or API route taking a raw ID must be
-  re-checked).
-- This plan folds in the timezone redesign already agreed on separately (see
-  [[multitenancy_timezone_plan]] in project memory) — it is not being re-derived here, just
-  scheduled into a phase.
+`Tenant` already has `IsActive`, which today is set on creation and displayed in the
+`/Platform/Tenants` list but **is never actually checked anywhere** — a "suspended" tenant can
+sign in and use the app exactly like an active one. That's fine for Part 1 (there was no billing
+yet, so nothing to suspend for), but it means billing state needs its own home rather than more
+ad-hoc fields on `Tenant`:
 
-## Key architectural decisions
+- **`Subscription`** (one per tenant, for now): `Id`, `TenantId` (FK), `Amount` (decimal, the
+  tenant's flat recurring fee), `Currency` (default `"USD"`), `BillingCycle`
+  (`Monthly`/`Annual`), `Status` (`Trialing`/`Active`/`PastDue`/`Suspended`/`Canceled`),
+  `CurrentPeriodStart`, `CurrentPeriodEnd`, `CreatedAt`. Nullable `PaymentGateway` (default
+  `null`/manual) and `ExternalSubscriptionId` columns exist from day one but are unused until a
+  gateway is actually integrated — see decision #9.
+- **`Invoice`**: `Id`, `TenantId` (FK), `SubscriptionId` (FK), `InvoiceNumber` (sequential,
+  human-facing), `PeriodStart`, `PeriodEnd`, `Amount`, `Currency`, `IssuedDate`, `DueDate`,
+  `Status` (`Draft`/`Issued`/`Paid`/`Overdue`/`Void`), `PaidDate` (nullable), `PaymentMethod`
+  (nullable free text — "Bank transfer", "Check #1234"), `PaymentReference` (nullable), `Notes`
+  (nullable).
 
-### 1. Shared database, row-level isolation via `TenantId` (recommended)
+Both get a `TenantId` column and join the existing set of tenant-scoped entities under the
+Phase 2 global query filter — same mechanism, no new isolation primitive. A tenant's own Admin
+can eventually see their own rows (Phase 9's read-only `/Billing` page); only a SuperAdmin sees
+across tenants, the same `IgnoreQueryFilters()` pattern `TenantAdminService.GetAllTenantsAsync`
+already uses.
 
-Three standard options exist for multi-tenant data isolation: a separate database per tenant,
-a separate schema per tenant, or one shared database/schema with a `TenantId` column on every
-table ("row-level" isolation). For this app's scale — a handful to a few dozen small
-organizations, not thousands of enterprise customers — **shared database with row-level
-isolation** is the right default: it's the cheapest to run and operate (one database to back
-up, migrate, and monitor), and EF Core's **global query filters** (see decision #3) give it
-strong isolation guarantees without per-tenant infrastructure. Database-per-tenant is worth
-revisiting only if a future customer has a hard compliance requirement for physically separate
-storage — not needed to start.
+### 8. `Tenant.IsActive` becomes a real, enforced gate
 
-### 2. New `Tenant` entity, `TenantId` added to every business table
+Right now `IsActive` is cosmetic. Part 2 makes it mean something: a single chokepoint (page
+filter or middleware, exact mechanism decided in Phase 9) checks the signed-in user's tenant
+before any tenant-scoped page renders, and if that tenant is inactive/suspended, shows an
+"Account suspended — contact us" page instead — not a silent 403, not a broken dashboard.
+SuperAdmin pages (`/Platform/*`) are explicitly exempt, same as today. This check is driven by
+`Subscription.Status`, not set directly by a human toggling `IsActive` by hand (though the
+provider portal can still force it for non-billing reasons — e.g. an organization that closed).
 
-A new `Tenants` table: `Id`, `Name`, `TimeZoneId` (IANA, see decision #4), `IsActive`,
-`CreatedAt`.
+### 9. Explicit extension points (documented now, not built now)
 
-`TenantId` gets added directly to `Staff`, `Volunteer`, `ClockingStaff`, `Clocking`,
-`Setting`, and `AspNetUsers` (via `AppUser`) — not just the "root" entities. Denormalizing it
-onto the clocking tables too (rather than relying on a join through `Staff`/`Volunteer`) means
-every tenant-scoped table can carry its own query filter independently, so there's no code path
-where an `Include()` or a raw query accidentally bypasses isolation by joining through an
-unfiltered table.
+Two things are very likely to be asked for later, and the schema above is shaped so adding them
+doesn't require touching existing rows or tables:
 
-### 3. EF Core global query filters — the actual isolation mechanism
+- **Payment gateway (e.g. Stripe)**: `Subscription.PaymentGateway`/`ExternalSubscriptionId` and
+  a future `Invoice.ExternalPaymentId` are the only new columns a real integration would need.
+  The actual charge/webhook handling would live behind the same `BillingService.MarkInvoicePaid`
+  method the provider portal calls manually today — a Stripe webhook controller becomes just
+  another caller of that method, not a parallel code path.
+- **Per-seat or tiered pricing**: introduce a `Plan` entity (`Name`, `DefaultAmount`, optional
+  `SeatCap`) and a nullable `Subscription.PlanId`, with `Subscription.Amount` staying as a
+  per-tenant override. Flat pricing today is just "every tenant has a `Subscription` row with no
+  `PlanId`" — no migration of existing rows needed when plans are introduced.
 
-`ApplicationDbContext` gets a scoped `ICurrentTenantService` injected via constructor, and a
-`HasQueryFilter(e => e.TenantId == _currentTenant.TenantId)` on every tenant-scoped entity in
-`OnModelCreating`. This is the single most important property of the whole design: isolation
-is enforced by the ORM by default, everywhere, automatically — a future developer adding a new
-`_db.Staffs.Where(...)` call in some new controller cannot accidentally leak another tenant's
-rows, because the filter applies before their `Where` even runs. Existing code (`FindAsync`,
-`AnyAsync`, `FirstOrDefaultAsync`, etc. across `StaffService`, `VolunteerService`,
-`StaffClockingService`, `VolunteerClockingService`, `ControlsController`, both
-`PeopleController` classes, both report controllers) needs **no manual tenant-filtering
-changes** once this is in place — the filter is invisible to that code.
+### 10. Renewals are generated, not charged
 
-A small, explicitly-audited set of SuperAdmin-only pages (tenant management itself, decision
-#6) bypass the filter deliberately via `IgnoreQueryFilters()`, and only there.
+With no payment gateway, "renewal" means: as a subscription's `CurrentPeriodEnd` approaches, the
+system creates the next `Invoice` automatically (status `Issued`) and advances the period dates
+— it does not move money. A small daily background check (`BillingBackgroundService`, an
+`IHostedService` — the app has no background-job infra today, this would be the first) does two
+things:
+1. Generate the next period's invoice N days before `CurrentPeriodEnd` (configurable, default
+   14).
+2. Flag `Subscription.Status = PastDue` for any invoice still unpaid past its `DueDate`, and
+   `Suspended` (which trips decision #8's gate) after a grace period past that (configurable,
+   default 14 days past due).
 
-### 4. Timezone becomes tenant data (folds in the earlier-agreed plan)
+All of this is visible and overridable from the provider portal — a SuperAdmin can always
+manually issue, void, or mark an invoice paid ahead of the background job.
 
-`Tenant.TimeZoneId` stores an IANA id (`"America/New_York"`, not `"Eastern Standard Time"`) —
-portable across OS, resolvable by .NET 6+ on both Windows and Linux. The static `OrgClock`
-class is replaced by a scoped `ITenantClock` service that reads `ICurrentTenantService` to find
-the current request's tenant and its timezone. Every `OrgClock.NowLocal()` / `OrgClock.ToUtc()`
-/ `OrgClock.ToLocal()` call site (`StaffClockingService`, `VolunteerClockingService`,
-`ControlsController`, `HoursWorked.cshtml.cs`, the kiosk pages, report controllers) switches to
-injecting `ITenantClock` instead. This stays strictly about *authoritative* business time
-(`ClockDate`, the one-session-per-day rule, PDF report timestamps) — an admin's personal
-display-timezone preference, if ever added, is a separate client-side concern layered on top.
+### 11. Provider Portal grows from one page into a small area
 
-### 5. Tenant resolution: claim on the signed-in user (decided 2026-09-29 — no subdomain, for now)
+Today `/Platform/Tenants` only creates and lists tenants. Part 2 expands `/Platform/*` into:
 
-Every page in this app that touches tenant-scoped data already requires a signed-in
-`AppUser` (`[Authorize]`, enforced everywhere from the kiosk clock pages up to the back
-office). So instead of routing on subdomain, the tenant is resolved from **the signed-in
-user's own account**: `AppUser.TenantId` is stamped into the authentication cookie as a claim
-at sign-in time (via a custom `IUserClaimsPrincipalFactory`), and `ICurrentTenantService` reads
-that claim on every request. No DNS, no wildcard SSL, no hosting changes — this works
-unchanged on the current SmarterASP.NET deployment.
+- **`/Platform/Tenants`** (enhanced) — list gains a billing-status badge per tenant
+  (Active/Trialing/Past Due/Suspended) alongside the existing Yes/No `IsActive` column; the
+  create-tenant form gains initial subscription fields (amount, cycle, optional trial length).
+- **`/Platform/Tenants/{id}`** (new) — tenant detail/edit: edit name/timezone/address/contact
+  (closes a `ROLES.md` "Known gap" — today nothing can be edited after creation), list the
+  tenant's admins (closes another known gap), force-activate/suspend, view and edit that
+  tenant's `Subscription`, and see its invoice history.
+- **`/Platform/Invoices`** (new) — cross-tenant invoice queue: everything `Issued`/`Overdue`
+  across all tenants in one place, manual "generate invoice now" action, "mark paid" action
+  (captures date/method/reference), PDF download per invoice (same `QuestPDF` pattern as hour
+  reports).
 
-This means a kiosk device's tenant is simply whichever `AppUser` it's logged in as — exactly
-how it works today (implicitly, for the one existing tenant), just backed by a real `TenantId`
-now instead of there being only one possible answer.
+### 12. Tenant-facing `/Billing` page (new, read-only)
 
-Subdomain-based resolution (as originally proposed) is deliberately not implemented now, but
-nothing else in this plan depends on today's choice: `ICurrentTenantService` is the only thing
-that would need to change if a subdomain (or any other) resolution strategy is adopted later —
-every service, controller, and query filter downstream of it stays untouched.
+A new `AdminOnly` page, scoped to the signed-in Admin's own tenant via the existing query filter
+— current plan amount/cycle, current period dates, and a read-only invoice history with PDF
+downloads. No "pay now" button (manual billing only, decision above) — just visibility, with a
+"contact us" message for payment, consistent with the fact that no gateway exists yet.
 
-### 6. Roles: "Admin" stays per-tenant, new "SuperAdmin" for platform operators
+## What's explicitly out of scope for this pass
 
-ASP.NET Core Identity roles are global by name, but since every `AppUser` carries a `TenantId`,
-existing `[Authorize(Policy = "AdminOnly")]` checks keep working unmodified — "Admin" continues
-to mean "admin of their own tenant," enforced together with (not instead of) the query filter.
-A new `SuperAdmin` role is added for the handful of people (you) who create and manage tenants
-themselves, via a small new back-office area outside the tenant-filtered pages.
+Called out so it's clear what's being deferred rather than overlooked:
 
-## Migration strategy for existing data
+- Online payments, card capture, or any payment gateway integration (Stripe or otherwise).
+- Self-serve tenant signup (still SuperAdmin-created only, as decided in Part 1).
+- Per-seat or tiered pricing (extension point only, see decision #9).
+- Automatic dunning emails, payment retries, or any outbound email at all — the background job
+  changes status fields; it doesn't send anything. Notification is a separate, later feature.
+- Multi-currency handling beyond storing a `Currency` string (no FX, no per-currency formatting
+  rules) and tax/VAT calculation on invoices.
+- A platform-level KPI dashboard (MRR, churn, etc.) — natural follow-on once billing data exists,
+  but not in this phased plan; easy to add once `Subscription`/`Invoice` exist.
 
-Inprem's current data has no `TenantId` at all. The rollout:
+## Guardrails (carried over from Part 1, apply to Part 2 too)
 
-1. Add `TenantId` columns as **nullable**, everywhere, with no query filters yet and no
-   behavior change — this is a no-op migration from the app's perspective.
-2. Insert one `Tenant` row for Inprem itself, backfill every existing row's `TenantId` to it.
-3. Make the columns **non-nullable**, add the foreign keys, and replace the existing
-   `EmailAddress`-unique and `(StafId/VoluntId, ClockDate)`-unique indexes with tenant-scoped
-   composite versions (`(TenantId, EmailAddress)`, `(TenantId, StafId, ClockDate)`) — uniqueness
-   should hold per-tenant, not globally, since two different organizations may happen to
-   register a volunteer with the same email address.
-4. Only then turn on the query filters (decision #3) — by this point every row already has a
-   correct `TenantId`, so enabling the filter changes nothing observable for Inprem.
+- All work happens on `feature/multi-tenancy` (or a follow-on branch off it) until reviewed;
+  nothing merges to `main` or gets pushed without your explicit go-ahead.
+- New tables are purely additive — `Subscription`/`Invoice` don't touch or reshape any existing
+  row, so Part 2 carries none of Part 1's "retrofit onto live data" risk. A backup before Phase 6
+  is still good practice but this phase has no backfill step.
+- Every phase ends with a real migration + live build-and-click-through verification before
+  moving to the next, same discipline as Part 1.
+- `Tenant.IsActive` actually gating access (decision #8) is the one change in Part 2 with real
+  blast radius for existing tenants — it gets its own explicit verification step (Phase 9) with
+  Inprem's own tenant confirmed still `Active`/unaffected before anything else touches it.
 
-This mirrors the caution already applied to `scripts/convert-existing-timestamps-to-utc.sql`:
-schema/semantic changes on top of accumulated real data get backfilled and verified in
-read-only queries before anything becomes a hard constraint.
+## Phased plan (Part 2)
 
-## Phased plan
+**Phase 6 — Billing data model**
+Add `Subscription` and `Invoice` entities + migration (additive only), wire both into the
+existing tenant query-filter mechanism, seed Inprem's own tenant with an `Active` subscription
+(so it isn't left in a null/undefined billing state once Phase 9's gate goes live). No UI yet.
+Verify: app builds and behaves identically; the two new tables exist and are correctly
+tenant-filtered (confirmed via the same ID-guessing isolation check Part 1 used).
 
-**Phase 0 — Foundation (no visible change)**
-Add the `Tenant` entity and nullable `TenantId` columns to every business table and
-`AspNetUsers`, via migration. No query filters, no resolution middleware, no behavior change.
-Verify: app builds, runs, and behaves exactly as today; the new columns exist and are `NULL`
-everywhere except never queried.
+**Phase 7 — Provider portal expansion**
+`/Platform/Tenants/{id}` detail/edit page (name/timezone/address/contact edit, admins-per-tenant
+list, force-activate/suspend, view/edit that tenant's `Subscription`). Enhance the
+`/Platform/Tenants` list with a billing-status badge.
+Verify: SuperAdmin can edit an existing tenant's details and subscription amount; an Admin
+cannot reach any `/Platform/*` route (unchanged from today).
 
-**Phase 1 — Backfill and tighten the schema**
-Create the Inprem tenant row, backfill `TenantId` on all existing data, make columns
-non-nullable, replace the global-unique indexes with tenant-scoped composite indexes.
-*Back up the database before this phase.*
-Verify: row counts unchanged, every row has the Inprem `TenantId`, existing unique-constraint
-behavior (duplicate email/phone rejection, one-clocking-per-day) still works identically.
+**Phase 8 — Invoicing & renewals**
+`BillingService` (generate invoice, mark paid, void, renew-period), `/Platform/Invoices` queue
+page, PDF invoice generation (QuestPDF, same pattern as hour reports), and the
+`BillingBackgroundService` daily job (generate upcoming invoices, flag past-due/suspended per
+decision #10).
+Verify: manually generate and mark an invoice paid end-to-end through the UI; confirm the
+background job correctly advances a test subscription's period and flags a second,
+intentionally-unpaid test subscription as `PastDue` then `Suspended` on schedule.
 
-**Phase 2 — Tenant context plumbing and query filters**
-Build `ICurrentTenantService`, the claims-based resolution (decision #5: `TenantId` claim set
-at sign-in), wire it into `ApplicationDbContext`, and turn on the global query filters. This is
-the phase where isolation actually starts being enforced.
-Verify: every existing page/flow still works for Inprem; a throwaway second tenant's data
-(created for testing) is completely invisible from Inprem's session, in the UI and via direct
-ID guessing.
+**Phase 9 — Enforcement & tenant-facing billing page**
+Wire `Subscription.Status`/`Tenant.IsActive` into a real access gate (decision #8) with the
+"Account suspended" page; add the tenant-facing read-only `/Billing` page.
+Verify: a suspended test tenant's Admin is blocked from every tenant-scoped page and shown the
+suspended message, not an error; Inprem's own tenant (and the other already-existing test
+tenant) are confirmed unaffected before and after this phase ships.
 
-**Phase 3 — Timezone refactor**
-`Tenant.TimeZoneId` (IANA), `ITenantClock` replacing the static `OrgClock`, every call site
-updated. Set Inprem's `TimeZoneId` to the IANA equivalent of the current "Eastern Standard
-Time" setting so its behavior is unchanged.
-Verify: clock-in/out times, `ClockDate` day-boundary behavior, and PDF report timestamps are
-identical to before this phase, for Inprem.
-
-**Phase 4 — Tenant management**
-SuperAdmin-only pages to create a new tenant (name, timezone) and its first admin account.
-Update the existing Register/sign-up flows so anything a tenant's admin creates
-(staff, volunteers, other admins) is automatically stamped with their own `TenantId` — never a
-field the person filling out a form has to think about.
-Verify: create a second real test tenant end-to-end (onboarding → admin login → register staff
-→ clock in/out → PDF report) entirely through the UI, with zero visibility into Inprem's data
-at any step.
-
-**Phase 5 — Verification and hardening**
-Full cross-tenant isolation pass: every page and API route that accepts an ID re-checked for
-filter coverage, `TESTING.md` extended with a "multi-tenant isolation" section, side-by-side
-review against current behavior for Inprem. Hand back for your review — no merge or push
-without your explicit go-ahead.
+**Phase 10 — Platform dashboard (optional)**
+Provider-level KPIs on a `/Platform` landing page — tenant counts by status, sum of active
+subscription amounts, overdue invoice count/total — mirrors `BackOffice.cshtml`'s existing
+aggregate-in-memory pattern. Not required for the billing/invoicing/renewal flow to work; purely
+a convenience view once the data exists. Can be deferred past the rest of Part 2 without
+blocking anything.
 
 ## What I'll handle
 
-- All schema, service, controller, and page changes for every phase, isolated on
-  `feature/multi-tenancy`.
-- Writing and running migrations, including the backfill scripts, with backups taken first.
+- All schema, service, controller, and page changes for every Part 2 phase, isolated the same
+  way Part 1 was.
+- Writing and running migrations (all additive in Part 2 — no backfill risk like Part 1 had).
 - Functional and isolation verification after each phase, in-browser.
 - Keeping this document updated with progress/status as phases complete.
 
 ## What you'll need to handle
 
-- Confirm whether tenant onboarding is SuperAdmin-created only (Phase 4 as scoped) or needs to
-  be self-serve signup — self-serve is a larger scope addition I'd want to plan separately if
-  wanted.
-- Review checkpoints — at minimum after Phase 1 (schema backfill, since it touches live data)
-  and Phase 2 (isolation goes live). Tell me to continue, adjust, or stop.
+- Review checkpoints — at minimum after Phase 8 (before the background job can ever suspend a
+  real tenant) and Phase 9 (the enforcement gate going live). Tell me to continue, adjust, or
+  stop.
+- Deciding actual default values when we get there: grace-period length, how many days before
+  renewal an invoice gets generated, Inprem's own subscription amount/cycle (or whether Inprem
+  is simply exempt from billing as the house account).
 - The final merge to `main` — I will not do this myself, per your standing instruction.
