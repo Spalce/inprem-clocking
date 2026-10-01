@@ -42,6 +42,20 @@ namespace InpremClockingApp.Data
             builder.Entity<Setting>().HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             builder.Entity<AppUser>().HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
 
+            // NOTE on admin-account uniqueness (code review, 2026-10-01): AppUser deliberately
+            // keeps Identity's default GLOBAL-unique index on NormalizedUserName, unlike
+            // Staff/Volunteer's tenant-scoped uniqueness (Phase 1b). This was tried and reverted
+            // - see the commit history for the full story. In short: SignInManager resolves an
+            // account at login by username ALONE (UserManager.FindByNameAsync, with no tenant
+            // selector anywhere in the login form), via an unordered `TOP(1)` query - allowing
+            // two tenants to share a username makes login pick an arbitrary one of the matching
+            // accounts, silently authenticating the wrong tenant's admin or failing with
+            // "Invalid login attempt" depending on which row the query happens to return.
+            // Fixing this properly would mean adding a real tenant-selection step to login
+            // (e.g. an organization code), which is a product decision and a bigger change than
+            // this hardening pass - out of scope here. Global uniqueness is the correct,
+            // necessary behavior given today's login flow, not a bug.
+
             // Multi-tenancy Part 2, Phase 6 (see multi-tenancy.md): billing tables join the same
             // tenant-scoping mechanism as every other business table - no new isolation
             // primitive. Invoice also FKs to Subscription directly, since an invoice always
@@ -58,6 +72,18 @@ namespace InpremClockingApp.Data
             builder.Entity<Invoice>().Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
             builder.Entity<Subscription>().Property(e => e.Amount).HasPrecision(10, 2);
             builder.Entity<Invoice>().Property(e => e.Amount).HasPrecision(10, 2);
+
+            // Backs BillingService.GenerateInvoiceAsync's idempotency check ("does a non-void
+            // invoice already exist for this period") with a real DB constraint, the same
+            // defense-in-depth every other one-row-per-tenant invariant in this schema has
+            // (Subscription, Setting). Filtered (not a plain unique index) because voiding a
+            // mistaken invoice must allow a correct one to be generated for the same period
+            // afterward - only non-Void rows need to be unique per period.
+            builder.Entity<Invoice>()
+                .HasIndex(i => new { i.SubscriptionId, i.PeriodStart })
+                .IsUnique()
+                .HasFilter("[Status] <> 'Void'")
+                .HasDatabaseName("ActiveInvoicePerPeriodIndex");
 
             // Multi-tenancy Phase 2 (see multi-tenancy.md, decision #3): the actual isolation
             // mechanism. Applied automatically to every query against these DbSets, everywhere

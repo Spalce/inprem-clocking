@@ -43,17 +43,18 @@ public class BillingService
     // Idempotent per period: if a non-void invoice already exists for the subscription's
     // current period, returns it instead of creating a duplicate - so clicking "Generate" twice,
     // or the daily sweep running after a manual generate, never double-bills the same period.
+    // The check-then-insert below has a race window (two callers can both pass the check before
+    // either inserts - realistic here, since the sweep runs immediately on every app restart);
+    // the filtered unique index on (SubscriptionId, PeriodStart) in ApplicationDbContext is the
+    // real guarantee, and the catch below turns the loser's constraint violation into "return
+    // the winner's invoice" instead of an unhandled 500.
     public async Task<Invoice> GenerateInvoiceAsync(int tenantId)
     {
         var subscription = await _db.Subscriptions.IgnoreQueryFilters()
             .FirstOrDefaultAsync(s => s.TenantId == tenantId).ConfigureAwait(false)
             ?? throw new InvalidOperationException($"Tenant {tenantId} has no subscription to bill.");
 
-        var existing = await _db.Invoices.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(i => i.SubscriptionId == subscription.Id
-                && i.PeriodStart == subscription.CurrentPeriodStart
-                && i.Status != InvoiceStatus.Void)
-            .ConfigureAwait(false);
+        var existing = await FindInvoiceForPeriodAsync(subscription.Id, subscription.CurrentPeriodStart).ConfigureAwait(false);
         if (existing != null) return existing;
 
         var invoice = new Invoice
@@ -70,7 +71,20 @@ public class BillingService
             Status = InvoiceStatus.Issued,
         };
         await _db.Invoices.AddAsync(invoice).ConfigureAwait(false);
-        await _db.SaveChangesAsync().ConfigureAwait(false);
+
+        try
+        {
+            await _db.SaveChangesAsync().ConfigureAwait(false);
+        }
+        catch (DbUpdateException)
+        {
+            _db.Entry(invoice).State = EntityState.Detached;
+
+            var winner = await FindInvoiceForPeriodAsync(subscription.Id, subscription.CurrentPeriodStart).ConfigureAwait(false);
+            if (winner != null) return winner;
+
+            throw; // some other constraint failure - don't mask it as a race
+        }
 
         // InvoiceNumber needs the DB-assigned Id, so it's set in a second save rather than
         // guessed ahead of time with a separate counter query (no concurrency risk this way -
@@ -79,6 +93,15 @@ public class BillingService
         await _db.SaveChangesAsync().ConfigureAwait(false);
 
         return invoice;
+    }
+
+    private async Task<Invoice?> FindInvoiceForPeriodAsync(int subscriptionId, DateTime periodStart)
+    {
+        return await _db.Invoices.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(i => i.SubscriptionId == subscriptionId
+                && i.PeriodStart == periodStart
+                && i.Status != InvoiceStatus.Void)
+            .ConfigureAwait(false);
     }
 
     public async Task MarkInvoicePaidAsync(int invoiceId, DateTime paidDate, string? paymentMethod, string? paymentReference, string? notes)
@@ -151,11 +174,7 @@ public class BillingService
 
         foreach (var subscription in dueForRenewal)
         {
-            var alreadyRenewed = await _db.Invoices.IgnoreQueryFilters()
-                .AnyAsync(i => i.SubscriptionId == subscription.Id
-                    && i.PeriodStart == subscription.CurrentPeriodEnd
-                    && i.Status != InvoiceStatus.Void)
-                .ConfigureAwait(false);
+            var alreadyRenewed = await FindInvoiceForPeriodAsync(subscription.Id, subscription.CurrentPeriodEnd).ConfigureAwait(false) != null;
             if (alreadyRenewed) continue;
 
             await RenewSubscriptionAsync(subscription.Id).ConfigureAwait(false);
