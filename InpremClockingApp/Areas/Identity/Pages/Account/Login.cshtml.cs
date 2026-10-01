@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
+using InpremClockingApp.Helpers;
 using InpremClockingApp.Services;
 
 namespace InpremClockingApp.Areas.Identity.Pages.Account
@@ -95,8 +96,15 @@ namespace InpremClockingApp.Areas.Identity.Pages.Account
                 ModelState.AddModelError(string.Empty, ErrorMessage);
             }
 
-            returnUrl ??= Url.Content("~/VolunteerAttendance");
-
+            // Deliberately NOT defaulted to ~/VolunteerAttendance here (unlike before) - doing
+            // so meant the view's form always embedded a concrete, already-resolved destination
+            // via asp-route-returnUrl, so OnPostAsync's own "no real destination" fallback logic
+            // below never actually saw a null/empty returnUrl for the single most common case:
+            // visiting this page directly with no query string at all (only the rarer
+            // "challenged from root /" case, where returnUrl really is the literal "/", ever
+            // reached it). Leaving this null when nothing was requested lets the tag helper omit
+            // the query param entirely, so OnPostAsync's fallback - including the SuperAdmin
+            // override - runs for both cases alike.
             // Clear the existing external cookie to ensure a clean login process
             await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
 
@@ -110,11 +118,18 @@ namespace InpremClockingApp.Areas.Identity.Pages.Account
             // Fall back to a sensible default only when there's no real destination to return to
             // (e.g. landing on Login directly, or being challenged from the root "/" page).
             // Otherwise honor whatever protected page originally triggered the login challenge.
+            var usedKioskFallback = false;
             if (string.IsNullOrEmpty(returnUrl) || returnUrl == "/")
             {
-                returnUrl = !string.IsNullOrEmpty(Return) && Return != "/" && Url.IsLocalUrl(Return)
-                    ? Return
-                    : Url.Content("~/VolunteerAttendance");
+                if (!string.IsNullOrEmpty(Return) && Return != "/" && Url.IsLocalUrl(Return))
+                {
+                    returnUrl = Return;
+                }
+                else
+                {
+                    returnUrl = Url.Content("~/VolunteerAttendance");
+                    usedKioskFallback = true;
+                }
             }
 
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
@@ -126,6 +141,20 @@ namespace InpremClockingApp.Areas.Identity.Pages.Account
                 var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
                 if (result.Succeeded)
                 {
+                    // The kiosk fallback above predates the SuperAdmin role (multi-tenancy.md) -
+                    // a SuperAdmin has no TenantId, so VolunteerAttendance is never a meaningful
+                    // destination for one. Only overrides the generic fallback, never an explicit
+                    // destination (e.g. being challenged from /Platform/Tenants itself already
+                    // produces that exact returnUrl above, untouched by this).
+                    if (usedKioskFallback)
+                    {
+                        var user = await _signInManager.UserManager.FindByEmailAsync(Input.Email);
+                        if (user != null && await _signInManager.UserManager.IsInRoleAsync(user, IdentitySeeder.SuperAdminRole))
+                        {
+                            returnUrl = Url.Content("~/Platform/Tenants");
+                        }
+                    }
+
                     return LocalRedirect(returnUrl);
                 }
                 if (result.RequiresTwoFactor)
