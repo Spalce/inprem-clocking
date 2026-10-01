@@ -11,13 +11,17 @@ namespace InpremClockingApp.Pages.Platform;
 // SuperAdmin-only (see Program.cs's AuthorizeFolder("/Platform", "SuperAdminOnly") and
 // multi-tenancy.md Part 2, Phase 7). Edit surface for a single tenant's profile, active
 // status, and subscription - everything /Platform/Tenants doesn't cover after creation.
+// Invoice history (Phase 8) is shown here read-only - actions (generate/mark paid/void) live
+// on /Platform/Invoices so write handlers for the same workflow aren't duplicated across pages.
 public class TenantDetail : PageModel
 {
     private readonly TenantAdminService _service;
+    private readonly BillingService _billing;
 
-    public TenantDetail(TenantAdminService service)
+    public TenantDetail(TenantAdminService service, BillingService billing)
     {
         _service = service;
+        _billing = billing;
     }
 
     public int Id { get; set; }
@@ -27,6 +31,8 @@ public class TenantDetail : PageModel
     public List<AppUser> Admins { get; set; } = new();
 
     public Subscription? Subscription { get; set; }
+
+    public List<Invoice> Invoices { get; set; } = new();
 
     [BindProperty]
     public TenantDetailsInput DetailsInput { get; set; } = new();
@@ -160,6 +166,7 @@ public class TenantDetail : PageModel
 
         Admins = await _service.GetAdminsForTenantAsync(id).ConfigureAwait(true);
         Subscription = await _service.GetSubscriptionForTenantAsync(id).ConfigureAwait(true);
+        Invoices = await _billing.GetInvoicesForTenantAsync(id).ConfigureAwait(true);
         return true;
     }
 }

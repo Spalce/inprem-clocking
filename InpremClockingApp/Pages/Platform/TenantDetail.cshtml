@@ -133,6 +133,47 @@
     </div>
   </div>
 
+  <div class="tw:mb-6 tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:shadow-sm">
+    <div class="tw:flex tw:items-center tw:justify-between tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+      <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">Invoices (@Model.Invoices.Count)</h2>
+      <a asp-page="/Platform/Invoices" class="tw:text-sm tw:text-blue-600 tw:hover:underline">Manage Invoices</a>
+    </div>
+    <div class="tw:overflow-x-auto">
+      @if (Model.Invoices.Count == 0)
+      {
+        <p class="tw:p-4 tw:text-sm tw:text-slate-500">No invoices yet.</p>
+      }
+      else
+      {
+        <table class="tw:min-w-full tw:divide-y tw:divide-slate-200">
+          <thead class="tw:bg-slate-50">
+            <tr>
+              <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Invoice #</th>
+              <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Period</th>
+              <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Amount</th>
+              <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Status</th>
+              <th class="tw:px-4 tw:py-3"></th>
+            </tr>
+          </thead>
+          <tbody class="tw:divide-y tw:divide-slate-100">
+            @foreach (var invoice in Model.Invoices)
+            {
+              <tr class="tw:hover:bg-slate-50">
+                <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@invoice.InvoiceNumber</td>
+                <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@invoice.PeriodStart.ToString("MMM d") - @invoice.PeriodEnd.ToString("MMM d, yyyy")</td>
+                <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@invoice.Amount.ToString("0.00") @invoice.Currency</td>
+                <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@invoice.Status</td>
+                <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap">
+                  <a href="/api/invoices/@invoice.Id/pdf" target="_blank" class="tw:text-blue-600 tw:hover:underline">PDF</a>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+  </div>
+
   <div class="tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:shadow-sm">
     <div class="tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
       <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">Admins (@Model.Admins.Count)</h2>

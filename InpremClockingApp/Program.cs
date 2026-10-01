@@ -26,6 +26,8 @@ builder.Services.AddScoped<SettingService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<TenantAdminService>();
+builder.Services.AddScoped<BillingService>();
+builder.Services.AddHostedService<BillingBackgroundService>();
 
 // Multi-tenancy (see multi-tenancy.md): resolves the signed-in user's tenant from a claim on
 // their auth cookie, and is the sole source ApplicationDbContext's query filters read from.

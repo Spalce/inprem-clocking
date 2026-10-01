@@ -1,0 +1,138 @@
+@page
+@model InpremClockingApp.Pages.Platform.Invoices
+@using InpremClockingApp.Models.Billing
+@{
+    ViewData["Title"] = "Invoices";
+    var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
+    var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
+    var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
+    var btnSmall = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded tw:border-0 tw:px-2 tw:py-1 tw:text-xs tw:font-medium";
+
+    string BadgeClass(InvoiceStatus status) => status switch
+    {
+        InvoiceStatus.Paid => "tw:bg-emerald-50 tw:text-emerald-700",
+        InvoiceStatus.Issued => "tw:bg-blue-50 tw:text-blue-700",
+        InvoiceStatus.Overdue => "tw:bg-red-50 tw:text-red-700",
+        InvoiceStatus.Void => "tw:bg-slate-100 tw:text-slate-500",
+        _ => "tw:bg-slate-100 tw:text-slate-500",
+    };
+}
+
+<div class="tw:mx-auto tw:max-w-7xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
+  <div class="tw:mb-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4">
+    <h1 class="tw:text-2xl tw:font-semibold tw:text-slate-900">Invoices (Total: @Model.AllInvoices.Count)</h1>
+    <nav class="tw:text-sm tw:text-slate-500">
+      <a asp-page="/Platform/Tenants" class="tw:hover:text-slate-700">Tenants</a>
+      <span class="tw:mx-1">/</span>
+      <span class="tw:text-slate-700">Invoices</span>
+    </nav>
+  </div>
+
+  @if (TempData["Message"] != null)
+  {
+    <div class="tw:mb-4 tw:rounded-md tw:bg-emerald-50 tw:px-3 tw:py-2 tw:text-sm tw:text-emerald-700">@TempData["Message"]</div>
+  }
+
+  <div class="tw:mb-6 tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:shadow-sm">
+    <div class="tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+      <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">Generate Invoice</h2>
+    </div>
+    <div class="tw:p-4">
+      <form method="post" asp-page-handler="Generate" class="tw:flex tw:flex-wrap tw:items-end tw:gap-4">
+        <div class="tw:min-w-64">
+          <label class="@label">Tenant</label>
+          <select asp-for="GenerateTenantId" class="@input">
+            <option value="0">Select a tenant...</option>
+            @foreach (var t in Model.TenantOptions)
+            {
+              <option value="@t.Id">@t.Name</option>
+            }
+          </select>
+        </div>
+        <div>
+          <button type="submit" class="@btnPrimary">Generate for Current Period</button>
+        </div>
+      </form>
+      <p class="tw:mt-2 tw:text-xs tw:text-slate-500">
+        Generates an invoice for the tenant's current subscription period. If one already exists
+        for that period, nothing new is created (see multi-tenancy.md Part 2, Phase 8).
+      </p>
+    </div>
+  </div>
+
+  <div class="tw:overflow-hidden tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white">
+    <div class="tw:overflow-x-auto">
+      <table class="tw:min-w-full tw:divide-y tw:divide-slate-200">
+        <thead class="tw:bg-slate-50">
+          <tr>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Invoice #</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Tenant</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Period</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Amount</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Due</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Status</th>
+            <th class="tw:px-4 tw:py-3"></th>
+          </tr>
+        </thead>
+        <tbody class="tw:divide-y tw:divide-slate-100">
+          @foreach (var invoice in Model.AllInvoices)
+          {
+            <tr class="tw:hover:bg-slate-50">
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@invoice.InvoiceNumber</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@Model.TenantNames.GetValueOrDefault(invoice.TenantId, "Unknown")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@invoice.PeriodStart.ToString("MMM d") - @invoice.PeriodEnd.ToString("MMM d, yyyy")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@invoice.Amount.ToString("0.00") @invoice.Currency</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@invoice.DueDate.ToString("yyyy-MM-dd")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap">
+                <span class="tw:inline-flex tw:rounded-full tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium @BadgeClass(invoice.Status)">@invoice.Status</span>
+              </td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap">
+                <div class="tw:flex tw:items-center tw:gap-2">
+                  <a href="/api/invoices/@invoice.Id/pdf" target="_blank" class="tw:text-blue-600 tw:hover:underline">PDF</a>
+                  @if (invoice.Status != InvoiceStatus.Paid && invoice.Status != InvoiceStatus.Void)
+                  {
+                    <button type="button" class="@btnSmall tw:bg-emerald-600 tw:text-white tw:hover:bg-emerald-700"
+                            onclick="document.getElementById('mark-paid-@invoice.Id').showModal()">Mark Paid</button>
+                    <form method="post" asp-page-handler="Void" asp-route-invoiceId="@invoice.Id" class="tw:inline">
+                      <button type="submit" class="@btnSmall tw:bg-red-600 tw:text-white tw:hover:bg-red-700">Void</button>
+                    </form>
+                  }
+                </div>
+
+                @if (invoice.Status != InvoiceStatus.Paid && invoice.Status != InvoiceStatus.Void)
+                {
+                  <dialog id="mark-paid-@invoice.Id" class="tw:rounded-lg tw:border tw:border-slate-200 tw:p-0 tw:shadow-lg">
+                    <form method="post" asp-page-handler="MarkPaid" class="tw:w-80 tw:p-4">
+                      <input type="hidden" name="PaidInput.InvoiceId" value="@invoice.Id" />
+                      <h3 class="tw:mb-3 tw:text-sm tw:font-semibold tw:text-slate-900">Mark @invoice.InvoiceNumber Paid</h3>
+                      <div class="tw:mb-3">
+                        <label class="@label">Paid Date</label>
+                        <input type="date" name="PaidInput.PaidDate" value="@DateTime.UtcNow.ToString("yyyy-MM-dd")" class="@input" />
+                      </div>
+                      <div class="tw:mb-3">
+                        <label class="@label">Payment Method</label>
+                        <input type="text" name="PaidInput.PaymentMethod" placeholder="Bank transfer, check, etc." class="@input" />
+                      </div>
+                      <div class="tw:mb-3">
+                        <label class="@label">Reference</label>
+                        <input type="text" name="PaidInput.PaymentReference" placeholder="Check #, confirmation #, etc." class="@input" />
+                      </div>
+                      <div class="tw:mb-3">
+                        <label class="@label">Notes</label>
+                        <input type="text" name="PaidInput.Notes" class="@input" />
+                      </div>
+                      <div class="tw:flex tw:justify-end tw:gap-2">
+                        <button type="button" class="tw:cursor-pointer tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-1.5 tw:text-sm" onclick="document.getElementById('mark-paid-@invoice.Id').close()">Cancel</button>
+                        <button type="submit" class="@btnPrimary">Confirm Paid</button>
+                      </div>
+                    </form>
+                  </dialog>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

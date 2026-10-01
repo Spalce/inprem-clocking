@@ -145,7 +145,7 @@ public class TenantAdminService
             BillingCycle = BillingCycle.Monthly,
             Status = SubscriptionStatus.Active,
             CurrentPeriodStart = DateTime.UtcNow,
-            CurrentPeriodEnd = DateTime.UtcNow.AddYears(1),
+            CurrentPeriodEnd = DateTime.UtcNow.AddMonths(1), // matches BillingCycle.Monthly above
             CreatedAt = DateTime.UtcNow,
         };
         await _db.Subscriptions.AddAsync(subscription).ConfigureAwait(false);
