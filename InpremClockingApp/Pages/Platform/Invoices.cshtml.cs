@@ -60,12 +60,14 @@ public class Invoices : PageModel
 
     public async Task<IActionResult> OnPostGenerateAsync()
     {
-        if (GenerateTenantId > 0)
+        if (GenerateTenantId <= 0)
         {
-            await _billing.GenerateInvoiceAsync(GenerateTenantId).ConfigureAwait(true);
-            TempData["Message"] = "Invoice generated for the tenant's current period.";
+            TempData["Error"] = "Please select a tenant before generating an invoice.";
+            return RedirectToPage("./Invoices");
         }
 
+        await _billing.GenerateInvoiceAsync(GenerateTenantId).ConfigureAwait(true);
+        TempData["Message"] = "Invoice generated for the tenant's current period.";
         return RedirectToPage("./Invoices");
     }
 
@@ -74,22 +76,26 @@ public class Invoices : PageModel
         ModelState.Clear();
         if (!TryValidateModel(PaidInput, nameof(PaidInput)))
         {
-            await LoadAsync().ConfigureAwait(true);
-            return Page();
+            TempData["Error"] = "Please provide a valid paid date before confirming.";
+            return RedirectToPage("./Invoices");
         }
 
-        await _billing.MarkInvoicePaidAsync(
+        var succeeded = await _billing.MarkInvoicePaidAsync(
             PaidInput.InvoiceId, PaidInput.PaidDate, PaidInput.PaymentMethod, PaidInput.PaymentReference, PaidInput.Notes)
             .ConfigureAwait(true);
 
-        TempData["Message"] = "Invoice marked paid.";
+        TempData[succeeded ? "Message" : "Error"] = succeeded
+            ? "Invoice marked paid."
+            : "That invoice no longer exists - it may have been removed in another session.";
         return RedirectToPage("./Invoices");
     }
 
     public async Task<IActionResult> OnPostVoidAsync(int invoiceId)
     {
-        await _billing.VoidInvoiceAsync(invoiceId).ConfigureAwait(true);
-        TempData["Message"] = "Invoice voided.";
+        var succeeded = await _billing.VoidInvoiceAsync(invoiceId).ConfigureAwait(true);
+        TempData[succeeded ? "Message" : "Error"] = succeeded
+            ? "Invoice voided."
+            : "That invoice couldn't be voided - it's already paid, or no longer exists.";
         return RedirectToPage("./Invoices");
     }
 

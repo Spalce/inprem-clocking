@@ -104,10 +104,10 @@ public class BillingService
             .ConfigureAwait(false);
     }
 
-    public async Task MarkInvoicePaidAsync(int invoiceId, DateTime paidDate, string? paymentMethod, string? paymentReference, string? notes)
+    public async Task<bool> MarkInvoicePaidAsync(int invoiceId, DateTime paidDate, string? paymentMethod, string? paymentReference, string? notes)
     {
         var invoice = await _db.Invoices.IgnoreQueryFilters().FirstOrDefaultAsync(i => i.Id == invoiceId).ConfigureAwait(false);
-        if (invoice == null) return;
+        if (invoice == null) return false;
 
         invoice.Status = InvoiceStatus.Paid;
         invoice.PaidDate = paidDate;
@@ -126,15 +126,17 @@ public class BillingService
         }
 
         await _db.SaveChangesAsync().ConfigureAwait(false);
+        return true;
     }
 
-    public async Task VoidInvoiceAsync(int invoiceId)
+    public async Task<bool> VoidInvoiceAsync(int invoiceId)
     {
         var invoice = await _db.Invoices.IgnoreQueryFilters().FirstOrDefaultAsync(i => i.Id == invoiceId).ConfigureAwait(false);
-        if (invoice == null || invoice.Status == InvoiceStatus.Paid) return;
+        if (invoice == null || invoice.Status == InvoiceStatus.Paid) return false;
 
         invoice.Status = InvoiceStatus.Void;
         await _db.SaveChangesAsync().ConfigureAwait(false);
+        return true;
     }
 
     // Advances the subscription's period forward by one billing cycle and generates the invoice

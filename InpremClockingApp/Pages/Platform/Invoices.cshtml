@@ -32,6 +32,10 @@
   {
     <div class="tw:mb-4 tw:rounded-md tw:bg-emerald-50 tw:px-3 tw:py-2 tw:text-sm tw:text-emerald-700">@TempData["Message"]</div>
   }
+  @if (TempData["Error"] != null)
+  {
+    <div class="tw:mb-4 tw:rounded-md tw:bg-red-50 tw:px-3 tw:py-2 tw:text-sm tw:text-red-700">@TempData["Error"]</div>
+  }
 
   <div class="tw:mb-6 tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:shadow-sm">
     <div class="tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
