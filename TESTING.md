@@ -247,17 +247,21 @@ admin sidebar shell.
 - [ ] Four large, clearly-colored buttons (green Clock In, blue Leave for
       Break, amber Return from Break, red Clock Out), no underlines under any
       of them.
+- [ ] The **Home** breadcrumb link (top right) goes back to
+      `/StaffAttendance`/`/VolunteerAttendance` - not a dead `#` link.
 - [ ] Click **Clock In** for a newly-registered person - a toast notification
-      appears confirming it, then redirects back to the attendance page. The
-      admin's own session stays signed in throughout - the kiosk model is one
-      admin logging in once and leaving the screen open for staff/volunteers
-      to walk up and clock themselves in all day; there is deliberately no
-      "log out after every clocking" feature (removed 2026-10-02 - it made the
-      kiosk unusable by anyone but the admin, since nobody else has
-      credentials to sign back in).
+      appears **directly above the buttons card**, solid/readable background
+      (not a faint corner popup), stays up long enough to actually read it (7
+      seconds), then redirects back to the attendance page. The admin's own
+      session stays signed in throughout - the kiosk model is one admin
+      logging in once and leaving the screen open for staff/volunteers to walk
+      up and clock themselves in all day; there is deliberately no "log out
+      after every clocking" feature (removed 2026-10-02 - it made the kiosk
+      unusable by anyone but the admin, since nobody else has credentials to
+      sign back in).
 - [ ] Try clicking **Clock In** again for someone already clocked in today -
-      should show a "you have already clocked in today" toast, not a second
-      clock-in.
+      should show a "you have already clocked in today" toast (same
+      above-the-card styling as above), not a second clock-in.
 
 ## 9. Identity / Manage Account
 

@@ -11,11 +11,37 @@
   var kioskBtn = "tw:block tw:w-full tw:cursor-pointer tw:rounded-lg tw:border-0 tw:px-6 tw:py-5 tw:text-center tw:text-lg tw:font-semibold tw:text-white tw:shadow-sm";
 }
 
+<style>
+  /* Toast positioning/visibility for this kiosk page specifically - overrides the shared
+     .alerts/.alert rules from site.css (bottom-right corner, 20% opacity background), which
+     made a toast like "You have already clocked in today" easy to miss on a walk-up kiosk
+     device. Centered and anchored just above the clock-in buttons card instead, where the
+     person using the kiosk is already looking, with a solid (not translucent) background. */
+  .alerts {
+    position: fixed;
+    top: 9.5rem;
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    transform: translateX(-50%);
+    width: calc(100% - 2rem);
+    max-width: 28rem;
+    padding-left: 0;
+  }
+  .alert {
+    margin-left: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .15);
+  }
+  .alert.alert-success { background-color: #d1fae5; color: #065f46; }
+  .alert.alert-danger { background-color: #fee2e2; color: #991b1b; }
+  .alert.alert-warning { background-color: #fef3c7; color: #92400e; }
+</style>
+
 <div class="tw:mx-auto tw:max-w-7xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
   <div class="tw:mb-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4">
     <h1 class="tw:text-2xl tw:font-semibold tw:text-slate-900">Volunteer Clocking System</h1>
     <nav class="tw:text-sm tw:text-slate-500">
-      <a href="#" class="tw:hover:text-slate-700">Home</a>
+      <a asp-page="/VolunteerAttendance" class="tw:hover:text-slate-700">Home</a>
       <span class="tw:mx-1">/</span>
       <span class="tw:text-slate-700">Clocking System</span>
     </nav>
@@ -42,15 +68,15 @@
             url: "/api/controls/volunteer-clockin/" + @id,
             type: "GET",
             success: function(response) {
-                showToast(response, 5000, 'success');
+                showToast(response, 7000, 'success');
                 window.location.assign('/VolunteerAttendance');
             },
             error: function (xhr) {
                 if (xhr.status === 409) {
                     // Rejected on purpose (already clocked in/out today) - not an error.
-                    showToast(xhr.responseJSON || 'You have already clocked in today.', 5000, 'warning');
+                    showToast(xhr.responseJSON || 'You have already clocked in today.', 7000, 'warning');
                 } else {
-                    showToast('Oops! An error occured. Try again', 5000, 'danger');
+                    showToast('Oops! An error occured. Try again', 7000, 'danger');
                 }
             }
         });
@@ -61,11 +87,11 @@
             url: "/api/controls/volunteer-leavein/" + @id,
             type: "GET",
             success: function(response) {
-                showToast(response, 5000, 'success');
+                showToast(response, 7000, 'success');
                 window.location.assign('/VolunteerAttendance');
             },
             error: function (xhr) {
-               showToast('Oops! An error occured. Try again', 5000, 'danger');
+               showToast('Oops! An error occured. Try again', 7000, 'danger');
             }
         });
     });
@@ -75,11 +101,11 @@
             url: "/api/controls/volunteer-leaveout/" + @id,
             type: "GET",
             success: function(response) {
-                showToast(response, 5000, 'success');
+                showToast(response, 7000, 'success');
                 window.location.assign('/VolunteerAttendance');
             },
             error: function (xhr) {
-               showToast('Oops! An error occured. Try again', 5000, 'danger');
+               showToast('Oops! An error occured. Try again', 7000, 'danger');
             }
         });
     });
@@ -89,11 +115,11 @@
             url: "/api/controls/volunteer-clockout/" + @id,
             type: "GET",
             success: function(response) {
-                showToast(response, 5000, 'success');
+                showToast(response, 7000, 'success');
                 window.location.assign('/VolunteerAttendance');
             },
             error: function (xhr) {
-               showToast('Oops! An error occured. Try again', 5000, 'danger');
+               showToast('Oops! An error occured. Try again', 7000, 'danger');
             }
         });
     });
