@@ -69,7 +69,12 @@
             type: "GET",
             success: function(response) {
                 showToast(response, 7000, 'success');
-                window.location.assign('/VolunteerAttendance');
+                // Delayed, not immediate: showToast() only creates the toast - without this
+                // delay, the page navigates away before anyone can actually see it, regardless
+                // of which button was pressed (this was the real bug, not something specific
+                // to Clock In - that button's error path, which doesn't redirect, just made it
+                // easy to mistake "the fix works here" for "the fix only applies here").
+                setTimeout(function() { window.location.assign('/VolunteerAttendance'); }, 1200);
             },
             error: function (xhr) {
                 if (xhr.status === 409) {
@@ -88,7 +93,12 @@
             type: "GET",
             success: function(response) {
                 showToast(response, 7000, 'success');
-                window.location.assign('/VolunteerAttendance');
+                // Delayed, not immediate: showToast() only creates the toast - without this
+                // delay, the page navigates away before anyone can actually see it, regardless
+                // of which button was pressed (this was the real bug, not something specific
+                // to Clock In - that button's error path, which doesn't redirect, just made it
+                // easy to mistake "the fix works here" for "the fix only applies here").
+                setTimeout(function() { window.location.assign('/VolunteerAttendance'); }, 1200);
             },
             error: function (xhr) {
                showToast('Oops! An error occured. Try again', 7000, 'danger');
@@ -102,7 +112,12 @@
             type: "GET",
             success: function(response) {
                 showToast(response, 7000, 'success');
-                window.location.assign('/VolunteerAttendance');
+                // Delayed, not immediate: showToast() only creates the toast - without this
+                // delay, the page navigates away before anyone can actually see it, regardless
+                // of which button was pressed (this was the real bug, not something specific
+                // to Clock In - that button's error path, which doesn't redirect, just made it
+                // easy to mistake "the fix works here" for "the fix only applies here").
+                setTimeout(function() { window.location.assign('/VolunteerAttendance'); }, 1200);
             },
             error: function (xhr) {
                showToast('Oops! An error occured. Try again', 7000, 'danger');
@@ -116,7 +131,12 @@
             type: "GET",
             success: function(response) {
                 showToast(response, 7000, 'success');
-                window.location.assign('/VolunteerAttendance');
+                // Delayed, not immediate: showToast() only creates the toast - without this
+                // delay, the page navigates away before anyone can actually see it, regardless
+                // of which button was pressed (this was the real bug, not something specific
+                // to Clock In - that button's error path, which doesn't redirect, just made it
+                // easy to mistake "the fix works here" for "the fix only applies here").
+                setTimeout(function() { window.location.assign('/VolunteerAttendance'); }, 1200);
             },
             error: function (xhr) {
                showToast('Oops! An error occured. Try again', 7000, 'danger');
