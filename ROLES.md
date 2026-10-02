@@ -44,7 +44,7 @@ doesn't belong to any organization's data.
 
 **Cannot do (restrictions)**
 - Cannot reach any `AdminOnly`-gated page — Dashboard, Manage Staff/Volunteers, Admins,
-  Settings, Staff/Volunteer Clocking, Hours Worked, or any Reports page. These all require the
+  Staff/Volunteer Clocking, Hours Worked, or any Reports page. These all require the
   `Admin` role specifically; having `SuperAdmin` does not satisfy that check. A SuperAdmin who
   navigates to e.g. `/BackOffice` gets Access Denied, the same as anyone else without the
   `Admin` role.
@@ -80,7 +80,7 @@ access, but strictly confined to their own organization's data.
   deliberately create an account for a different tenant.
 
 **Tenant scoping**: strict. Every query against `Staff`, `Volunteer`, `ClockingStaff`,
-`Clocking`, `Setting`, and `Tenant` is automatically filtered to the signed-in Admin's own
+`Clocking`, and `Tenant` is automatically filtered to the signed-in Admin's own
 `TenantId` by an EF Core global query filter (`ApplicationDbContext.OnModelCreating`) — this
 isn't a per-page check that a developer could forget to add, it applies to every query in the
 app by construction. Guessing another tenant's Staff/Volunteer/Clocking ID directly by URL
@@ -90,9 +90,9 @@ testing).
 **Can do**
 - Everything under the main sidebar for their own tenant: Dashboard, Manage Staff, Manage
   Volunteers, Staff/Volunteer Clockings (manual clock in/out/break actions), Admins (create more
-  Admins for their own tenant), Logout Settings, Hours Worked, and every Reports page (Staff
-  List, Volunteer List, Staff/Volunteer Clocking Report, PDF downloads) — see the permissions
-  table below for the exact page list.
+  Admins for their own tenant), Hours Worked, and every Reports page (Staff List, Volunteer
+  List, Staff/Volunteer Clocking Report, PDF downloads) — see the permissions table below for
+  the exact page list.
 - Use the kiosk pages (sign-up + clock-in/out) exactly as described in section 3 below, since
   those only require *any* authenticated account, which an Admin satisfies.
 
@@ -145,7 +145,7 @@ session.
 
 | Page / route | Requires |
 |---|---|
-| `/BackOffice`, `/Staff`, `/Volunteer`, `/User`, `/Settings`, `/StaffClocking`, `/VolunteerClocking`, `/StaffReport`, `/StaffClockingReport`, `/VolunteerReport`, `/VolunteerClockingReport`, `/HoursWorked` | `AdminOnly` (role `Admin`) |
+| `/BackOffice`, `/Staff`, `/Volunteer`, `/User`, `/StaffClocking`, `/VolunteerClocking`, `/StaffReport`, `/StaffClockingReport`, `/VolunteerReport`, `/VolunteerClockingReport`, `/HoursWorked` | `AdminOnly` (role `Admin`) |
 | `/Identity/Account/Register` | `AdminOnly` (role `Admin`) |
 | `/Platform/Tenants`, `/Platform/Tenants/{id}` | `SuperAdminOnly` (role `SuperAdmin`) — gated at the folder level (`AuthorizeFolder("/Platform", ...)`), so any future `/Platform/*` page is covered automatically |
 | `/StaffAttendance`, `/VolunteerAttendance`, `/staff-clockin/{id}`, `/volunteer-clockin/{id}`, `/Index`, `/Privacy` | `[Authorize]` only — any signed-in account |
@@ -174,7 +174,7 @@ gate:
   is correctly turned away from `AdminOnly` endpoints; legitimate Admin access is unaffected.
 - **No middle tier between Admin and SuperAdmin.** Anyone who can sign in as an Admin has full
   read/write access to everything in their tenant — there's no "front-desk-only" or read-only
-  role for someone who should only be allowed to use the kiosk pages, not Manage Staff/Settings/
+  role for someone who should only be allowed to use the kiosk pages, not Manage Staff/
   Reports.
 - ~~**SuperAdmin tooling is create-and-list only.**~~ **Mostly fixed.** `/Platform/Tenants/{id}`
   (multi-tenancy.md Part 2, Phase 7) now supports editing a tenant's name/timezone/address/

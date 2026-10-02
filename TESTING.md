@@ -27,8 +27,8 @@ sqlcmd -S localhost -d DB_A65635_inpremdb -E -i scripts\seed-test-data.sql
 Adjust `-S`/`-d` if your connection string differs (check
 `appsettings.json` → `ConnectionStrings:DefaultConnection`). Re-run both any
 time you want a clean slate for another test pass - `reset-test-data.sql`
-always keeps `admin@inprem.org` and the Logout Settings row, and never touches
-anything outside this app's own tables.
+always keeps `admin@inprem.org`, and never touches anything outside this
+app's own tables.
 
 ### What the seed data contains
 
@@ -248,22 +248,18 @@ admin sidebar shell.
       Break, amber Return from Break, red Clock Out), no underlines under any
       of them.
 - [ ] Click **Clock In** for a newly-registered person - a toast notification
-      appears confirming it, then redirects (to Logout or back to the
-      attendance page, depending on the Logout Settings toggle - see below).
+      appears confirming it, then redirects back to the attendance page. The
+      admin's own session stays signed in throughout - the kiosk model is one
+      admin logging in once and leaving the screen open for staff/volunteers
+      to walk up and clock themselves in all day; there is deliberately no
+      "log out after every clocking" feature (removed 2026-10-02 - it made the
+      kiosk unusable by anyone but the admin, since nobody else has
+      credentials to sign back in).
 - [ ] Try clicking **Clock In** again for someone already clocked in today -
       should show a "you have already clocked in today" toast, not a second
       clock-in.
 
-## 9. Logout Settings (sidebar)
-
-- [ ] Toggle **Logout After Every Clocking** off, set a Duration, Save.
-- [ ] Go clock someone in via the kiosk flow (section 8) - since the toggle is
-      off, it should return you to the attendance page instead of logging you
-      out.
-- [ ] Toggle it back on, Save, and repeat - this time it should log you out
-      after the clock-in action.
-
-## 10. Identity / Manage Account
+## 9. Identity / Manage Account
 
 Reach via **Hello admin@inprem.org** (top-right) → your account, or
 `/Identity/Account/Manage`.
@@ -280,7 +276,7 @@ Reach via **Hello admin@inprem.org** (top-right) → your account, or
 - [ ] Clicking between these sidebar items keeps the active one highlighted
       correctly.
 
-## 11. Cross-cutting checks (do these anywhere, spot-check a few pages)
+## 10. Cross-cutting checks (do these anywhere, spot-check a few pages)
 
 - [ ] No text has a stray underline unless it's an actual inline hyperlink
       (sidebar items, buttons, pagination, breadcrumbs should all be
@@ -295,7 +291,7 @@ Reach via **Hello admin@inprem.org** (top-right) → your account, or
       installed - ad blockers, Grammarly, etc. - are not this app's problem,
       just check the source file in the error).
 
-## 12. Multi-tenancy & SaaS platform (`feature/multi-tenancy` branch only)
+## 11. Multi-tenancy & SaaS platform (`feature/multi-tenancy` branch only)
 
 Moved to its own dedicated guide: see **`Test.md`** at the repo root. It covers
 tenant isolation, the SuperAdmin provider portal, billing/invoicing, and the

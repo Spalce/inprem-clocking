@@ -27,7 +27,7 @@ There is **no test project** in the solution and **no CI workflow** under `.gith
 ## Architecture
 
 ### Data layer
-- `Data/ApplicationDbContext.cs` — a single `IdentityDbContext<AppUser>` exposing `Staffs`, `Volunteers`, `ClockingsStaff`, `Clockings`, and `Setting`. ASP.NET Core Identity tables (users/roles) live alongside the app's own tables in the same DB/context.
+- `Data/ApplicationDbContext.cs` — a single `IdentityDbContext<AppUser>` exposing `Staffs`, `Volunteers`, `ClockingsStaff`, and `Clockings`. ASP.NET Core Identity tables (users/roles) live alongside the app's own tables in the same DB/context.
 - `Migrations/` currently has just one migration (`InitialCreate`); the model has moved on since then in places (double-check before assuming the DB schema matches the current model classes).
 - Connection string lives in `appsettings.json` (`ConnectionStrings:DefaultConnection`), overridable per environment via `appsettings.Development.json` / `appsettings.Production.json`. `Program.cs` has several **commented-out connection strings, one containing a plaintext password** — leave them alone but never add new live credentials to source; use `dotnet user-secrets` or environment-specific config instead.
 

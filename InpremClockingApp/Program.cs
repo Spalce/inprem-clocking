@@ -23,7 +23,6 @@ builder.Services.AddScoped<StaffService>();
 builder.Services.AddScoped<VolunteerService>();
 builder.Services.AddScoped<StaffClockingService>();
 builder.Services.AddScoped<VolunteerClockingService>();
-builder.Services.AddScoped<SettingService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<TenantAdminService>();
@@ -89,7 +88,6 @@ builder.Services.AddRazorPages()
             "/Staff",
             "/Volunteer",
             "/User",
-            "/Settings",
             "/StaffClocking",
             "/VolunteerClocking",
             "/StaffReport",

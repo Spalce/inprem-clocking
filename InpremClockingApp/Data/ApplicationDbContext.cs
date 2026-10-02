@@ -21,7 +21,6 @@ namespace InpremClockingApp.Data
         public virtual DbSet<ClockingStaff> ClockingsStaff { get; set; } = null!;
         public virtual DbSet<Staff> Staffs { get; set; } = null!;
         public virtual DbSet<Volunteer> Volunteers { get; set; } = null!;
-        public virtual DbSet<Setting> Setting { get; set; } = null!;
         public virtual DbSet<Tenant> Tenants { get; set; } = null!;
         public virtual DbSet<Subscription> Subscriptions { get; set; } = null!;
         public virtual DbSet<Invoice> Invoices { get; set; } = null!;
@@ -39,7 +38,6 @@ namespace InpremClockingApp.Data
             builder.Entity<Volunteer>().HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             builder.Entity<ClockingStaff>().HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             builder.Entity<Clocking>().HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
-            builder.Entity<Setting>().HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             builder.Entity<AppUser>().HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
 
             // Identity's own base.OnModelCreating() above configures a single global-unique
@@ -98,7 +96,7 @@ namespace InpremClockingApp.Data
             // Backs BillingService.GenerateInvoiceAsync's idempotency check ("does a non-void
             // invoice already exist for this period") with a real DB constraint, the same
             // defense-in-depth every other one-row-per-tenant invariant in this schema has
-            // (Subscription, Setting). Filtered (not a plain unique index) because voiding a
+            // (Subscription). Filtered (not a plain unique index) because voiding a
             // mistaken invoice must allow a correct one to be generated for the same period
             // afterward - only non-Void rows need to be unique per period.
             builder.Entity<Invoice>()
@@ -115,7 +113,6 @@ namespace InpremClockingApp.Data
             builder.Entity<Volunteer>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
             builder.Entity<ClockingStaff>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
             builder.Entity<Clocking>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
-            builder.Entity<Setting>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
             builder.Entity<Subscription>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
             builder.Entity<Invoice>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
 

@@ -42,22 +42,7 @@
             type: "GET",
             success: function(response) {
                 showToast(response, 5000, 'success');
-                $.ajax({
-                    url: "/api/controls/get-logout",
-                    type: "GET",
-                    success: function(response) {
-                        if (response === true) {
-                            window.location.assign('/Identity/Account/Logout');
-                        }
-                        else
-                        {
-                            window.location.assign('/StaffAttendance');
-                        }
-                    },
-                    error: function (xhr) {
-                       // showToast('Oops! An error occured. Try again', 5000, 'danger');
-                    }
-                });
+                window.location.assign('/StaffAttendance');
             },
             error: function (xhr) {
                 if (xhr.status === 409) {

@@ -223,7 +223,6 @@ Recreate Acme Test Org from scratch if it gets into a confusing state:
 SET QUOTED_IDENTIFIER ON;
 DECLARE @Tid INT = (SELECT Id FROM Tenants WHERE Name = 'Acme Test Org');
 DELETE FROM Invoices WHERE TenantId = @Tid;
-DELETE FROM Setting WHERE TenantId = @Tid;
 DELETE FROM Subscriptions WHERE TenantId = @Tid;
 DELETE FROM Staffs WHERE TenantId = @Tid;
 DELETE FROM Volunteers WHERE TenantId = @Tid;

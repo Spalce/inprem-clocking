@@ -369,36 +369,4 @@ public class ControlsController : Controller
 
         return BadRequest(false);
     }
-
-    [Produces("application/json")]
-    [HttpGet("get-logout")]
-    public async Task<IActionResult> GetLogout(long id)
-    {
-        try
-        {
-            var record = await _db.Setting.FirstOrDefaultAsync().ConfigureAwait(false);
-
-            if (record != null)
-            {
-                if (record.Action)
-                {
-                    return Ok(true);
-                }
-                else
-                {
-                    return Ok(record.Duration * 60);
-                }
-            }
-            else
-            {
-                return BadRequest("No record found");
-            }
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
-        }
-
-        return BadRequest(false);
-    }
 }

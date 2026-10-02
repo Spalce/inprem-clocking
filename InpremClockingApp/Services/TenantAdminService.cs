@@ -122,7 +122,7 @@ public class TenantAdminService
     public async Task<IdentityResult> CreateTenantWithAdminAsync(
         string tenantName, string timeZoneId, string adminEmail, string adminFirstName, string adminLastName, string adminPassword)
     {
-        // Wraps every step (tenant, subscription, setting, admin account) in one transaction -
+        // Wraps every step (tenant, subscription, admin account) in one transaction -
         // UserManager.CreateAsync's own SaveChanges call shares this ApplicationDbContext
         // instance (same DI scope), so it participates in the same transaction. This replaces
         // the previous approach of manually Remove()-ing rows on a failed IdentityResult, which
@@ -157,18 +157,6 @@ public class TenantAdminService
             CreatedAt = DateTime.UtcNow,
         };
         await _db.Subscriptions.AddAsync(subscription).ConfigureAwait(false);
-
-        // Every tenant also needs its own logout-settings row (one per tenant, unique TenantId
-        // index) - a tenant with none would hit ControlsController.GetLogout's "No record
-        // found" failure on every kiosk clock-in. Defaults match Inprem's own long-standing
-        // values (logout after every clocking, i.e. no idle-duration timer).
-        var setting = new Setting
-        {
-            TenantId = tenant.Id,
-            Action = true,
-            Duration = 0,
-        };
-        await _db.Setting.AddAsync(setting).ConfigureAwait(false);
         await _db.SaveChangesAsync().ConfigureAwait(false);
 
         // The calling SuperAdmin has no TenantId of their own for the usual auto-stamp

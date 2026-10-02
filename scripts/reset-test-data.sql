@@ -1,7 +1,6 @@
 /*
  * Reset script: permanently deletes ALL Staff, Volunteer, and clocking records,
- * and ALL admin accounts except admin@inprem.org. Leaves the Admin role and the
- * app's Setting (Logout Settings) row untouched.
+ * and ALL admin accounts except admin@inprem.org. Leaves the Admin role untouched.
  *
  * This is the exact cleanup used to reset the app back to a single-admin, empty
  * state - run it, then run seed-test-data.sql to load a fresh batch of test data.
