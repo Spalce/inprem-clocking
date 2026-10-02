@@ -40,12 +40,8 @@
       </form>
     </div>
     <div class="tw:p-4 tw:text-sm tw:text-slate-700">
-      This tenant is currently
-      <span class="tw:font-semibold @(Model.Tenant.IsActive ? "tw:text-emerald-700" : "tw:text-red-700")">@(Model.Tenant.IsActive ? "Active" : "Suspended")</span>.
-      @if (!Model.Tenant.IsActive)
-      {
-        <span class="tw:text-slate-500">Suspending here is a manual override - it is not yet enforced anywhere else in the app (see multi-tenancy.md Part 2, Phase 9).</span>
-      }
+      This tenant's access is currently
+      <span class="tw:font-semibold @(Model.Tenant.IsActive ? "tw:text-emerald-700" : "tw:text-red-700")">@(Model.Tenant.IsActive ? "Enabled" : "Suspended")</span>.
     </div>
   </div>
 
@@ -90,7 +86,7 @@
     <div class="tw:p-4">
       @if (Model.Subscription == null)
       {
-        <p class="tw:text-sm tw:text-slate-500">No subscription row exists for this tenant - this shouldn't happen for a tenant created after Phase 7.</p>
+        <p class="tw:text-sm tw:text-slate-500">No subscription found for this tenant.</p>
       }
       else
       {
@@ -121,10 +117,6 @@
               <span asp-validation-for="SubInput.CurrentPeriodEnd" class="tw:text-xs tw:text-red-600"></span>
             </div>
           </div>
-          <p class="tw:mt-3 tw:text-xs tw:text-slate-500">
-            No invoices are generated from this form yet - that arrives with Phase 8's billing
-            workflow. This only records the tenant's current plan.
-          </p>
           <div class="tw:mt-4">
             <button type="submit" class="@btnPrimary">Save Subscription</button>
           </div>

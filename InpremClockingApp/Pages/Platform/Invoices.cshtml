@@ -41,7 +41,7 @@
       <form method="post" asp-page-handler="Generate" class="tw:flex tw:flex-wrap tw:items-end tw:gap-4">
         <div class="tw:min-w-64">
           <label class="@label">Tenant</label>
-          <select asp-for="GenerateTenantId" class="@input">
+          <select asp-for="GenerateTenantId" class="@input tw:h-10">
             <option value="0">Select a tenant...</option>
             @foreach (var t in Model.TenantOptions)
             {
@@ -50,12 +50,12 @@
           </select>
         </div>
         <div>
-          <button type="submit" class="@btnPrimary">Generate for Current Period</button>
+          <button type="submit" class="@btnPrimary tw:h-10">Generate for Current Period</button>
         </div>
       </form>
       <p class="tw:mt-2 tw:text-xs tw:text-slate-500">
         Generates an invoice for the tenant's current subscription period. If one already exists
-        for that period, nothing new is created (see multi-tenancy.md Part 2, Phase 8).
+        for that period, nothing new is created.
       </p>
     </div>
   </div>

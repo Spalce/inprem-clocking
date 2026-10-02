@@ -81,7 +81,7 @@
           <tr>
             <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Name</th>
             <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Timezone</th>
-            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Active</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Access</th>
             <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Billing</th>
             <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Created</th>
             <th class="tw:px-4 tw:py-3"></th>
@@ -94,7 +94,9 @@
             <tr class="tw:hover:bg-slate-50">
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@t.Name</td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@t.TimeZoneId</td>
-              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(t.IsActive ? "Yes" : "No")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap">
+                <span class="tw:inline-flex tw:rounded-full tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium @(t.IsActive ? "tw:bg-emerald-50 tw:text-emerald-700" : "tw:bg-red-50 tw:text-red-700")">@(t.IsActive ? "Enabled" : "Suspended")</span>
+              </td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap">
                 @if (item.Subscription != null)
                 {
