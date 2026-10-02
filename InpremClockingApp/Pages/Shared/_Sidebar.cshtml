@@ -8,50 +8,53 @@
   </div>
 
   <nav class="tw:flex-1 tw:space-y-1 tw:px-3 tw:pb-6">
-    <a asp-page="/BackOffice" class="@linkClass">
-      <i class="fas fa-university tw:w-4 tw:text-center"></i>
-      <span>Dashboard</span>
-    </a>
-    <a asp-page="/StaffClocking" class="@linkClass">
-      <i class="fas fa-clock tw:w-4 tw:text-center"></i>
-      <span>Staff Clockings</span>
-    </a>
-    <a asp-page="/VolunteerClocking" class="@linkClass">
-      <i class="fas fa-check-square tw:w-4 tw:text-center"></i>
-      <span>Volunteer Clockings</span>
-    </a>
-    <a asp-page="/Staff" class="@linkClass">
-      <i class="fas fa-user tw:w-4 tw:text-center"></i>
-      <span>Manage Staff</span>
-    </a>
-    <a asp-page="/Volunteer" class="@linkClass">
-      <i class="fas fa-users tw:w-4 tw:text-center"></i>
-      <span>Manage Volunteers</span>
-    </a>
-    <a asp-page="/User" class="@linkClass">
-      <i class="fas fa-users tw:w-4 tw:text-center"></i>
-      <span>Admins</span>
-    </a>
-    <a asp-page="/Settings" class="@linkClass">
-      <i class="fas fa-users tw:w-4 tw:text-center"></i>
-      <span>Logout Settings</span>
-    </a>
+    @if (User.IsInRole(IdentitySeeder.AdminRole))
+    {
+      <a asp-page="/BackOffice" class="@linkClass">
+        <i class="fas fa-university tw:w-4 tw:text-center"></i>
+        <span>Dashboard</span>
+      </a>
+      <a asp-page="/StaffClocking" class="@linkClass">
+        <i class="fas fa-clock tw:w-4 tw:text-center"></i>
+        <span>Staff Clockings</span>
+      </a>
+      <a asp-page="/VolunteerClocking" class="@linkClass">
+        <i class="fas fa-check-square tw:w-4 tw:text-center"></i>
+        <span>Volunteer Clockings</span>
+      </a>
+      <a asp-page="/Staff" class="@linkClass">
+        <i class="fas fa-user tw:w-4 tw:text-center"></i>
+        <span>Manage Staff</span>
+      </a>
+      <a asp-page="/Volunteer" class="@linkClass">
+        <i class="fas fa-users tw:w-4 tw:text-center"></i>
+        <span>Manage Volunteers</span>
+      </a>
+      <a asp-page="/User" class="@linkClass">
+        <i class="fas fa-users tw:w-4 tw:text-center"></i>
+        <span>Admins</span>
+      </a>
+      <a asp-page="/Settings" class="@linkClass">
+        <i class="fas fa-users tw:w-4 tw:text-center"></i>
+        <span>Logout Settings</span>
+      </a>
 
-    <div>
-      <button type="button" data-sidebar-toggle="reportsMenu" class="tw:flex tw:w-full tw:cursor-pointer tw:appearance-none tw:items-center tw:justify-between tw:rounded-md tw:border-0 tw:bg-transparent tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:text-slate-300 tw:hover:bg-slate-800 tw:hover:text-white">
-        <span class="tw:flex tw:items-center tw:gap-3">
-          <i class="fas fa-tachometer-alt tw:w-4 tw:text-center"></i>
-          <span>Reports</span>
-        </span>
-        <i class="fas fa-angle-down tw:text-xs tw:transition-transform tw:duration-150" data-sidebar-chevron></i>
-      </button>
-      <div id="reportsMenu" class="tw:hidden tw:mt-1 tw:space-y-1 tw:pl-8">
-        <a asp-page="/StaffReport" class="@subLinkClass">Staff List</a>
-        <a asp-page="/StaffClockingReport" class="@subLinkClass">Staff Clocking</a>
-        <a asp-page="/VolunteerReport" class="@subLinkClass">Volunteer List</a>
-        <a asp-page="/VolunteerClockingReport" class="@subLinkClass">Volunteer Clocking</a>
+      <div>
+        <button type="button" data-sidebar-toggle="reportsMenu" class="tw:flex tw:w-full tw:cursor-pointer tw:appearance-none tw:items-center tw:justify-between tw:rounded-md tw:border-0 tw:bg-transparent tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:text-slate-300 tw:hover:bg-slate-800 tw:hover:text-white">
+          <span class="tw:flex tw:items-center tw:gap-3">
+            <i class="fas fa-tachometer-alt tw:w-4 tw:text-center"></i>
+            <span>Reports</span>
+          </span>
+          <i class="fas fa-angle-down tw:text-xs tw:transition-transform tw:duration-150" data-sidebar-chevron></i>
+        </button>
+        <div id="reportsMenu" class="tw:hidden tw:mt-1 tw:space-y-1 tw:pl-8">
+          <a asp-page="/StaffReport" class="@subLinkClass">Staff List</a>
+          <a asp-page="/StaffClockingReport" class="@subLinkClass">Staff Clocking</a>
+          <a asp-page="/VolunteerReport" class="@subLinkClass">Volunteer List</a>
+          <a asp-page="/VolunteerClockingReport" class="@subLinkClass">Volunteer Clocking</a>
+        </div>
       </div>
-    </div>
+    }
 
     @if (User.IsInRole(IdentitySeeder.SuperAdminRole))
     {
