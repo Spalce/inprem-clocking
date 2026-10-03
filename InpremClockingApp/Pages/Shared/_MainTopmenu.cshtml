@@ -5,7 +5,7 @@
     </button>
   </div>
 
-  <form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/")" method="post">
+  <form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@(Context.Request.Path + Context.Request.QueryString)" method="post">
     <button type="submit" class="tw:cursor-pointer tw:border-0 tw:bg-transparent tw:p-0 tw:text-sm tw:font-medium tw:text-slate-600 tw:hover:text-slate-900">Logout</button>
   </form>
 </header>
