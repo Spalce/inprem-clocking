@@ -142,6 +142,12 @@ public class VolunteerAttendance : PageModel
                     ModelState.AddModelError("Input.InstitutionName", "Name of institution is required");
                 if (string.IsNullOrWhiteSpace(Input.ContactPerson))
                     ModelState.AddModelError("Input.ContactPerson", "Contact person is required");
+                if (string.IsNullOrWhiteSpace(Input.ContactPersonPosition))
+                    ModelState.AddModelError("Input.ContactPersonPosition", "Contact person position is required");
+                if (string.IsNullOrWhiteSpace(Input.ContactPersonEmail))
+                    ModelState.AddModelError("Input.ContactPersonEmail", "Contact person email is required");
+                if (string.IsNullOrWhiteSpace(Input.ContactPersonPhone))
+                    ModelState.AddModelError("Input.ContactPersonPhone", "Contact person phone is required");
                 break;
 
             case VolunteerCategories.CorporateVolunteering:

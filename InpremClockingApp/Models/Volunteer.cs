@@ -78,6 +78,22 @@ public class Volunteer
     [StringLength(200)]
     public string? ContactPerson { get; set; }
 
+    // Only collected for the Educational Purposes category (see ValidateVolunteerCategory in
+    // VolunteerAttendance.cshtml.cs) - not required on this shared model for the same reason as
+    // the other questionnaire fields above.
+    [DisplayName("Contact Person Position")]
+    [StringLength(200)]
+    public string? ContactPersonPosition { get; set; }
+
+    [DisplayName("Contact Person Email")]
+    [DataType(DataType.EmailAddress, ErrorMessage = "Please enter a valid email address")]
+    [StringLength(100)]
+    public string? ContactPersonEmail { get; set; }
+
+    [DisplayName("Contact Person Phone")]
+    [StringLength(20)]
+    public string? ContactPersonPhone { get; set; }
+
     public DateTime? CreatedAt { get; set; }
 
     public string? FullName => $"{FirstName} {LastName}";

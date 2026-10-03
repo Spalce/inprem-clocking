@@ -88,6 +88,14 @@ public class VolunteerService
             item.Gender = model.Gender;
             item.PhoneNumber = model.PhoneNumber;
             item.Address = model.Address;
+            item.VolunteerCategory = model.VolunteerCategory;
+            item.MandateType = model.MandateType;
+            item.InstitutionName = model.InstitutionName;
+            item.PlaceOfWork = model.PlaceOfWork;
+            item.ContactPerson = model.ContactPerson;
+            item.ContactPersonPosition = model.ContactPersonPosition;
+            item.ContactPersonEmail = model.ContactPersonEmail;
+            item.ContactPersonPhone = model.ContactPersonPhone;
 
             _db.Volunteers.Update(item);
             await _db.SaveChangesAsync();

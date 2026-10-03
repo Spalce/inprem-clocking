@@ -1,5 +1,6 @@
 @page
 @model Volunteer
+@using InpremClockingApp.Models
 @{
     ViewData["Title"] = "Volunteer List";
     var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
@@ -48,7 +49,7 @@
         <tbody class="tw:divide-y tw:divide-slate-100">
           @foreach (var v in Model.Volunteers ?? Enumerable.Empty<InpremClockingApp.Models.Volunteer>())
           {
-            <tr data-id="@v.VolunteerId" data-address="@v.Address" data-created-at="@v.CreatedAt?.ToString("O")" class="tw:hover:bg-slate-50">
+            <tr data-id="@v.VolunteerId" data-address="@v.Address" data-created-at="@v.CreatedAt?.ToString("O")" data-volunteer-category="@v.VolunteerCategory" data-mandate-type="@v.MandateType" data-institution-name="@v.InstitutionName" data-place-of-work="@v.PlaceOfWork" data-contact-person="@v.ContactPerson" data-contact-person-position="@v.ContactPersonPosition" data-contact-person-email="@v.ContactPersonEmail" data-contact-person-phone="@v.ContactPersonPhone" class="tw:hover:bg-slate-50">
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@v.VolunteerId</td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@v.FirstName</td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@v.LastName</td>
@@ -149,6 +150,50 @@
             <label class="@label">Address</label>
             <textarea class="@input" name="Address" id="vAddress"></textarea>
           </div>
+          <div class="tw:mb-3">
+            <label class="@label">Which volunteer category do you fall under?</label>
+            <select class="@input" name="VolunteerCategory" id="vVolunteerCategory">
+              <option value="">-- Select category --</option>
+              <option value="@VolunteerCategories.MandatedCommunityHours">Mandated Community Hours</option>
+              <option value="@VolunteerCategories.MofcVolunteerHub">MOFC Volunteer Hub</option>
+              <option value="@VolunteerCategories.EducationalPurposes">Educational Purposes</option>
+              <option value="@VolunteerCategories.CorporateVolunteering">Corporate Volunteering</option>
+              <option value="@VolunteerCategories.PersonalOrIndividualVolunteering">Personal or Individual Volunteering</option>
+            </select>
+          </div>
+          <div class="tw:mb-3" id="vMandateTypeGroup" style="display:none;">
+            <label class="@label">Which of these applies to you?</label>
+            <select class="@input" name="MandateType" id="vMandateType">
+              <option value="">-- Select --</option>
+              <option value="@VolunteerMandateTypes.CourtOrders">Court orders</option>
+              <option value="@VolunteerMandateTypes.Diversion">Diversion</option>
+              <option value="@VolunteerMandateTypes.YouthDetention">Youth Detention</option>
+            </select>
+          </div>
+          <div class="tw:mb-3" id="vInstitutionGroup" style="display:none;">
+            <label class="@label">Name of Institution</label>
+            <input class="@input" name="InstitutionName" id="vInstitutionName" />
+          </div>
+          <div class="tw:mb-3" id="vPlaceOfWorkGroup" style="display:none;">
+            <label class="@label">Place of Work</label>
+            <input class="@input" name="PlaceOfWork" id="vPlaceOfWork" />
+          </div>
+          <div class="tw:mb-3" id="vContactPersonGroup" style="display:none;">
+            <label class="@label">Contact Person</label>
+            <input class="@input" name="ContactPerson" id="vContactPerson" />
+          </div>
+          <div class="tw:mb-3" id="vContactPersonPositionGroup" style="display:none;">
+            <label class="@label">Contact Person Position</label>
+            <input class="@input" name="ContactPersonPosition" id="vContactPersonPosition" />
+          </div>
+          <div class="tw:mb-3" id="vContactPersonEmailGroup" style="display:none;">
+            <label class="@label">Contact Person Email</label>
+            <input class="@input" name="ContactPersonEmail" id="vContactPersonEmail" />
+          </div>
+          <div class="tw:mb-3" id="vContactPersonPhoneGroup" style="display:none;">
+            <label class="@label">Contact Person Phone</label>
+            <input class="@input" name="ContactPersonPhone" id="vContactPersonPhone" />
+          </div>
         </form>
       </div>
       <div class="tw:flex tw:justify-end tw:gap-2 tw:border-t tw:border-slate-200 tw:px-4 tw:py-3">
@@ -176,9 +221,43 @@
                 PhoneNumber: tr.children[5].innerText,
                 ZipCode: tr.children[6].innerText,
                 Address: tr.getAttribute('data-address') || '',
-                CreatedAt: tr.getAttribute('data-created-at') || null
+                CreatedAt: tr.getAttribute('data-created-at') || null,
+                VolunteerCategory: tr.getAttribute('data-volunteer-category') || '',
+                MandateType: tr.getAttribute('data-mandate-type') || '',
+                InstitutionName: tr.getAttribute('data-institution-name') || '',
+                PlaceOfWork: tr.getAttribute('data-place-of-work') || '',
+                ContactPerson: tr.getAttribute('data-contact-person') || '',
+                ContactPersonPosition: tr.getAttribute('data-contact-person-position') || '',
+                ContactPersonEmail: tr.getAttribute('data-contact-person-email') || '',
+                ContactPersonPhone: tr.getAttribute('data-contact-person-phone') || ''
             };
         }
+
+        // Mirrors VolunteerAttendance.cshtml's conditional-fields behavior so the admin "Add
+        // New"/"Edit" modal asks the same follow-up questions as the kiosk sign-up form.
+        var MANDATED = '@VolunteerCategories.MandatedCommunityHours';
+        var EDUCATIONAL = '@VolunteerCategories.EducationalPurposes';
+        var CORPORATE = '@VolunteerCategories.CorporateVolunteering';
+
+        function setConditionalVisible(group, input, visible) {
+            group.style.display = visible ? '' : 'none';
+            if (!visible) input.value = '';
+        }
+
+        function updateVolunteerConditionalFields() {
+            var value = document.getElementById('vVolunteerCategory').value;
+            setConditionalVisible(document.getElementById('vMandateTypeGroup'), document.getElementById('vMandateType'), value === MANDATED);
+            setConditionalVisible(document.getElementById('vInstitutionGroup'), document.getElementById('vInstitutionName'), value === EDUCATIONAL);
+            setConditionalVisible(document.getElementById('vPlaceOfWorkGroup'), document.getElementById('vPlaceOfWork'), value === CORPORATE);
+            setConditionalVisible(document.getElementById('vContactPersonGroup'), document.getElementById('vContactPerson'), value === EDUCATIONAL || value === CORPORATE);
+            // Position/email/phone are only collected for Educational Purposes, unlike the
+            // contact person's name above which is also asked for Corporate Volunteering.
+            setConditionalVisible(document.getElementById('vContactPersonPositionGroup'), document.getElementById('vContactPersonPosition'), value === EDUCATIONAL);
+            setConditionalVisible(document.getElementById('vContactPersonEmailGroup'), document.getElementById('vContactPersonEmail'), value === EDUCATIONAL);
+            setConditionalVisible(document.getElementById('vContactPersonPhoneGroup'), document.getElementById('vContactPersonPhone'), value === EDUCATIONAL);
+        }
+
+        document.getElementById('vVolunteerCategory').addEventListener('change', updateVolunteerConditionalFields);
 
         function clearEditorErrors() {
             document.getElementById('veditorErrors').innerHTML = '';
@@ -215,6 +294,15 @@
             document.getElementById('vPhoneNumber').value = payload.PhoneNumber || '';
             document.getElementById('vZipCode').value = payload.ZipCode || '';
             document.getElementById('vAddress').value = payload.Address || '';
+            document.getElementById('vVolunteerCategory').value = payload.VolunteerCategory || '';
+            updateVolunteerConditionalFields();
+            document.getElementById('vMandateType').value = payload.MandateType || '';
+            document.getElementById('vInstitutionName').value = payload.InstitutionName || '';
+            document.getElementById('vPlaceOfWork').value = payload.PlaceOfWork || '';
+            document.getElementById('vContactPerson').value = payload.ContactPerson || '';
+            document.getElementById('vContactPersonPosition').value = payload.ContactPersonPosition || '';
+            document.getElementById('vContactPersonEmail').value = payload.ContactPersonEmail || '';
+            document.getElementById('vContactPersonPhone').value = payload.ContactPersonPhone || '';
             clearEditorErrors();
             setModalTitle(payload.VolunteerId ? 'Edit Volunteer' : 'New Volunteer');
             openModal('veditorModal');
@@ -286,7 +374,15 @@
                 Gender: document.getElementById('vGender').value,
                 PhoneNumber: document.getElementById('vPhoneNumber').value,
                 ZipCode: document.getElementById('vZipCode').value,
-                Address: document.getElementById('vAddress').value
+                Address: document.getElementById('vAddress').value,
+                VolunteerCategory: document.getElementById('vVolunteerCategory').value,
+                MandateType: document.getElementById('vMandateType').value,
+                InstitutionName: document.getElementById('vInstitutionName').value,
+                PlaceOfWork: document.getElementById('vPlaceOfWork').value,
+                ContactPerson: document.getElementById('vContactPerson').value,
+                ContactPersonPosition: document.getElementById('vContactPersonPosition').value,
+                ContactPersonEmail: document.getElementById('vContactPersonEmail').value,
+                ContactPersonPhone: document.getElementById('vContactPersonPhone').value
             };
 
             fetch(id ? '?handler=Update' : '?handler=Create', {

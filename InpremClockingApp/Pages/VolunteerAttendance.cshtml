@@ -122,6 +122,21 @@
               <input asp-for="Input!.ContactPerson" class="@input" />
               <span asp-validation-for="Input!.ContactPerson" class="@validation"></span>
             </div>
+            <div id="contactPersonPositionGroup" style="display:none;">
+              <label asp-for="Input!.ContactPersonPosition" class="@label"></label>
+              <input asp-for="Input!.ContactPersonPosition" class="@input" />
+              <span asp-validation-for="Input!.ContactPersonPosition" class="@validation"></span>
+            </div>
+            <div id="contactPersonEmailGroup" style="display:none;">
+              <label asp-for="Input!.ContactPersonEmail" class="@label"></label>
+              <input asp-for="Input!.ContactPersonEmail" class="@input" />
+              <span asp-validation-for="Input!.ContactPersonEmail" class="@validation"></span>
+            </div>
+            <div id="contactPersonPhoneGroup" style="display:none;">
+              <label asp-for="Input!.ContactPersonPhone" class="@label"></label>
+              <input asp-for="Input!.ContactPersonPhone" class="@input" />
+              <span asp-validation-for="Input!.ContactPersonPhone" class="@validation"></span>
+            </div>
           </div>
 
           <button id="registerSubmit" type="submit" class="@btnPrimary tw:mt-5 tw:w-full tw:py-3 tw:text-base">Register</button>
@@ -160,6 +175,12 @@
         var placeOfWorkInput = document.getElementById('Input_PlaceOfWork');
         var contactPersonGroup = document.getElementById('contactPersonGroup');
         var contactPersonInput = document.getElementById('Input_ContactPerson');
+        var contactPersonPositionGroup = document.getElementById('contactPersonPositionGroup');
+        var contactPersonPositionInput = document.getElementById('Input_ContactPersonPosition');
+        var contactPersonEmailGroup = document.getElementById('contactPersonEmailGroup');
+        var contactPersonEmailInput = document.getElementById('Input_ContactPersonEmail');
+        var contactPersonPhoneGroup = document.getElementById('contactPersonPhoneGroup');
+        var contactPersonPhoneInput = document.getElementById('Input_ContactPersonPhone');
 
         var MANDATED = '@VolunteerCategories.MandatedCommunityHours';
         var EDUCATIONAL = '@VolunteerCategories.EducationalPurposes';
@@ -177,6 +198,11 @@
             setVisible(institutionGroup, institutionInput, value === EDUCATIONAL);
             setVisible(placeOfWorkGroup, placeOfWorkInput, value === CORPORATE);
             setVisible(contactPersonGroup, contactPersonInput, value === EDUCATIONAL || value === CORPORATE);
+            // Position/email/phone are only collected for Educational Purposes, unlike the
+            // contact person's name above which is also asked for Corporate Volunteering.
+            setVisible(contactPersonPositionGroup, contactPersonPositionInput, value === EDUCATIONAL);
+            setVisible(contactPersonEmailGroup, contactPersonEmailInput, value === EDUCATIONAL);
+            setVisible(contactPersonPhoneGroup, contactPersonPhoneInput, value === EDUCATIONAL);
         }
 
         categorySelect.addEventListener('change', updateConditionalFields);
