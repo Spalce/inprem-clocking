@@ -6,6 +6,10 @@
     var card = "tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:shadow-sm";
     var cardHeader = "tw:border-b tw:border-slate-200 tw:px-4 tw:py-3";
     var cardBody = "tw:p-4";
+    var input = "tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
+    var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
+    var btnWhite = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-slate-300 tw:bg-white tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-slate-700 tw:hover:bg-slate-50";
+    var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
 }
 
 <div class="tw:mx-auto tw:max-w-7xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
@@ -14,6 +18,29 @@
   </div>
 
   <div class="tw:grid tw:grid-cols-1 tw:gap-6 tw:sm:grid-cols-2 tw:lg:grid-cols-3">
+    <div class="@card tw:border-t-4 tw:border-t-emerald-600">
+      <div class="@cardHeader">
+        <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">Volunteer</h2>
+      </div>
+      <div class="@cardBody">
+        <p class="tw:text-sm tw:text-slate-600">Total: <span class="tw:font-semibold tw:text-slate-900">@Model.Dashboard!.VolunteerCount</span></p>
+        <p class="tw:mt-2 tw:text-sm tw:text-slate-600">Total number of Volunteers who worked for selected Period: <span class="tw:font-semibold tw:text-slate-900">@Model.PeriodVolunteerWorkedCount</span></p>
+        <p class="tw:mt-2 tw:text-sm tw:text-slate-600">Total Working Time for selected Period: <span class="tw:font-semibold tw:text-slate-900">@Model.Dashboard!.VolunteerClocking</span></p>
+
+        <form method="get" id="volunteerReportForm" class="tw:mt-3 tw:flex tw:flex-col tw:gap-2">
+          <label class="@label">Select Date Range</label>
+          <div class="tw:flex tw:flex-wrap tw:items-center tw:gap-2">
+            <input type="date" name="RangeStart" id="volunteerReportStart" value="@ViewData["RangeStart"]" class="@input" />
+            <span class="tw:text-sm tw:text-slate-500">to</span>
+            <input type="date" name="RangeEnd" id="volunteerReportEnd" value="@ViewData["RangeEnd"]" class="@input" />
+          </div>
+          <div class="tw:flex tw:flex-wrap tw:gap-2">
+            <button type="submit" class="@btnWhite">Calculate Total Hours</button>
+            <button type="button" id="btnDownloadReport" class="@btnPrimary">Download Report</button>
+          </div>
+        </form>
+      </div>
+    </div>
     <div class="@card tw:border-t-4 tw:border-t-blue-600">
       <div class="@cardHeader">
         <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">Staff</h2>
@@ -21,15 +48,6 @@
       <div class="@cardBody">
         <p class="tw:text-sm tw:text-slate-600">Total: <span class="tw:font-semibold tw:text-slate-900">@Model.Dashboard!.StaffCount</span></p>
         <p class="tw:mt-2 tw:text-sm tw:text-slate-600">Working Time: <span class="tw:font-semibold tw:text-slate-900">@Model.Dashboard!.StaffClocking</span></p>
-      </div>
-    </div>
-    <div class="@card tw:border-t-4 tw:border-t-emerald-600">
-      <div class="@cardHeader">
-        <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">Volunteer</h2>
-      </div>
-      <div class="@cardBody">
-        <p class="tw:text-sm tw:text-slate-600">Total: <span class="tw:font-semibold tw:text-slate-900">@Model.Dashboard!.VolunteerCount</span></p>
-        <p class="tw:mt-2 tw:text-sm tw:text-slate-600">Working Time: <span class="tw:font-semibold tw:text-slate-900">@Model.Dashboard!.VolunteerClocking</span></p>
       </div>
     </div>
     <div class="@card tw:border-t-4 tw:border-t-red-600">
@@ -42,3 +60,19 @@
     </div>
   </div>
 </div>
+
+<script>
+    // A GET <form>'s action/formaction query string is discarded by the browser and rebuilt
+    // purely from the form's own fields on submit - a formaction="?handler=DownloadReport"
+    // button would silently be dropped, landing back on the plain page instead of the download
+    // handler. Built as a plain navigation instead so the handler actually survives.
+    document.getElementById('btnDownloadReport').addEventListener('click', function () {
+        var start = document.getElementById('volunteerReportStart').value;
+        var end = document.getElementById('volunteerReportEnd').value;
+        var params = new URLSearchParams();
+        params.set('handler', 'DownloadReport');
+        if (start) params.set('RangeStart', start);
+        if (end) params.set('RangeEnd', end);
+        window.location.href = '?' + params.toString();
+    });
+</script>
