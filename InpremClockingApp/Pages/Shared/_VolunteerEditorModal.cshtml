@@ -1,0 +1,109 @@
+@using InpremClockingApp.Models
+@{
+    var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
+    var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
+    var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
+    var btnWhite = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-slate-300 tw:bg-white tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:text-slate-700 tw:hover:bg-slate-50";
+}
+
+<!-- Shared by Volunteer.cshtml (Add New/Edit from the list) and VolunteerDetails.cshtml (Edit
+     from the detail view) so the two pages don't drift out of sync with each other, and so
+     VolunteerDetails' Edit never has to bounce through the list page to open this. -->
+<div id="veditorModal" data-modal-root class="tw:fixed tw:inset-0 tw:z-50 tw:hidden">
+  <div class="tw:fixed tw:inset-0 tw:bg-black/50" data-modal-dismiss="veditorModal"></div>
+  <div class="tw:pointer-events-none tw:fixed tw:inset-0 tw:flex tw:items-center tw:justify-center tw:p-4">
+    <div class="tw:pointer-events-auto tw:max-h-[90vh] tw:w-full tw:max-w-3xl tw:overflow-y-auto tw:rounded-lg tw:bg-white tw:shadow-xl">
+      <div class="tw:flex tw:items-center tw:justify-between tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+        <h5 id="veditorModalTitle" class="tw:text-base tw:font-semibold tw:text-slate-900">Edit Volunteer</h5>
+        <button type="button" class="tw:cursor-pointer tw:border-0 tw:bg-transparent tw:text-xl tw:leading-none tw:text-slate-400 tw:hover:text-slate-600" data-modal-dismiss="veditorModal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="tw:p-4">
+        <div id="veditorErrors" class="tw:mb-2"></div>
+        <form id="veditorForm" class="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2">
+          <input type="hidden" name="VolunteerId" id="VolunteerId" />
+          <div>
+            <label class="@label">First Name</label>
+            <input class="@input" name="FirstName" id="vFirstName" />
+          </div>
+          <div>
+            <label class="@label">Last Name</label>
+            <input class="@input" name="LastName" id="vLastName" />
+          </div>
+          <div>
+            <label class="@label">Email</label>
+            <input class="@input" name="EmailAddress" id="vEmailAddress" />
+          </div>
+          <div>
+            <label class="@label">Gender</label>
+            <select class="@input" name="Gender" id="vGender">
+              <option value="M">M</option>
+              <option value="F">F</option>
+            </select>
+          </div>
+          <div>
+            <label class="@label">Phone</label>
+            <input class="@input" name="PhoneNumber" id="vPhoneNumber" />
+          </div>
+          <div>
+            <label class="@label">Zip</label>
+            <input class="@input" name="ZipCode" id="vZipCode" />
+          </div>
+          <div class="tw:sm:col-span-2">
+            <label class="@label">Address</label>
+            <textarea class="@input" name="Address" id="vAddress"></textarea>
+          </div>
+          <div class="tw:sm:col-span-2">
+            <label class="@label">Which volunteer category do you fall under?</label>
+            <select class="@input" name="VolunteerCategory" id="vVolunteerCategory">
+              <option value="">-- Select category --</option>
+              <option value="@VolunteerCategories.MandatedCommunityHours">Mandated Community Hours</option>
+              <option value="@VolunteerCategories.MofcVolunteerHub">MOFC Volunteer Hub</option>
+              <option value="@VolunteerCategories.EducationalPurposes">Educational Purposes</option>
+              <option value="@VolunteerCategories.CorporateVolunteering">Corporate Volunteering</option>
+              <option value="@VolunteerCategories.PersonalOrIndividualVolunteering">Personal or Individual Volunteering</option>
+            </select>
+          </div>
+          <div class="tw:sm:col-span-2" id="vMandateTypeGroup" style="display:none;">
+            <label class="@label">Which of these applies to you?</label>
+            <select class="@input" name="MandateType" id="vMandateType">
+              <option value="">-- Select --</option>
+              <option value="@VolunteerMandateTypes.CourtOrders">Court orders</option>
+              <option value="@VolunteerMandateTypes.Diversion">Diversion</option>
+              <option value="@VolunteerMandateTypes.YouthDetention">Youth Detention</option>
+            </select>
+          </div>
+          <div id="vInstitutionGroup" style="display:none;">
+            <label class="@label">Name of Institution</label>
+            <input class="@input" name="InstitutionName" id="vInstitutionName" />
+          </div>
+          <div id="vPlaceOfWorkGroup" style="display:none;">
+            <label class="@label">Place of Work</label>
+            <input class="@input" name="PlaceOfWork" id="vPlaceOfWork" />
+          </div>
+          <div id="vContactPersonGroup" style="display:none;">
+            <label class="@label">Contact Person</label>
+            <input class="@input" name="ContactPerson" id="vContactPerson" />
+          </div>
+          <div id="vContactPersonPositionGroup" style="display:none;">
+            <label class="@label">Contact Person Position</label>
+            <input class="@input" name="ContactPersonPosition" id="vContactPersonPosition" />
+          </div>
+          <div id="vContactPersonEmailGroup" style="display:none;">
+            <label class="@label">Contact Person Email</label>
+            <input class="@input" name="ContactPersonEmail" id="vContactPersonEmail" />
+          </div>
+          <div id="vContactPersonPhoneGroup" style="display:none;">
+            <label class="@label">Contact Person Phone</label>
+            <input class="@input" name="ContactPersonPhone" id="vContactPersonPhone" />
+          </div>
+        </form>
+      </div>
+      <div class="tw:flex tw:justify-end tw:gap-2 tw:border-t tw:border-slate-200 tw:px-4 tw:py-3">
+        <button type="button" class="@btnWhite" data-modal-dismiss="veditorModal">Close</button>
+        <button type="button" id="vbtnSave" class="@btnPrimary">Save</button>
+      </div>
+    </div>
+  </div>
+</div>

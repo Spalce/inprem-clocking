@@ -1,0 +1,116 @@
+@using InpremClockingApp.Models
+<script>
+    // Shared by Volunteer.cshtml and VolunteerDetails.cshtml alongside _VolunteerEditorModal -
+    // not wrapped in an IIFE so both pages' own scripts can call openEditor(...) directly. Must
+    // be included after the modal markup (these elements must already exist) and before each
+    // page's own script.
+    var MANDATED = '@VolunteerCategories.MandatedCommunityHours';
+    var EDUCATIONAL = '@VolunteerCategories.EducationalPurposes';
+    var CORPORATE = '@VolunteerCategories.CorporateVolunteering';
+
+    function setConditionalVisible(group, input, visible) {
+        group.style.display = visible ? '' : 'none';
+        if (!visible) input.value = '';
+    }
+
+    function updateVolunteerConditionalFields() {
+        var value = document.getElementById('vVolunteerCategory').value;
+        setConditionalVisible(document.getElementById('vMandateTypeGroup'), document.getElementById('vMandateType'), value === MANDATED);
+        setConditionalVisible(document.getElementById('vInstitutionGroup'), document.getElementById('vInstitutionName'), value === EDUCATIONAL);
+        setConditionalVisible(document.getElementById('vPlaceOfWorkGroup'), document.getElementById('vPlaceOfWork'), value === CORPORATE);
+        // Position/email/phone are only collected for Educational Purposes, unlike the contact
+        // person's name above which is also asked for Corporate Volunteering.
+        setConditionalVisible(document.getElementById('vContactPersonGroup'), document.getElementById('vContactPerson'), value === EDUCATIONAL || value === CORPORATE);
+        setConditionalVisible(document.getElementById('vContactPersonPositionGroup'), document.getElementById('vContactPersonPosition'), value === EDUCATIONAL);
+        setConditionalVisible(document.getElementById('vContactPersonEmailGroup'), document.getElementById('vContactPersonEmail'), value === EDUCATIONAL);
+        setConditionalVisible(document.getElementById('vContactPersonPhoneGroup'), document.getElementById('vContactPersonPhone'), value === EDUCATIONAL);
+    }
+
+    document.getElementById('vVolunteerCategory').addEventListener('change', updateVolunteerConditionalFields);
+
+    function clearEditorErrors() {
+        document.getElementById('veditorErrors').innerHTML = '';
+    }
+
+    function showEditorErrors(obj) {
+        var container = document.getElementById('veditorErrors');
+        container.innerHTML = '';
+        if (obj && obj.errors) {
+            Object.keys(obj.errors).forEach(function (key) {
+                var p = document.createElement('div');
+                p.className = 'tw:text-sm tw:text-red-600';
+                p.innerText = key + ': ' + obj.errors[key].join('; ');
+                container.appendChild(p);
+            });
+        } else {
+            var p = document.createElement('div');
+            p.className = 'tw:text-sm tw:text-red-600';
+            p.innerText = obj && obj.error ? obj.error : 'Request failed.';
+            container.appendChild(p);
+        }
+    }
+
+    function setModalTitle(text) {
+        document.getElementById('veditorModalTitle').innerText = text;
+    }
+
+    function openEditor(payload) {
+        document.getElementById('VolunteerId').value = payload.VolunteerId || '';
+        document.getElementById('vFirstName').value = payload.FirstName || '';
+        document.getElementById('vLastName').value = payload.LastName || '';
+        document.getElementById('vEmailAddress').value = payload.EmailAddress || '';
+        document.getElementById('vGender').value = payload.Gender || 'M';
+        document.getElementById('vPhoneNumber').value = payload.PhoneNumber || '';
+        document.getElementById('vZipCode').value = payload.ZipCode || '';
+        document.getElementById('vAddress').value = payload.Address || '';
+        document.getElementById('vVolunteerCategory').value = payload.VolunteerCategory || '';
+        updateVolunteerConditionalFields();
+        document.getElementById('vMandateType').value = payload.MandateType || '';
+        document.getElementById('vInstitutionName').value = payload.InstitutionName || '';
+        document.getElementById('vPlaceOfWork').value = payload.PlaceOfWork || '';
+        document.getElementById('vContactPerson').value = payload.ContactPerson || '';
+        document.getElementById('vContactPersonPosition').value = payload.ContactPersonPosition || '';
+        document.getElementById('vContactPersonEmail').value = payload.ContactPersonEmail || '';
+        document.getElementById('vContactPersonPhone').value = payload.ContactPersonPhone || '';
+        clearEditorErrors();
+        setModalTitle(payload.VolunteerId ? 'Edit Volunteer' : 'New Volunteer');
+        openModal('veditorModal');
+    }
+
+    document.getElementById('vbtnSave').addEventListener('click', function () {
+        clearEditorErrors();
+        var id = document.getElementById('VolunteerId').value;
+        var payload = {
+            VolunteerId: id ? parseInt(id) : 0,
+            FirstName: document.getElementById('vFirstName').value,
+            LastName: document.getElementById('vLastName').value,
+            EmailAddress: document.getElementById('vEmailAddress').value,
+            Gender: document.getElementById('vGender').value,
+            PhoneNumber: document.getElementById('vPhoneNumber').value,
+            ZipCode: document.getElementById('vZipCode').value,
+            Address: document.getElementById('vAddress').value,
+            VolunteerCategory: document.getElementById('vVolunteerCategory').value,
+            MandateType: document.getElementById('vMandateType').value,
+            InstitutionName: document.getElementById('vInstitutionName').value,
+            PlaceOfWork: document.getElementById('vPlaceOfWork').value,
+            ContactPerson: document.getElementById('vContactPerson').value,
+            ContactPersonPosition: document.getElementById('vContactPersonPosition').value,
+            ContactPersonEmail: document.getElementById('vContactPersonEmail').value,
+            ContactPersonPhone: document.getElementById('vContactPersonPhone').value
+        };
+
+        // Absolute path - this script runs from both /Volunteer and /VolunteerDetails.
+        fetch(id ? '/Volunteer?handler=Update' : '/Volunteer?handler=Create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }).then(function (response) {
+            if (response.ok || response.redirected) {
+                closeModal('veditorModal');
+                location.reload();
+                return;
+            }
+            return response.json().then(function (json) { throw json; });
+        }).catch(showEditorErrors);
+    });
+</script>

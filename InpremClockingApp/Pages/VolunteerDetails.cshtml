@@ -1,0 +1,94 @@
+@page "/VolunteerDetails"
+@using InpremClockingApp.Models
+@model InpremClockingApp.Pages.VolunteerDetails
+@{
+    ViewData["Title"] = "Volunteer Details";
+    var btnWhite = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-slate-300 tw:bg-white tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-slate-700 tw:hover:bg-slate-50";
+    var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
+    var line = "tw:mt-2 tw:text-sm tw:text-slate-600";
+    var value = "tw:font-semibold tw:text-slate-900";
+    var v = Model.Volunteer!;
+
+    var editPayload = System.Text.Json.JsonSerializer.Serialize(new
+    {
+        VolunteerId = v.VolunteerId,
+        FirstName = v.FirstName,
+        LastName = v.LastName,
+        EmailAddress = v.EmailAddress,
+        Gender = v.Gender.ToString(),
+        PhoneNumber = v.PhoneNumber,
+        ZipCode = v.ZipCode,
+        Address = v.Address,
+        VolunteerCategory = v.VolunteerCategory,
+        MandateType = v.MandateType,
+        InstitutionName = v.InstitutionName,
+        PlaceOfWork = v.PlaceOfWork,
+        ContactPerson = v.ContactPerson,
+        ContactPersonPosition = v.ContactPersonPosition,
+        ContactPersonEmail = v.ContactPersonEmail,
+        ContactPersonPhone = v.ContactPersonPhone
+    });
+}
+
+<div class="tw:mx-auto tw:max-w-3xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
+  <div class="tw:mb-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4">
+    <h1 class="tw:text-2xl tw:font-semibold tw:text-slate-900">Volunteer Details</h1>
+    <nav class="tw:text-sm tw:text-slate-500">
+      <a asp-page="/Volunteer" class="tw:hover:text-slate-700">Home</a>
+      <span class="tw:mx-1">/</span>
+      <span class="tw:text-slate-700">Volunteer Details</span>
+    </nav>
+  </div>
+
+  <div class="tw:overflow-hidden tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white">
+    <div class="tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+      <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">@v.FullName</h2>
+    </div>
+    <div class="tw:p-4">
+      <p class="tw:text-sm tw:text-slate-600">ID: <span class="@value">@v.VolunteerId</span></p>
+      <p class="@line">First Name: <span class="@value">@v.FirstName</span></p>
+      <p class="@line">Last Name: <span class="@value">@v.LastName</span></p>
+      <p class="@line">Email Address: <span class="@value">@v.EmailAddress</span></p>
+      <p class="@line">Gender: <span class="@value">@v.Gender</span></p>
+      <p class="@line">Phone Number: <span class="@value">@v.PhoneNumber</span></p>
+      <p class="@line">Zip Code: <span class="@value">@v.ZipCode</span></p>
+      <p class="@line">Address: <span class="@value">@(string.IsNullOrWhiteSpace(v.Address) ? "—" : v.Address)</span></p>
+      <p class="@line">Type: <span class="@value">@v.Type</span></p>
+      <p class="@line">Created At: <span class="@value">@(v.CreatedAt?.ToString("yyyy-MM-dd") ?? "—")</span></p>
+      <p class="@line">Volunteer Category: <span class="@value">@(string.IsNullOrWhiteSpace(v.VolunteerCategory) ? "—" : v.VolunteerCategory)</span></p>
+
+      @if (v.VolunteerCategory == VolunteerCategories.MandatedCommunityHours)
+      {
+        <p class="@line">Mandate Type: <span class="@value">@(string.IsNullOrWhiteSpace(v.MandateType) ? "—" : v.MandateType)</span></p>
+      }
+
+      @if (v.VolunteerCategory == VolunteerCategories.EducationalPurposes)
+      {
+        <p class="@line">Name of Institution: <span class="@value">@(string.IsNullOrWhiteSpace(v.InstitutionName) ? "—" : v.InstitutionName)</span></p>
+        <p class="@line">Contact Person: <span class="@value">@(string.IsNullOrWhiteSpace(v.ContactPerson) ? "—" : v.ContactPerson)</span></p>
+        <p class="@line">Contact Person Position: <span class="@value">@(string.IsNullOrWhiteSpace(v.ContactPersonPosition) ? "—" : v.ContactPersonPosition)</span></p>
+        <p class="@line">Contact Person Email: <span class="@value">@(string.IsNullOrWhiteSpace(v.ContactPersonEmail) ? "—" : v.ContactPersonEmail)</span></p>
+        <p class="@line">Contact Person Phone: <span class="@value">@(string.IsNullOrWhiteSpace(v.ContactPersonPhone) ? "—" : v.ContactPersonPhone)</span></p>
+      }
+
+      @if (v.VolunteerCategory == VolunteerCategories.CorporateVolunteering)
+      {
+        <p class="@line">Place of Work: <span class="@value">@(string.IsNullOrWhiteSpace(v.PlaceOfWork) ? "—" : v.PlaceOfWork)</span></p>
+        <p class="@line">Contact Person: <span class="@value">@(string.IsNullOrWhiteSpace(v.ContactPerson) ? "—" : v.ContactPerson)</span></p>
+      }
+    </div>
+    <div class="tw:flex tw:justify-start tw:gap-2 tw:border-t tw:border-slate-200 tw:px-4 tw:py-3">
+      <a asp-page="/Volunteer" class="@btnWhite">Back to List</a>
+      <button type="button" id="btnEditVolunteer" class="@btnPrimary">Edit</button>
+    </div>
+  </div>
+</div>
+
+<partial name="_VolunteerEditorModal" />
+<partial name="_VolunteerEditorScript" />
+
+<script>
+    document.getElementById('btnEditVolunteer').addEventListener('click', function () {
+        openEditor(@Html.Raw(editPayload));
+    });
+</script>

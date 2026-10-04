@@ -4,13 +4,12 @@
 @{
     ViewData["Title"] = "Volunteer List";
     var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
-    var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
     var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
     var btnWhite = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-slate-300 tw:bg-white tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:text-slate-700 tw:hover:bg-slate-50";
     var actionBtn = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-slate-300 tw:bg-white tw:px-2.5 tw:py-1 tw:text-xs tw:font-medium tw:text-slate-700 tw:hover:bg-slate-50";
 }
 
-<div class="tw:mx-auto tw:max-w-7xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
+<div class="tw:w-full tw:px-2 tw:py-6">
   <div class="tw:mb-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4">
     <h1 class="tw:text-2xl tw:font-semibold tw:text-slate-900">Volunteers List (Total: @(ViewData["TotalCount"] ?? 0))</h1>
     <nav class="tw:text-sm tw:text-slate-500">
@@ -51,6 +50,7 @@
             <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Gender</th>
             <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Phone</th>
             <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Zip</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Category</th>
             <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Actions</th>
           </tr>
         </thead>
@@ -65,10 +65,33 @@
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@v.Gender</td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@v.PhoneNumber</td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@v.ZipCode</td>
+              @{
+                var categoryHasDetails = v.VolunteerCategory == VolunteerCategories.MandatedCommunityHours
+                    || v.VolunteerCategory == VolunteerCategories.EducationalPurposes
+                    || v.VolunteerCategory == VolunteerCategories.CorporateVolunteering;
+              }
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">
+                @if (string.IsNullOrWhiteSpace(v.VolunteerCategory))
+                {
+                  <span class="tw:text-slate-400">&mdash;</span>
+                }
+                else if (categoryHasDetails)
+                {
+                  <span>@v.VolunteerCategory</span>
+                  <button type="button" class="vbtn-view-category tw:ml-1 tw:cursor-pointer tw:border-0 tw:bg-transparent tw:p-0 tw:text-slate-500 tw:hover:text-slate-700" title="View category details">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                }
+                else
+                {
+                  <span>@v.VolunteerCategory</span>
+                }
+              </td>
               <td class="tw:px-4 tw:py-3 tw:whitespace-nowrap">
                 <div class="tw:flex tw:gap-1.5">
                   <button type="button" class="@actionBtn vbtn-edit">Edit</button>
                   <button type="button" class="@actionBtn vbtn-move">Move To Staff</button>
+                  <a href="/VolunteerDetails?id=@v.VolunteerId" class="@actionBtn">Details</a>
                   <a href="/HoursWorked?type=volunteer&id=@v.VolunteerId" class="@actionBtn">Hours</a>
                 </div>
               </td>
@@ -113,100 +136,22 @@
   </div>
 </div>
 
-<div id="veditorModal" data-modal-root class="tw:fixed tw:inset-0 tw:z-50 tw:hidden">
-  <div class="tw:fixed tw:inset-0 tw:bg-black/50" data-modal-dismiss="veditorModal"></div>
+<partial name="_VolunteerEditorModal" />
+<partial name="_VolunteerEditorScript" />
+
+<div id="vcategoryModal" data-modal-root class="tw:fixed tw:inset-0 tw:z-50 tw:hidden">
+  <div class="tw:fixed tw:inset-0 tw:bg-black/50" data-modal-dismiss="vcategoryModal"></div>
   <div class="tw:pointer-events-none tw:fixed tw:inset-0 tw:flex tw:items-center tw:justify-center tw:p-4">
-    <div class="tw:pointer-events-auto tw:max-h-[90vh] tw:w-full tw:max-w-lg tw:overflow-y-auto tw:rounded-lg tw:bg-white tw:shadow-xl">
+    <div class="tw:pointer-events-auto tw:w-full tw:max-w-md tw:rounded-lg tw:bg-white tw:shadow-xl">
       <div class="tw:flex tw:items-center tw:justify-between tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
-        <h5 id="veditorModalTitle" class="tw:text-base tw:font-semibold tw:text-slate-900">Edit Volunteer</h5>
-        <button type="button" class="tw:cursor-pointer tw:border-0 tw:bg-transparent tw:text-xl tw:leading-none tw:text-slate-400 tw:hover:text-slate-600" data-modal-dismiss="veditorModal" aria-label="Close">
+        <h5 class="tw:text-base tw:font-semibold tw:text-slate-900">Volunteer Category Details</h5>
+        <button type="button" class="tw:cursor-pointer tw:border-0 tw:bg-transparent tw:text-xl tw:leading-none tw:text-slate-400 tw:hover:text-slate-600" data-modal-dismiss="vcategoryModal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
       </div>
-      <div class="tw:p-4">
-        <div id="veditorErrors" class="tw:mb-2"></div>
-        <form id="veditorForm">
-          <input type="hidden" name="VolunteerId" id="VolunteerId" />
-          <div class="tw:mb-3">
-            <label class="@label">First Name</label>
-            <input class="@input" name="FirstName" id="vFirstName" />
-          </div>
-          <div class="tw:mb-3">
-            <label class="@label">Last Name</label>
-            <input class="@input" name="LastName" id="vLastName" />
-          </div>
-          <div class="tw:mb-3">
-            <label class="@label">Email</label>
-            <input class="@input" name="EmailAddress" id="vEmailAddress" />
-          </div>
-          <div class="tw:mb-3">
-            <label class="@label">Gender</label>
-            <select class="@input" name="Gender" id="vGender">
-              <option value="M">M</option>
-              <option value="F">F</option>
-            </select>
-          </div>
-          <div class="tw:mb-3">
-            <label class="@label">Phone</label>
-            <input class="@input" name="PhoneNumber" id="vPhoneNumber" />
-          </div>
-          <div class="tw:mb-3">
-            <label class="@label">Zip</label>
-            <input class="@input" name="ZipCode" id="vZipCode" />
-          </div>
-          <div class="tw:mb-3">
-            <label class="@label">Address</label>
-            <textarea class="@input" name="Address" id="vAddress"></textarea>
-          </div>
-          <div class="tw:mb-3">
-            <label class="@label">Which volunteer category do you fall under?</label>
-            <select class="@input" name="VolunteerCategory" id="vVolunteerCategory">
-              <option value="">-- Select category --</option>
-              <option value="@VolunteerCategories.MandatedCommunityHours">Mandated Community Hours</option>
-              <option value="@VolunteerCategories.MofcVolunteerHub">MOFC Volunteer Hub</option>
-              <option value="@VolunteerCategories.EducationalPurposes">Educational Purposes</option>
-              <option value="@VolunteerCategories.CorporateVolunteering">Corporate Volunteering</option>
-              <option value="@VolunteerCategories.PersonalOrIndividualVolunteering">Personal or Individual Volunteering</option>
-            </select>
-          </div>
-          <div class="tw:mb-3" id="vMandateTypeGroup" style="display:none;">
-            <label class="@label">Which of these applies to you?</label>
-            <select class="@input" name="MandateType" id="vMandateType">
-              <option value="">-- Select --</option>
-              <option value="@VolunteerMandateTypes.CourtOrders">Court orders</option>
-              <option value="@VolunteerMandateTypes.Diversion">Diversion</option>
-              <option value="@VolunteerMandateTypes.YouthDetention">Youth Detention</option>
-            </select>
-          </div>
-          <div class="tw:mb-3" id="vInstitutionGroup" style="display:none;">
-            <label class="@label">Name of Institution</label>
-            <input class="@input" name="InstitutionName" id="vInstitutionName" />
-          </div>
-          <div class="tw:mb-3" id="vPlaceOfWorkGroup" style="display:none;">
-            <label class="@label">Place of Work</label>
-            <input class="@input" name="PlaceOfWork" id="vPlaceOfWork" />
-          </div>
-          <div class="tw:mb-3" id="vContactPersonGroup" style="display:none;">
-            <label class="@label">Contact Person</label>
-            <input class="@input" name="ContactPerson" id="vContactPerson" />
-          </div>
-          <div class="tw:mb-3" id="vContactPersonPositionGroup" style="display:none;">
-            <label class="@label">Contact Person Position</label>
-            <input class="@input" name="ContactPersonPosition" id="vContactPersonPosition" />
-          </div>
-          <div class="tw:mb-3" id="vContactPersonEmailGroup" style="display:none;">
-            <label class="@label">Contact Person Email</label>
-            <input class="@input" name="ContactPersonEmail" id="vContactPersonEmail" />
-          </div>
-          <div class="tw:mb-3" id="vContactPersonPhoneGroup" style="display:none;">
-            <label class="@label">Contact Person Phone</label>
-            <input class="@input" name="ContactPersonPhone" id="vContactPersonPhone" />
-          </div>
-        </form>
-      </div>
+      <div class="tw:p-4" id="vcategoryModalBody"></div>
       <div class="tw:flex tw:justify-end tw:gap-2 tw:border-t tw:border-slate-200 tw:px-4 tw:py-3">
-        <button type="button" class="@btnWhite" data-modal-dismiss="veditorModal">Close</button>
-        <button type="button" id="vbtnSave" class="@btnPrimary">Save</button>
+        <button type="button" class="@btnWhite" data-modal-dismiss="vcategoryModal">Close</button>
       </div>
     </div>
   </div>
@@ -241,80 +186,57 @@
             };
         }
 
-        // Mirrors VolunteerAttendance.cshtml's conditional-fields behavior so the admin "Add
-        // New"/"Edit" modal asks the same follow-up questions as the kiosk sign-up form.
-        var MANDATED = '@VolunteerCategories.MandatedCommunityHours';
-        var EDUCATIONAL = '@VolunteerCategories.EducationalPurposes';
-        var CORPORATE = '@VolunteerCategories.CorporateVolunteering';
+        // MANDATED/EDUCATIONAL/CORPORATE and updateVolunteerConditionalFields come from
+        // _VolunteerEditorScript (shared with VolunteerDetails.cshtml).
 
-        function setConditionalVisible(group, input, visible) {
-            group.style.display = visible ? '' : 'none';
-            if (!visible) input.value = '';
-        }
+        // Reads straight off the row's own data-* attributes (already present for the Edit
+        // modal) rather than making a fresh request - the eye icon only ever needs to show
+        // what's already rendered for that row.
+        function openCategoryModal(tr) {
+            var category = tr.getAttribute('data-volunteer-category') || '';
+            var rows = [['Category', category]];
 
-        function updateVolunteerConditionalFields() {
-            var value = document.getElementById('vVolunteerCategory').value;
-            setConditionalVisible(document.getElementById('vMandateTypeGroup'), document.getElementById('vMandateType'), value === MANDATED);
-            setConditionalVisible(document.getElementById('vInstitutionGroup'), document.getElementById('vInstitutionName'), value === EDUCATIONAL);
-            setConditionalVisible(document.getElementById('vPlaceOfWorkGroup'), document.getElementById('vPlaceOfWork'), value === CORPORATE);
-            setConditionalVisible(document.getElementById('vContactPersonGroup'), document.getElementById('vContactPerson'), value === EDUCATIONAL || value === CORPORATE);
-            // Position/email/phone are only collected for Educational Purposes, unlike the
-            // contact person's name above which is also asked for Corporate Volunteering.
-            setConditionalVisible(document.getElementById('vContactPersonPositionGroup'), document.getElementById('vContactPersonPosition'), value === EDUCATIONAL);
-            setConditionalVisible(document.getElementById('vContactPersonEmailGroup'), document.getElementById('vContactPersonEmail'), value === EDUCATIONAL);
-            setConditionalVisible(document.getElementById('vContactPersonPhoneGroup'), document.getElementById('vContactPersonPhone'), value === EDUCATIONAL);
-        }
-
-        document.getElementById('vVolunteerCategory').addEventListener('change', updateVolunteerConditionalFields);
-
-        function clearEditorErrors() {
-            document.getElementById('veditorErrors').innerHTML = '';
-        }
-
-        function showEditorErrors(obj) {
-            var container = document.getElementById('veditorErrors');
-            container.innerHTML = '';
-            if (obj && obj.errors) {
-                Object.keys(obj.errors).forEach(function (key) {
-                    var p = document.createElement('div');
-                    p.className = 'tw:text-sm tw:text-red-600';
-                    p.innerText = key + ': ' + obj.errors[key].join('; ');
-                    container.appendChild(p);
-                });
-            } else {
-                var p = document.createElement('div');
-                p.className = 'tw:text-sm tw:text-red-600';
-                p.innerText = obj && obj.error ? obj.error : 'Request failed.';
-                container.appendChild(p);
+            if (category === MANDATED) {
+                rows.push(['Mandate Type', tr.getAttribute('data-mandate-type')]);
             }
+            if (category === EDUCATIONAL) {
+                rows.push(['Name of Institution', tr.getAttribute('data-institution-name')]);
+                rows.push(['Contact Person', tr.getAttribute('data-contact-person')]);
+                rows.push(['Contact Person Position', tr.getAttribute('data-contact-person-position')]);
+                rows.push(['Contact Person Email', tr.getAttribute('data-contact-person-email')]);
+                rows.push(['Contact Person Phone', tr.getAttribute('data-contact-person-phone')]);
+            }
+            if (category === CORPORATE) {
+                rows.push(['Place of Work', tr.getAttribute('data-place-of-work')]);
+                rows.push(['Contact Person', tr.getAttribute('data-contact-person')]);
+            }
+
+            // Built as DOM nodes with textContent (not innerHTML) - these values are
+            // admin-entered free text (contact person, institution name, etc.) and must not be
+            // interpreted as HTML by whoever else opens this modal.
+            var body = document.getElementById('vcategoryModalBody');
+            body.innerHTML = '';
+            rows.forEach(function (r) {
+                var line = document.createElement('div');
+                line.className = 'tw:mb-2 tw:flex tw:justify-between tw:gap-4 tw:text-sm';
+
+                var label = document.createElement('span');
+                label.className = 'tw:font-medium tw:text-slate-600';
+                label.textContent = r[0];
+
+                var value = document.createElement('span');
+                value.className = 'tw:text-slate-900';
+                value.textContent = r[1] || '—';
+
+                line.appendChild(label);
+                line.appendChild(value);
+                body.appendChild(line);
+            });
+            openModal('vcategoryModal');
         }
 
-        function setModalTitle(text) {
-            document.getElementById('veditorModalTitle').innerText = text;
-        }
-
-        function openEditor(payload) {
-            document.getElementById('VolunteerId').value = payload.VolunteerId || '';
-            document.getElementById('vFirstName').value = payload.FirstName || '';
-            document.getElementById('vLastName').value = payload.LastName || '';
-            document.getElementById('vEmailAddress').value = payload.EmailAddress || '';
-            document.getElementById('vGender').value = payload.Gender || 'M';
-            document.getElementById('vPhoneNumber').value = payload.PhoneNumber || '';
-            document.getElementById('vZipCode').value = payload.ZipCode || '';
-            document.getElementById('vAddress').value = payload.Address || '';
-            document.getElementById('vVolunteerCategory').value = payload.VolunteerCategory || '';
-            updateVolunteerConditionalFields();
-            document.getElementById('vMandateType').value = payload.MandateType || '';
-            document.getElementById('vInstitutionName').value = payload.InstitutionName || '';
-            document.getElementById('vPlaceOfWork').value = payload.PlaceOfWork || '';
-            document.getElementById('vContactPerson').value = payload.ContactPerson || '';
-            document.getElementById('vContactPersonPosition').value = payload.ContactPersonPosition || '';
-            document.getElementById('vContactPersonEmail').value = payload.ContactPersonEmail || '';
-            document.getElementById('vContactPersonPhone').value = payload.ContactPersonPhone || '';
-            clearEditorErrors();
-            setModalTitle(payload.VolunteerId ? 'Edit Volunteer' : 'New Volunteer');
-            openModal('veditorModal');
-        }
+        // clearEditorErrors/showEditorErrors/setModalTitle/openEditor come from
+        // _VolunteerEditorScript (shared with VolunteerDetails.cshtml).
 
         // Rows are server-paginated, so search re-runs the query server-side (page reset to 1)
         // rather than hiding/showing rows already in the DOM - a client-only filter would only
@@ -348,6 +270,10 @@
                 openEditor(rowToPayload(tr));
             }
 
+            if (event.target.closest('.vbtn-view-category')) {
+                openCategoryModal(tr);
+            }
+
             if (event.target.classList.contains('vbtn-move')) {
                 if (!confirm('Move volunteer to staff?')) return;
                 fetch('?handler=Move', {
@@ -371,41 +297,9 @@
             navigateSearch(searchInput.value || '');
         });
 
-        document.getElementById('vbtnSave').addEventListener('click', function () {
-            clearEditorErrors();
-            var id = document.getElementById('VolunteerId').value;
-            var payload = {
-                VolunteerId: id ? parseInt(id) : 0,
-                FirstName: document.getElementById('vFirstName').value,
-                LastName: document.getElementById('vLastName').value,
-                EmailAddress: document.getElementById('vEmailAddress').value,
-                Gender: document.getElementById('vGender').value,
-                PhoneNumber: document.getElementById('vPhoneNumber').value,
-                ZipCode: document.getElementById('vZipCode').value,
-                Address: document.getElementById('vAddress').value,
-                VolunteerCategory: document.getElementById('vVolunteerCategory').value,
-                MandateType: document.getElementById('vMandateType').value,
-                InstitutionName: document.getElementById('vInstitutionName').value,
-                PlaceOfWork: document.getElementById('vPlaceOfWork').value,
-                ContactPerson: document.getElementById('vContactPerson').value,
-                ContactPersonPosition: document.getElementById('vContactPersonPosition').value,
-                ContactPersonEmail: document.getElementById('vContactPersonEmail').value,
-                ContactPersonPhone: document.getElementById('vContactPersonPhone').value
-            };
-
-            fetch(id ? '?handler=Update' : '?handler=Create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            }).then(function (response) {
-                if (response.ok || response.redirected) {
-                    closeModal('veditorModal');
-                    location.reload();
-                    return;
-                }
-                return response.json().then(function (json) { throw json; });
-            }).catch(showEditorErrors);
-        });
+        // vbtnSave's click handler comes from _VolunteerEditorScript (shared with
+        // VolunteerDetails.cshtml) - it POSTs to an absolute /Volunteer?handler=... URL so it
+        // works the same regardless of which page included it.
 
         searchInput.addEventListener('input', function () {
             var value = searchInput.value || '';
