@@ -61,9 +61,19 @@
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@v.VolunteerId</td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@v.FirstName</td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@v.LastName</td>
-              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@v.EmailAddress</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">
+                @if (!string.IsNullOrWhiteSpace(v.EmailAddress))
+                {
+                  <a href="mailto:@v.EmailAddress" class="tw:text-blue-600 tw:hover:underline">@v.EmailAddress</a>
+                }
+              </td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@v.Gender</td>
-              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@v.PhoneNumber</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">
+                @if (!string.IsNullOrWhiteSpace(v.PhoneNumber))
+                {
+                  <a href="@("tel:" + v.PhoneNumber.Replace(" ", "").Replace("-", "").Replace("(", "").Replace(")", ""))" class="tw:text-blue-600 tw:hover:underline">@v.PhoneNumber</a>
+                }
+              </td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@v.ZipCode</td>
               @{
                 var categoryHasDetails = v.VolunteerCategory == VolunteerCategories.MandatedCommunityHours
@@ -224,9 +234,22 @@
                 label.className = 'tw:font-medium tw:text-slate-600';
                 label.textContent = r[0];
 
-                var value = document.createElement('span');
-                value.className = 'tw:text-slate-900';
-                value.textContent = r[1] || '—';
+                var value;
+                if (r[1] && r[0] === 'Contact Person Email') {
+                    value = document.createElement('a');
+                    value.href = 'mailto:' + r[1];
+                    value.className = 'tw:text-blue-600 tw:hover:underline';
+                    value.textContent = r[1];
+                } else if (r[1] && r[0] === 'Contact Person Phone') {
+                    value = document.createElement('a');
+                    value.href = 'tel:' + r[1].replace(/[\s()-]/g, '');
+                    value.className = 'tw:text-blue-600 tw:hover:underline';
+                    value.textContent = r[1];
+                } else {
+                    value = document.createElement('span');
+                    value.className = 'tw:text-slate-900';
+                    value.textContent = r[1] || '—';
+                }
 
                 line.appendChild(label);
                 line.appendChild(value);

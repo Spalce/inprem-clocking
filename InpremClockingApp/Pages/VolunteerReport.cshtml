@@ -47,8 +47,18 @@
             <tr class="tw:hover:bg-slate-50">
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@v.FirstName</td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@v.LastName</td>
-              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@v.EmailAddress</td>
-              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@v.PhoneNumber</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">
+                @if (!string.IsNullOrWhiteSpace(v.EmailAddress))
+                {
+                  <a href="mailto:@v.EmailAddress" class="tw:text-blue-600 tw:hover:underline">@v.EmailAddress</a>
+                }
+              </td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">
+                @if (!string.IsNullOrWhiteSpace(v.PhoneNumber))
+                {
+                  <a href="@("tel:" + v.PhoneNumber.Replace(" ", "").Replace("-", "").Replace("(", "").Replace(")", ""))" class="tw:text-blue-600 tw:hover:underline">@v.PhoneNumber</a>
+                }
+              </td>
             </tr>
           }
         </tbody>

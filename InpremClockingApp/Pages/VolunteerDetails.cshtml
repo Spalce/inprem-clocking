@@ -7,6 +7,7 @@
     var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
     var line = "tw:mt-2 tw:text-sm tw:text-slate-600";
     var value = "tw:font-semibold tw:text-slate-900";
+    var linkValue = "tw:font-semibold tw:text-blue-600 tw:hover:underline";
     var v = Model.Volunteer!;
 
     var editPayload = System.Text.Json.JsonSerializer.Serialize(new
@@ -48,9 +49,9 @@
       <p class="tw:text-sm tw:text-slate-600">ID: <span class="@value">@v.VolunteerId</span></p>
       <p class="@line">First Name: <span class="@value">@v.FirstName</span></p>
       <p class="@line">Last Name: <span class="@value">@v.LastName</span></p>
-      <p class="@line">Email Address: <span class="@value">@v.EmailAddress</span></p>
+      <p class="@line">Email Address: @if (!string.IsNullOrWhiteSpace(v.EmailAddress)) { <a href="mailto:@v.EmailAddress" class="@linkValue">@v.EmailAddress</a> } else { <span class="@value">—</span> }</p>
       <p class="@line">Gender: <span class="@value">@v.Gender</span></p>
-      <p class="@line">Phone Number: <span class="@value">@v.PhoneNumber</span></p>
+      <p class="@line">Phone Number: @if (!string.IsNullOrWhiteSpace(v.PhoneNumber)) { <a href="@("tel:" + v.PhoneNumber.Replace(" ", "").Replace("-", "").Replace("(", "").Replace(")", ""))" class="@linkValue">@v.PhoneNumber</a> } else { <span class="@value">—</span> }</p>
       <p class="@line">Zip Code: <span class="@value">@v.ZipCode</span></p>
       <p class="@line">Address: <span class="@value">@(string.IsNullOrWhiteSpace(v.Address) ? "—" : v.Address)</span></p>
       <p class="@line">Type: <span class="@value">@v.Type</span></p>
@@ -67,8 +68,8 @@
         <p class="@line">Name of Institution: <span class="@value">@(string.IsNullOrWhiteSpace(v.InstitutionName) ? "—" : v.InstitutionName)</span></p>
         <p class="@line">Contact Person: <span class="@value">@(string.IsNullOrWhiteSpace(v.ContactPerson) ? "—" : v.ContactPerson)</span></p>
         <p class="@line">Contact Person Position: <span class="@value">@(string.IsNullOrWhiteSpace(v.ContactPersonPosition) ? "—" : v.ContactPersonPosition)</span></p>
-        <p class="@line">Contact Person Email: <span class="@value">@(string.IsNullOrWhiteSpace(v.ContactPersonEmail) ? "—" : v.ContactPersonEmail)</span></p>
-        <p class="@line">Contact Person Phone: <span class="@value">@(string.IsNullOrWhiteSpace(v.ContactPersonPhone) ? "—" : v.ContactPersonPhone)</span></p>
+        <p class="@line">Contact Person Email: @if (!string.IsNullOrWhiteSpace(v.ContactPersonEmail)) { <a href="mailto:@v.ContactPersonEmail" class="@linkValue">@v.ContactPersonEmail</a> } else { <span class="@value">—</span> }</p>
+        <p class="@line">Contact Person Phone: @if (!string.IsNullOrWhiteSpace(v.ContactPersonPhone)) { <a href="@("tel:" + v.ContactPersonPhone.Replace(" ", "").Replace("-", "").Replace("(", "").Replace(")", ""))" class="@linkValue">@v.ContactPersonPhone</a> } else { <span class="@value">—</span> }</p>
       }
 
       @if (v.VolunteerCategory == VolunteerCategories.CorporateVolunteering)

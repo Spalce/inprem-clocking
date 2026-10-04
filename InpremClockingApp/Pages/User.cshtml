@@ -71,11 +71,21 @@
           {
             <tr class="tw:hover:bg-slate-50">
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@u.UserName</td>
-              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@u.Email</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">
+                @if (!string.IsNullOrWhiteSpace(u.Email))
+                {
+                  <a href="mailto:@u.Email" class="tw:text-blue-600 tw:hover:underline">@u.Email</a>
+                }
+              </td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@u.FirstName</td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@u.LastName</td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@u.Type</td>
-              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@u.PhoneNumber</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">
+                @if (!string.IsNullOrWhiteSpace(u.PhoneNumber))
+                {
+                  <a href="@("tel:" + u.PhoneNumber.Replace(" ", "").Replace("-", "").Replace("(", "").Replace(")", ""))" class="tw:text-blue-600 tw:hover:underline">@u.PhoneNumber</a>
+                }
+              </td>
             </tr>
           }
         </tbody>

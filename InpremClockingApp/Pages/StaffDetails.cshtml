@@ -6,6 +6,7 @@
     var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
     var line = "tw:mt-2 tw:text-sm tw:text-slate-600";
     var value = "tw:font-semibold tw:text-slate-900";
+    var linkValue = "tw:font-semibold tw:text-blue-600 tw:hover:underline";
     var s = Model.Staff!;
 
     var editPayload = System.Text.Json.JsonSerializer.Serialize(new
@@ -39,9 +40,9 @@
       <p class="tw:text-sm tw:text-slate-600">ID: <span class="@value">@s.StaffId</span></p>
       <p class="@line">First Name: <span class="@value">@s.FirstName</span></p>
       <p class="@line">Last Name: <span class="@value">@s.LastName</span></p>
-      <p class="@line">Email Address: <span class="@value">@s.EmailAddress</span></p>
+      <p class="@line">Email Address: @if (!string.IsNullOrWhiteSpace(s.EmailAddress)) { <a href="mailto:@s.EmailAddress" class="@linkValue">@s.EmailAddress</a> } else { <span class="@value">—</span> }</p>
       <p class="@line">Gender: <span class="@value">@s.Gender</span></p>
-      <p class="@line">Phone Number: <span class="@value">@s.PhoneNumber</span></p>
+      <p class="@line">Phone Number: @if (!string.IsNullOrWhiteSpace(s.PhoneNumber)) { <a href="@("tel:" + s.PhoneNumber.Replace(" ", "").Replace("-", "").Replace("(", "").Replace(")", ""))" class="@linkValue">@s.PhoneNumber</a> } else { <span class="@value">—</span> }</p>
       <p class="@line">Zip Code: <span class="@value">@s.ZipCode</span></p>
       <p class="@line">Address: <span class="@value">@(string.IsNullOrWhiteSpace(s.Address) ? "—" : s.Address)</span></p>
       <p class="@line">Type: <span class="@value">@s.Type</span></p>
