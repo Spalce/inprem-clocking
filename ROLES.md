@@ -145,7 +145,7 @@ session.
 
 | Page / route | Requires |
 |---|---|
-| `/BackOffice`, `/Staff`, `/Volunteer`, `/User`, `/StaffClocking`, `/VolunteerClocking`, `/StaffReport`, `/StaffClockingReport`, `/VolunteerReport`, `/VolunteerClockingReport`, `/HoursWorked` | `AdminOnly` (role `Admin`) |
+| `/BackOffice`, `/Staff`, `/StaffDetails`, `/Volunteer`, `/VolunteerDetails`, `/User`, `/StaffClocking`, `/VolunteerClocking`, `/StaffReport`, `/StaffClockingReport`, `/VolunteerReport`, `/VolunteerClockingReport`, `/HoursWorked` | `AdminOnly` (role `Admin`) |
 | `/Identity/Account/Register` | `AdminOnly` (role `Admin`) |
 | `/Platform/Tenants`, `/Platform/Tenants/{id}` | `SuperAdminOnly` (role `SuperAdmin`) — gated at the folder level (`AuthorizeFolder("/Platform", ...)`), so any future `/Platform/*` page is covered automatically |
 | `/StaffAttendance`, `/VolunteerAttendance`, `/staff-clockin/{id}`, `/volunteer-clockin/{id}`, `/Index`, `/Privacy` | `[Authorize]` only — any signed-in account |

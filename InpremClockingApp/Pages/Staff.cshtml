@@ -3,13 +3,12 @@
 @{
     ViewData["Title"] = "Staff List";
     var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
-    var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
     var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
     var btnWhite = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-slate-300 tw:bg-white tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:text-slate-700 tw:hover:bg-slate-50";
     var actionBtn = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-slate-300 tw:bg-white tw:px-2.5 tw:py-1 tw:text-xs tw:font-medium tw:text-slate-700 tw:hover:bg-slate-50";
 }
 
-<div class="tw:mx-auto tw:max-w-7xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
+<div class="tw:w-full tw:px-2 tw:py-6">
   <div class="tw:mb-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4">
     <h1 class="tw:text-2xl tw:font-semibold tw:text-slate-900">Staff List (Total: @(ViewData["TotalCount"] ?? 0))</h1>
     <nav class="tw:text-sm tw:text-slate-500">
@@ -68,6 +67,7 @@
                 <div class="tw:flex tw:gap-1.5">
                   <button type="button" class="@actionBtn btn-edit">Edit</button>
                   <button type="button" class="@actionBtn btn-move">Move To Volunteer</button>
+                  <a href="/StaffDetails?id=@s.StaffId" class="@actionBtn">Details</a>
                   <a href="/HoursWorked?type=staff&id=@s.StaffId" class="@actionBtn">Hours</a>
                 </div>
               </td>
@@ -112,60 +112,8 @@
   </div>
 </div>
 
-<div id="editorModal" data-modal-root class="tw:fixed tw:inset-0 tw:z-50 tw:hidden">
-  <div class="tw:fixed tw:inset-0 tw:bg-black/50" data-modal-dismiss="editorModal"></div>
-  <div class="tw:pointer-events-none tw:fixed tw:inset-0 tw:flex tw:items-center tw:justify-center tw:p-4">
-    <div class="tw:pointer-events-auto tw:max-h-[90vh] tw:w-full tw:max-w-lg tw:overflow-y-auto tw:rounded-lg tw:bg-white tw:shadow-xl">
-      <div class="tw:flex tw:items-center tw:justify-between tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
-        <h5 id="editorModalTitle" class="tw:text-base tw:font-semibold tw:text-slate-900">Edit Staff</h5>
-        <button type="button" class="tw:cursor-pointer tw:border-0 tw:bg-transparent tw:text-xl tw:leading-none tw:text-slate-400 tw:hover:text-slate-600" data-modal-dismiss="editorModal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
-        </button>
-      </div>
-      <div class="tw:p-4">
-        <div id="editorErrors" class="tw:mb-2"></div>
-        <form id="editorForm">
-          <input type="hidden" name="StaffId" id="StaffId" />
-          <div class="tw:mb-3">
-            <label class="@label">First Name</label>
-            <input class="@input" name="FirstName" id="FirstName" />
-          </div>
-          <div class="tw:mb-3">
-            <label class="@label">Last Name</label>
-            <input class="@input" name="LastName" id="LastName" />
-          </div>
-          <div class="tw:mb-3">
-            <label class="@label">Email</label>
-            <input class="@input" name="EmailAddress" id="EmailAddress" />
-          </div>
-          <div class="tw:mb-3">
-            <label class="@label">Gender</label>
-            <select class="@input" name="Gender" id="Gender">
-              <option value="M">M</option>
-              <option value="F">F</option>
-            </select>
-          </div>
-          <div class="tw:mb-3">
-            <label class="@label">Phone</label>
-            <input class="@input" name="PhoneNumber" id="PhoneNumber" />
-          </div>
-          <div class="tw:mb-3">
-            <label class="@label">Zip</label>
-            <input class="@input" name="ZipCode" id="ZipCode" />
-          </div>
-          <div class="tw:mb-3">
-            <label class="@label">Address</label>
-            <textarea class="@input" name="Address" id="Address"></textarea>
-          </div>
-        </form>
-      </div>
-      <div class="tw:flex tw:justify-end tw:gap-2 tw:border-t tw:border-slate-200 tw:px-4 tw:py-3">
-        <button type="button" class="@btnWhite" data-modal-dismiss="editorModal">Close</button>
-        <button type="button" id="btnSave" class="@btnPrimary">Save</button>
-      </div>
-    </div>
-  </div>
-</div>
+<partial name="_StaffEditorModal" />
+<partial name="_StaffEditorScript" />
 
 <script>
     (function () {
@@ -188,45 +136,8 @@
             };
         }
 
-        function clearEditorErrors() {
-            document.getElementById('editorErrors').innerHTML = '';
-        }
-
-        function showEditorErrors(obj) {
-            var container = document.getElementById('editorErrors');
-            container.innerHTML = '';
-            if (obj && obj.errors) {
-                Object.keys(obj.errors).forEach(function (key) {
-                    var p = document.createElement('div');
-                    p.className = 'tw:text-sm tw:text-red-600';
-                    p.innerText = key + ': ' + obj.errors[key].join('; ');
-                    container.appendChild(p);
-                });
-            } else {
-                var p = document.createElement('div');
-                p.className = 'tw:text-sm tw:text-red-600';
-                p.innerText = obj && obj.error ? obj.error : 'Request failed.';
-                container.appendChild(p);
-            }
-        }
-
-        function setModalTitle(text) {
-            document.getElementById('editorModalTitle').innerText = text;
-        }
-
-        function openEditor(payload) {
-            document.getElementById('StaffId').value = payload.StaffId || '';
-            document.getElementById('FirstName').value = payload.FirstName || '';
-            document.getElementById('LastName').value = payload.LastName || '';
-            document.getElementById('EmailAddress').value = payload.EmailAddress || '';
-            document.getElementById('Gender').value = payload.Gender || 'M';
-            document.getElementById('PhoneNumber').value = payload.PhoneNumber || '';
-            document.getElementById('ZipCode').value = payload.ZipCode || '';
-            document.getElementById('Address').value = payload.Address || '';
-            clearEditorErrors();
-            setModalTitle(payload.StaffId ? 'Edit Staff' : 'New Staff');
-            openModal('editorModal');
-        }
+        // clearEditorErrors/showEditorErrors/setModalTitle/openEditor come from
+        // _StaffEditorScript (shared with StaffDetails.cshtml).
 
         // Rows are server-paginated, so search re-runs the query server-side (page reset to 1)
         // rather than hiding/showing rows already in the DOM - a client-only filter would only
@@ -283,33 +194,9 @@
             navigateSearch(searchInput.value || '');
         });
 
-        document.getElementById('btnSave').addEventListener('click', function () {
-            clearEditorErrors();
-            var id = document.getElementById('StaffId').value;
-            var payload = {
-                StaffId: id ? parseInt(id) : 0,
-                FirstName: document.getElementById('FirstName').value,
-                LastName: document.getElementById('LastName').value,
-                EmailAddress: document.getElementById('EmailAddress').value,
-                Gender: document.getElementById('Gender').value,
-                PhoneNumber: document.getElementById('PhoneNumber').value,
-                ZipCode: document.getElementById('ZipCode').value,
-                Address: document.getElementById('Address').value
-            };
-
-            fetch(id ? '?handler=Update' : '?handler=Create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            }).then(function (response) {
-                if (response.ok || response.redirected) {
-                    closeModal('editorModal');
-                    location.reload();
-                    return;
-                }
-                return response.json().then(function (json) { throw json; });
-            }).catch(showEditorErrors);
-        });
+        // btnSave's click handler comes from _StaffEditorScript (shared with
+        // StaffDetails.cshtml) - it POSTs to an absolute /Staff?handler=... URL so it works the
+        // same regardless of which page included it.
 
         searchInput.addEventListener('input', function () {
             var value = searchInput.value || '';

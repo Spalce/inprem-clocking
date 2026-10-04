@@ -86,7 +86,9 @@ builder.Services.AddRazorPages()
         {
             "/BackOffice",
             "/Staff",
+            "/StaffDetails",
             "/Volunteer",
+            "/VolunteerDetails",
             "/User",
             "/StaffClocking",
             "/VolunteerClocking",

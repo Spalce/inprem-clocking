@@ -1,0 +1,64 @@
+@page "/StaffDetails"
+@model InpremClockingApp.Pages.StaffDetails
+@{
+    ViewData["Title"] = "Staff Details";
+    var btnWhite = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-slate-300 tw:bg-white tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-slate-700 tw:hover:bg-slate-50";
+    var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
+    var line = "tw:mt-2 tw:text-sm tw:text-slate-600";
+    var value = "tw:font-semibold tw:text-slate-900";
+    var s = Model.Staff!;
+
+    var editPayload = System.Text.Json.JsonSerializer.Serialize(new
+    {
+        StaffId = s.StaffId,
+        FirstName = s.FirstName,
+        LastName = s.LastName,
+        EmailAddress = s.EmailAddress,
+        Gender = s.Gender.ToString(),
+        PhoneNumber = s.PhoneNumber,
+        ZipCode = s.ZipCode,
+        Address = s.Address
+    });
+}
+
+<div class="tw:mx-auto tw:max-w-3xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
+  <div class="tw:mb-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4">
+    <h1 class="tw:text-2xl tw:font-semibold tw:text-slate-900">Staff Details</h1>
+    <nav class="tw:text-sm tw:text-slate-500">
+      <a asp-page="/Staff" class="tw:hover:text-slate-700">Home</a>
+      <span class="tw:mx-1">/</span>
+      <span class="tw:text-slate-700">Staff Details</span>
+    </nav>
+  </div>
+
+  <div class="tw:overflow-hidden tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white">
+    <div class="tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+      <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">@s.FullName</h2>
+    </div>
+    <div class="tw:p-4">
+      <p class="tw:text-sm tw:text-slate-600">ID: <span class="@value">@s.StaffId</span></p>
+      <p class="@line">First Name: <span class="@value">@s.FirstName</span></p>
+      <p class="@line">Last Name: <span class="@value">@s.LastName</span></p>
+      <p class="@line">Email Address: <span class="@value">@s.EmailAddress</span></p>
+      <p class="@line">Gender: <span class="@value">@s.Gender</span></p>
+      <p class="@line">Phone Number: <span class="@value">@s.PhoneNumber</span></p>
+      <p class="@line">Zip Code: <span class="@value">@s.ZipCode</span></p>
+      <p class="@line">Address: <span class="@value">@(string.IsNullOrWhiteSpace(s.Address) ? "—" : s.Address)</span></p>
+      <p class="@line">Type: <span class="@value">@s.Type</span></p>
+      <p class="@line">Created At: <span class="@value">@(s.CreatedAt?.ToString("yyyy-MM-dd") ?? "—")</span></p>
+    </div>
+    <div class="tw:flex tw:justify-start tw:gap-2 tw:border-t tw:border-slate-200 tw:px-4 tw:py-3">
+      <a asp-page="/Staff" class="@btnWhite">Back to List</a>
+      <button type="button" id="btnEditStaff" class="@btnPrimary">Edit</button>
+    </div>
+  </div>
+</div>
+
+<partial name="_StaffEditorModal" />
+<partial name="_StaffEditorScript" />
+
+<script>
+    document.getElementById('btnEditStaff').addEventListener('click', function () {
+        openEditor(@Html.Raw(editPayload));
+    });
+</script>

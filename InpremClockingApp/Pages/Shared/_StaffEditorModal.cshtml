@@ -1,0 +1,64 @@
+@{
+    var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
+    var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
+    var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
+    var btnWhite = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-slate-300 tw:bg-white tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:text-slate-700 tw:hover:bg-slate-50";
+}
+
+<!-- Shared by Staff.cshtml (Add New/Edit from the list) and StaffDetails.cshtml (Edit from the
+     detail view) so the two pages don't drift out of sync, and so StaffDetails' Edit never has
+     to bounce through the list page to open this. -->
+<div id="editorModal" data-modal-root class="tw:fixed tw:inset-0 tw:z-50 tw:hidden">
+  <div class="tw:fixed tw:inset-0 tw:bg-black/50" data-modal-dismiss="editorModal"></div>
+  <div class="tw:pointer-events-none tw:fixed tw:inset-0 tw:flex tw:items-center tw:justify-center tw:p-4">
+    <div class="tw:pointer-events-auto tw:max-h-[90vh] tw:w-full tw:max-w-2xl tw:overflow-y-auto tw:rounded-lg tw:bg-white tw:shadow-xl">
+      <div class="tw:flex tw:items-center tw:justify-between tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+        <h5 id="editorModalTitle" class="tw:text-base tw:font-semibold tw:text-slate-900">Edit Staff</h5>
+        <button type="button" class="tw:cursor-pointer tw:border-0 tw:bg-transparent tw:text-xl tw:leading-none tw:text-slate-400 tw:hover:text-slate-600" data-modal-dismiss="editorModal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="tw:p-4">
+        <div id="editorErrors" class="tw:mb-2"></div>
+        <form id="editorForm" class="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2">
+          <input type="hidden" name="StaffId" id="StaffId" />
+          <div>
+            <label class="@label">First Name</label>
+            <input class="@input" name="FirstName" id="FirstName" />
+          </div>
+          <div>
+            <label class="@label">Last Name</label>
+            <input class="@input" name="LastName" id="LastName" />
+          </div>
+          <div>
+            <label class="@label">Email</label>
+            <input class="@input" name="EmailAddress" id="EmailAddress" />
+          </div>
+          <div>
+            <label class="@label">Gender</label>
+            <select class="@input" name="Gender" id="Gender">
+              <option value="M">M</option>
+              <option value="F">F</option>
+            </select>
+          </div>
+          <div>
+            <label class="@label">Phone</label>
+            <input class="@input" name="PhoneNumber" id="PhoneNumber" />
+          </div>
+          <div>
+            <label class="@label">Zip</label>
+            <input class="@input" name="ZipCode" id="ZipCode" />
+          </div>
+          <div class="tw:sm:col-span-2">
+            <label class="@label">Address</label>
+            <textarea class="@input" name="Address" id="Address"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="tw:flex tw:justify-end tw:gap-2 tw:border-t tw:border-slate-200 tw:px-4 tw:py-3">
+        <button type="button" class="@btnWhite" data-modal-dismiss="editorModal">Close</button>
+        <button type="button" id="btnSave" class="@btnPrimary">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
