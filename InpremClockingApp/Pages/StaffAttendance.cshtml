@@ -3,18 +3,18 @@
 @using Microsoft.AspNetCore.Authorization;
 @attribute [Authorize]
 @{
-    Layout = "Shared/_MainLayout";
-    ViewData["Title"] = "Staff Clocking";
-    var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
-    var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
-    var validation = "tw:mt-1 tw:block tw:text-xs tw:text-red-600";
-    var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
-    var btnWhite = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-slate-300 tw:bg-white tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-slate-700 tw:hover:bg-slate-50";
+  Layout = "Shared/_MainLayout";
+  ViewData["Title"] = "Staff Clocking";
+  var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
+  var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
+  var validation = "tw:mt-1 tw:block tw:text-xs tw:text-red-600";
+  var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
+  var btnWhite = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-slate-300 tw:bg-white tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-slate-700 tw:hover:bg-slate-50";
 }
 
 <div class="tw:mx-auto tw:max-w-7xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
   <div class="tw:mb-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4">
-    <h1 class="tw:text-2xl tw:font-semibold tw:text-slate-900">Staff Clocking</h1>
+    <h1 class="tw:text-2xl tw:font-semibold tw:text-slate-900">Welcome</h1>
     <nav class="tw:text-sm tw:text-slate-500">
       <a href="#" class="tw:hover:text-slate-700">Home</a>
       <span class="tw:mx-1">/</span>
@@ -30,135 +30,140 @@
       <div class="tw:p-4">
         @if (TempData["Message"] != null)
         {
-          <div class="tw:mb-4 tw:rounded-md tw:bg-emerald-50 tw:px-3 tw:py-2 tw:text-sm tw:text-emerald-700">@TempData["Message"]</div>
-        }
-
-        <form id="registerForm" method="post">
-          <div asp-validation-summary="ModelOnly" class="tw:mb-3 tw:text-sm tw:text-red-600"></div>
-
-          @if (Model.NameConflict)
-          {
-            <div class="tw:mb-4 tw:rounded-md tw:bg-amber-50 tw:p-3">
-              <p class="tw:mb-2 tw:text-sm tw:text-amber-800">A staff member named <strong>@Model.ExistingName</strong> is already registered. Is this you?</p>
-              <div class="tw:flex tw:gap-2">
-                <a href="/staff-clockin/@Model.ExistingId" class="@btnPrimary">Yes, that's me</a>
-                <button type="submit" name="ConfirmDifferentPerson" value="true" class="@btnWhite">No, this is a different person</button>
-              </div>
-            </div>
+          <div class="tw:mb-4 tw:rounded-md tw:bg-emerald-50 tw:px-3 tw:py-2 tw:text-sm tw:text-emerald-700">
+            @TempData["Message"]</div>
           }
 
-          <div class="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2">
-            <div>
-              <label asp-for="Input!.FirstName" class="@label"></label>
-              <input asp-for="Input!.FirstName" class="@input" autocomplete="first name" aria-required="true"/>
-              <span asp-validation-for="Input!.FirstName" class="@validation"></span>
-            </div>
-            <div>
-              <label asp-for="Input!.LastName" class="@label"></label>
-              <input asp-for="Input!.LastName" class="@input" autocomplete="user name" aria-required="true"/>
-              <span asp-validation-for="Input!.LastName" class="@validation"></span>
-            </div>
-            <div>
-              <label asp-for="Input!.EmailAddress" class="@label"></label>
-              <input asp-for="Input!.EmailAddress" class="@input" autocomplete="email" aria-required="true"/>
-              <span asp-validation-for="Input!.EmailAddress" class="@validation"></span>
-            </div>
-            <div>
-              <label asp-for="Input!.ZipCode" class="@label"></label>
-              <input asp-for="Input!.ZipCode" class="@input" autocomplete="zip code" aria-required="true"/>
-              <span asp-validation-for="Input!.ZipCode" class="@validation"></span>
-            </div>
-            <div>
-              <label asp-for="Input!.PhoneNumber" class="@label"></label>
-              <input asp-for="Input!.PhoneNumber" class="@input" autocomplete="phone number" aria-required="true"/>
-              <span asp-validation-for="Input!.PhoneNumber" class="@validation"></span>
-            </div>
-            <div>
-              <label asp-for="Input!.Gender" class="@label"></label>
-              <select asp-for="Input!.Gender" class="@input">
-                <option value=''>Gender</option>
-                <option value='M'>Male</option>
-                <option value='F'>Female</option>
-              </select>
-              <span asp-validation-for="Input!.Gender" class="@validation"></span>
+          <form id="registerForm" method="post">
+            <div asp-validation-summary="ModelOnly" class="tw:mb-3 tw:text-sm tw:text-red-600"></div>
+
+            @if (Model.NameConflict)
+            {
+              <div class="tw:mb-4 tw:rounded-md tw:bg-amber-50 tw:p-3">
+                <p class="tw:mb-2 tw:text-sm tw:text-amber-800">A staff member named <strong>@Model.ExistingName</strong> is
+                  already registered. Is this you?</p>
+                  <div class="tw:flex tw:gap-2">
+                    <a href="/staff-clockin/@Model.ExistingId" class="@btnPrimary">Yes, that's me</a>
+                    <button type="submit" name="ConfirmDifferentPerson" value="true" class="@btnWhite">No, this is a different
+                      person</button>
+                    </div>
+                  </div>
+                }
+
+                <div class="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2">
+                  <div>
+                    <label asp-for="Input!.FirstName" class="@label"></label>
+                    <input asp-for="Input!.FirstName" class="@input" autocomplete="first name" aria-required="true" />
+                    <span asp-validation-for="Input!.FirstName" class="@validation"></span>
+                  </div>
+                  <div>
+                    <label asp-for="Input!.LastName" class="@label"></label>
+                    <input asp-for="Input!.LastName" class="@input" autocomplete="user name" aria-required="true" />
+                    <span asp-validation-for="Input!.LastName" class="@validation"></span>
+                  </div>
+                  <div>
+                    <label asp-for="Input!.EmailAddress" class="@label"></label>
+                    <input asp-for="Input!.EmailAddress" class="@input" autocomplete="email" aria-required="true" />
+                    <span asp-validation-for="Input!.EmailAddress" class="@validation"></span>
+                  </div>
+                  <div>
+                    <label asp-for="Input!.ZipCode" class="@label"></label>
+                    <input asp-for="Input!.ZipCode" class="@input" autocomplete="zip code" aria-required="true" />
+                    <span asp-validation-for="Input!.ZipCode" class="@validation"></span>
+                  </div>
+                  <div>
+                    <label asp-for="Input!.PhoneNumber" class="@label"></label>
+                    <input asp-for="Input!.PhoneNumber" class="@input" autocomplete="phone number" aria-required="true" />
+                    <span asp-validation-for="Input!.PhoneNumber" class="@validation"></span>
+                  </div>
+                  <div>
+                    <label asp-for="Input!.Gender" class="@label"></label>
+                    <select asp-for="Input!.Gender" class="@input">
+                      <option value=''>Gender</option>
+                      <option value='M'>Male</option>
+                      <option value='F'>Female</option>
+                    </select>
+                    <span asp-validation-for="Input!.Gender" class="@validation"></span>
+                  </div>
+                </div>
+
+                <button id="registerSubmit" type="submit"
+                        class="@btnPrimary tw:mt-5 tw:w-full tw:py-3 tw:text-base">Register</button>
+              </form>
             </div>
           </div>
 
-          <button id="registerSubmit" type="submit" class="@btnPrimary tw:mt-5 tw:w-full tw:py-3 tw:text-base">Register</button>
-        </form>
-      </div>
-    </div>
-
-    <div class="tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:shadow-sm">
-      <div class="tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
-        <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">Existing Staff</h2>
-      </div>
-      <div class="tw:p-4">
-        <form method="get">
-          <div class="tw:relative">
-            <input type="text" class="@input tw:py-3 tw:text-base" id="staffSearch" name="staffSearch" placeholder="Search Staff" autocomplete="off">
+          <div class="tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:shadow-sm">
+            <div class="tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+              <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">Existing Staff</h2>
+            </div>
+            <div class="tw:p-4">
+              <form method="get">
+                <div class="tw:relative">
+                  <input type="text" class="@input tw:py-3 tw:text-base" id="staffSearch" name="staffSearch"
+                         placeholder="Search Staff" autocomplete="off">
+                </div>
+              </form>
+            </div>
           </div>
-        </form>
+        </div>
       </div>
-    </div>
-  </div>
-</div>
 
-@section Scripts {
-    <partial name="_ValidationScriptsPartial" />
-}
-<script>
-    (function () {
-        var input = document.getElementById('staffSearch');
-        var timer = null;
-        var container = null;
+      @section Scripts {
+        <partial name="_ValidationScriptsPartial" />
+      }
+      <script>
+        (function () {
+          var input = document.getElementById('staffSearch');
+          var timer = null;
+          var container = null;
 
-        function ensureContainer() {
+          function ensureContainer() {
             if (!container) {
-                container = document.createElement('div');
-                container.className = 'tw:absolute tw:z-10 tw:mt-1 tw:max-h-60 tw:w-full tw:overflow-y-auto tw:rounded-md tw:border tw:border-slate-200 tw:bg-white tw:shadow-lg';
-                input.parentNode.appendChild(container);
+              container = document.createElement('div');
+              container.className = 'tw:absolute tw:z-10 tw:mt-1 tw:max-h-60 tw:w-full tw:overflow-y-auto tw:rounded-md tw:border tw:border-slate-200 tw:bg-white tw:shadow-lg';
+              input.parentNode.appendChild(container);
             }
             return container;
-        }
+          }
 
-        function renderSuggestions(emails) {
+          function renderSuggestions(emails) {
             var c = ensureContainer();
             c.innerHTML = '';
             emails.forEach(function (email) {
-                var el = document.createElement('button');
-                el.type = 'button';
-                el.className = 'tw:block tw:w-full tw:cursor-pointer tw:border-0 tw:bg-transparent tw:px-3 tw:py-2 tw:text-left tw:text-sm tw:text-slate-700 tw:hover:bg-slate-50';
-                el.textContent = email;
-                el.addEventListener('click', function () {
-                    input.value = email;
-                    c.innerHTML = '';
-                    fetch('/api/search/staff-data/' + encodeURIComponent(email))
-                        .then(function (r) { return r.json(); })
-                        .then(function (data) {
-                            window.location.assign('/staff-clockin/' + data.staffId);
-                        });
-                });
-                c.appendChild(el);
+              var el = document.createElement('button');
+              el.type = 'button';
+              el.className = 'tw:block tw:w-full tw:cursor-pointer tw:border-0 tw:bg-transparent tw:px-3 tw:py-2 tw:text-left tw:text-sm tw:text-slate-700 tw:hover:bg-slate-50';
+              el.textContent = email;
+              el.addEventListener('click', function () {
+                input.value = email;
+                c.innerHTML = '';
+                fetch('/api/search/staff-data/' + encodeURIComponent(email))
+                  .then(function (r) { return r.json(); })
+                  .then(function (data) {
+                    window.location.assign('/staff-clockin/' + data.staffId);
+                  });
+              });
+              c.appendChild(el);
             });
-        }
+          }
 
-        input.addEventListener('input', function (e) {
+          input.addEventListener('input', function (e) {
             var q = e.target.value;
             if (timer) clearTimeout(timer);
             if (!q || q.length < 2) { if (container) container.innerHTML = ''; return; }
             timer = setTimeout(function () {
-                fetch('/api/search/staff?term=' + encodeURIComponent(q))
-                    .then(function (r) { return r.ok ? r.json() : []; })
-                    .then(renderSuggestions)
-                    .catch(function () { if (container) container.innerHTML = ''; });
+              fetch('/api/search/staff?term=' + encodeURIComponent(q))
+                .then(function (r) { return r.ok ? r.json() : []; })
+                .then(renderSuggestions)
+                .catch(function () { if (container) container.innerHTML = ''; });
             }, 250);
-        });
+          });
 
-        document.addEventListener('click', function (evt) {
+          document.addEventListener('click', function (evt) {
             if (container && !container.contains(evt.target) && evt.target !== input) {
-                container.innerHTML = '';
+              container.innerHTML = '';
             }
-        });
-    })();
-</script>
+          });
+        })();
+      </script>

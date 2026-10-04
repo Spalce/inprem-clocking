@@ -4,18 +4,18 @@
 @using InpremClockingApp.Models;
 @attribute [Authorize]
 @{
-    Layout = "Shared/_MainLayout";
-    ViewData["Title"] = "Volunteer Clocking";
-    var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
-    var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
-    var validation = "tw:mt-1 tw:block tw:text-xs tw:text-red-600";
-    var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
-    var btnWhite = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-slate-300 tw:bg-white tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-slate-700 tw:hover:bg-slate-50";
+  Layout = "Shared/_MainLayout";
+  ViewData["Title"] = "Volunteer Clocking";
+  var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
+  var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
+  var validation = "tw:mt-1 tw:block tw:text-xs tw:text-red-600";
+  var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
+  var btnWhite = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-slate-300 tw:bg-white tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-slate-700 tw:hover:bg-slate-50";
 }
 
 <div class="tw:mx-auto tw:max-w-7xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
   <div class="tw:mb-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4">
-    <h1 class="tw:text-2xl tw:font-semibold tw:text-slate-900">Volunteer Clocking</h1>
+    <h1 class="tw:text-2xl tw:font-semibold tw:text-slate-900">Welcome</h1>
     <nav class="tw:text-sm tw:text-slate-500">
       <a href="#" class="tw:hover:text-slate-700">Home</a>
       <span class="tw:mx-1">/</span>
@@ -23,243 +23,251 @@
     </nav>
   </div>
 
-  <p class="tw:mb-6 tw:text-sm tw:text-red-600">If you need your hours verified please send an email to inpremcc@gmail.com. Provide your full name, email used for registration and dates</p>
+  <p class="tw:mb-6 tw:text-sm tw:text-red-600">If you need your hours verified please send an email to
+    inpremcc@gmail.com. Provide your full name, email used for registration and dates</p>
 
-  <div class="tw:grid tw:grid-cols-1 tw:gap-6 tw:lg:grid-cols-2">
-    <div class="tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:shadow-sm">
-      <div class="tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
-        <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">New Volunteer</h2>
-      </div>
-      <div class="tw:p-4">
-        @if (TempData["Message"] != null)
-        {
-          <div class="tw:mb-4 tw:rounded-md tw:bg-emerald-50 tw:px-3 tw:py-2 tw:text-sm tw:text-emerald-700">@TempData["Message"]</div>
-        }
-
-        <form id="registerForm" method="post">
-          <div asp-validation-summary="ModelOnly" class="tw:mb-3 tw:text-sm tw:text-red-600"></div>
-
-          @if (Model.NameConflict)
+    <div class="tw:grid tw:grid-cols-1 tw:gap-6 tw:lg:grid-cols-2">
+      <div class="tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:shadow-sm">
+        <div class="tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+          <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">New Volunteer</h2>
+        </div>
+        <div class="tw:p-4">
+          @if (TempData["Message"] != null)
           {
-            <div class="tw:mb-4 tw:rounded-md tw:bg-amber-50 tw:p-3">
-              <p class="tw:mb-2 tw:text-sm tw:text-amber-800">A volunteer named <strong>@Model.ExistingName</strong> is already registered. Is this you?</p>
-              <div class="tw:flex tw:gap-2">
-                <a href="/volunteer-clockin/@Model.ExistingId" class="@btnPrimary">Yes, that's me</a>
-                <button type="submit" name="ConfirmDifferentPerson" value="true" class="@btnWhite">No, this is a different person</button>
+            <div class="tw:mb-4 tw:rounded-md tw:bg-emerald-50 tw:px-3 tw:py-2 tw:text-sm tw:text-emerald-700">
+              @TempData["Message"]</div>
+            }
+
+            <form id="registerForm" method="post">
+              <div asp-validation-summary="ModelOnly" class="tw:mb-3 tw:text-sm tw:text-red-600"></div>
+
+              @if (Model.NameConflict)
+              {
+                <div class="tw:mb-4 tw:rounded-md tw:bg-amber-50 tw:p-3">
+                  <p class="tw:mb-2 tw:text-sm tw:text-amber-800">A volunteer named <strong>@Model.ExistingName</strong> is
+                    already registered. Is this you?</p>
+                    <div class="tw:flex tw:gap-2">
+                      <a href="/volunteer-clockin/@Model.ExistingId" class="@btnPrimary">Yes, that's me</a>
+                      <button type="submit" name="ConfirmDifferentPerson" value="true" class="@btnWhite">No, this is a different
+                        person</button>
+                      </div>
+                    </div>
+                  }
+
+                  <div class="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2">
+                    <div>
+                      <label asp-for="Input!.FirstName" class="@label"></label>
+                      <input asp-for="Input!.FirstName" class="@input" autocomplete="first name" aria-required="true" />
+                      <span asp-validation-for="Input!.FirstName" class="@validation"></span>
+                    </div>
+                    <div>
+                      <label asp-for="Input!.LastName" class="@label"></label>
+                      <input asp-for="Input!.LastName" class="@input" autocomplete="user name" aria-required="true" />
+                      <span asp-validation-for="Input!.LastName" class="@validation"></span>
+                    </div>
+                    <div>
+                      <label asp-for="Input!.EmailAddress" class="@label"></label>
+                      <input asp-for="Input!.EmailAddress" class="@input" autocomplete="email" aria-required="true" />
+                      <span asp-validation-for="Input!.EmailAddress" class="@validation"></span>
+                    </div>
+                    <div>
+                      <label asp-for="Input!.ZipCode" class="@label"></label>
+                      <input asp-for="Input!.ZipCode" class="@input" autocomplete="zip code" aria-required="true" />
+                      <span asp-validation-for="Input!.ZipCode" class="@validation"></span>
+                    </div>
+                    <div>
+                      <label asp-for="Input!.PhoneNumber" class="@label"></label>
+                      <input asp-for="Input!.PhoneNumber" class="@input" autocomplete="phone number" aria-required="true" />
+                      <span asp-validation-for="Input!.PhoneNumber" class="@validation"></span>
+                    </div>
+                    <div>
+                      <label asp-for="Input!.Gender" class="@label"></label>
+                      <select asp-for="Input!.Gender" class="@input" placeholder="Gender">
+                        <option value=''>Gender</option>
+                        <option value='M'>Male</option>
+                        <option value='F'>Female</option>
+                      </select>
+                      <span asp-validation-for="Input!.Gender" class="@validation"></span>
+                    </div>
+                    <div class="tw:sm:col-span-2">
+                      <label asp-for="Input!.VolunteerCategory" class="@label">Which volunteer category do you fall
+                        under?</label>
+                        <select asp-for="Input!.VolunteerCategory" class="@input" required>
+                          <option value="">-- Select category --</option>
+                          <option value="@VolunteerCategories.MandatedCommunityHours">Mandated Community Hours</option>
+                          <option value="@VolunteerCategories.MofcVolunteerHub">MOFC Volunteer Hub</option>
+                          <option value="@VolunteerCategories.EducationalPurposes">Educational Purposes</option>
+                          <option value="@VolunteerCategories.CorporateVolunteering">Corporate Volunteering</option>
+                          <option value="@VolunteerCategories.PersonalOrIndividualVolunteering">Personal or Individual
+                            Volunteering</option>
+                          </select>
+                          <span asp-validation-for="Input!.VolunteerCategory" class="@validation"></span>
+                        </div>
+                        <div class="tw:sm:col-span-2" id="mandateTypeGroup" style="display:none;">
+                          <label asp-for="Input!.MandateType" class="@label">Which of these applies to you?</label>
+                          <select asp-for="Input!.MandateType" class="@input">
+                            <option value="">-- Select --</option>
+                            <option value="@VolunteerMandateTypes.CourtOrders">Court orders</option>
+                            <option value="@VolunteerMandateTypes.Diversion">Diversion</option>
+                            <option value="@VolunteerMandateTypes.YouthDetention">Youth Detention</option>
+                          </select>
+                          <span asp-validation-for="Input!.MandateType" class="@validation"></span>
+                        </div>
+                        <div id="institutionGroup" style="display:none;">
+                          <label asp-for="Input!.InstitutionName" class="@label"></label>
+                          <input asp-for="Input!.InstitutionName" class="@input" />
+                          <span asp-validation-for="Input!.InstitutionName" class="@validation"></span>
+                        </div>
+                        <div id="placeOfWorkGroup" style="display:none;">
+                          <label asp-for="Input!.PlaceOfWork" class="@label"></label>
+                          <input asp-for="Input!.PlaceOfWork" class="@input" />
+                          <span asp-validation-for="Input!.PlaceOfWork" class="@validation"></span>
+                        </div>
+                        <div id="contactPersonGroup" style="display:none;">
+                          <label asp-for="Input!.ContactPerson" class="@label"></label>
+                          <input asp-for="Input!.ContactPerson" class="@input" />
+                          <span asp-validation-for="Input!.ContactPerson" class="@validation"></span>
+                        </div>
+                        <div id="contactPersonPositionGroup" style="display:none;">
+                          <label asp-for="Input!.ContactPersonPosition" class="@label"></label>
+                          <input asp-for="Input!.ContactPersonPosition" class="@input" />
+                          <span asp-validation-for="Input!.ContactPersonPosition" class="@validation"></span>
+                        </div>
+                        <div id="contactPersonEmailGroup" style="display:none;">
+                          <label asp-for="Input!.ContactPersonEmail" class="@label"></label>
+                          <input asp-for="Input!.ContactPersonEmail" class="@input" />
+                          <span asp-validation-for="Input!.ContactPersonEmail" class="@validation"></span>
+                        </div>
+                        <div id="contactPersonPhoneGroup" style="display:none;">
+                          <label asp-for="Input!.ContactPersonPhone" class="@label"></label>
+                          <input asp-for="Input!.ContactPersonPhone" class="@input" />
+                          <span asp-validation-for="Input!.ContactPersonPhone" class="@validation"></span>
+                        </div>
+                      </div>
+
+                      <button id="registerSubmit" type="submit"
+                              class="@btnPrimary tw:mt-5 tw:w-full tw:py-3 tw:text-base">Register</button>
+                    </form>
+                  </div>
+                </div>
+
+                <div class="tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:shadow-sm">
+                  <div class="tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+                    <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">Existing Volunteer</h2>
+                  </div>
+                  <div class="tw:p-4">
+                    <form method="get">
+                      <div class="tw:relative">
+                        <input type="text" class="@input tw:py-3 tw:text-base" id="volunteerSearch" name="volunteerSearch"
+                               placeholder="Search Volunteer" autocomplete="off">
+                      </div>
+                    </form>
+                  </div>
+                </div>
               </div>
             </div>
-          }
 
-          <div class="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2">
-            <div>
-              <label asp-for="Input!.FirstName" class="@label"></label>
-              <input asp-for="Input!.FirstName" class="@input" autocomplete="first name" aria-required="true"/>
-              <span asp-validation-for="Input!.FirstName" class="@validation"></span>
-            </div>
-            <div>
-              <label asp-for="Input!.LastName" class="@label"></label>
-              <input asp-for="Input!.LastName" class="@input" autocomplete="user name" aria-required="true"/>
-              <span asp-validation-for="Input!.LastName" class="@validation"></span>
-            </div>
-            <div>
-              <label asp-for="Input!.EmailAddress" class="@label"></label>
-              <input asp-for="Input!.EmailAddress" class="@input" autocomplete="email" aria-required="true"/>
-              <span asp-validation-for="Input!.EmailAddress" class="@validation"></span>
-            </div>
-            <div>
-              <label asp-for="Input!.ZipCode" class="@label"></label>
-              <input asp-for="Input!.ZipCode" class="@input" autocomplete="zip code" aria-required="true"/>
-              <span asp-validation-for="Input!.ZipCode" class="@validation"></span>
-            </div>
-            <div>
-              <label asp-for="Input!.PhoneNumber" class="@label"></label>
-              <input asp-for="Input!.PhoneNumber" class="@input" autocomplete="phone number" aria-required="true"/>
-              <span asp-validation-for="Input!.PhoneNumber" class="@validation"></span>
-            </div>
-            <div>
-              <label asp-for="Input!.Gender" class="@label"></label>
-              <select asp-for="Input!.Gender" class="@input" placeholder="Gender">
-                <option value=''>Gender</option>
-                <option value='M'>Male</option>
-                <option value='F'>Female</option>
-              </select>
-              <span asp-validation-for="Input!.Gender" class="@validation"></span>
-            </div>
-            <div class="tw:sm:col-span-2">
-              <label asp-for="Input!.VolunteerCategory" class="@label">Which volunteer category do you fall under?</label>
-              <select asp-for="Input!.VolunteerCategory" class="@input" required>
-                <option value="">-- Select category --</option>
-                <option value="@VolunteerCategories.MandatedCommunityHours">Mandated Community Hours</option>
-                <option value="@VolunteerCategories.MofcVolunteerHub">MOFC Volunteer Hub</option>
-                <option value="@VolunteerCategories.EducationalPurposes">Educational Purposes</option>
-                <option value="@VolunteerCategories.CorporateVolunteering">Corporate Volunteering</option>
-                <option value="@VolunteerCategories.PersonalOrIndividualVolunteering">Personal or Individual Volunteering</option>
-              </select>
-              <span asp-validation-for="Input!.VolunteerCategory" class="@validation"></span>
-            </div>
-            <div class="tw:sm:col-span-2" id="mandateTypeGroup" style="display:none;">
-              <label asp-for="Input!.MandateType" class="@label">Which of these applies to you?</label>
-              <select asp-for="Input!.MandateType" class="@input">
-                <option value="">-- Select --</option>
-                <option value="@VolunteerMandateTypes.CourtOrders">Court orders</option>
-                <option value="@VolunteerMandateTypes.Diversion">Diversion</option>
-                <option value="@VolunteerMandateTypes.YouthDetention">Youth Detention</option>
-              </select>
-              <span asp-validation-for="Input!.MandateType" class="@validation"></span>
-            </div>
-            <div id="institutionGroup" style="display:none;">
-              <label asp-for="Input!.InstitutionName" class="@label"></label>
-              <input asp-for="Input!.InstitutionName" class="@input" />
-              <span asp-validation-for="Input!.InstitutionName" class="@validation"></span>
-            </div>
-            <div id="placeOfWorkGroup" style="display:none;">
-              <label asp-for="Input!.PlaceOfWork" class="@label"></label>
-              <input asp-for="Input!.PlaceOfWork" class="@input" />
-              <span asp-validation-for="Input!.PlaceOfWork" class="@validation"></span>
-            </div>
-            <div id="contactPersonGroup" style="display:none;">
-              <label asp-for="Input!.ContactPerson" class="@label"></label>
-              <input asp-for="Input!.ContactPerson" class="@input" />
-              <span asp-validation-for="Input!.ContactPerson" class="@validation"></span>
-            </div>
-            <div id="contactPersonPositionGroup" style="display:none;">
-              <label asp-for="Input!.ContactPersonPosition" class="@label"></label>
-              <input asp-for="Input!.ContactPersonPosition" class="@input" />
-              <span asp-validation-for="Input!.ContactPersonPosition" class="@validation"></span>
-            </div>
-            <div id="contactPersonEmailGroup" style="display:none;">
-              <label asp-for="Input!.ContactPersonEmail" class="@label"></label>
-              <input asp-for="Input!.ContactPersonEmail" class="@input" />
-              <span asp-validation-for="Input!.ContactPersonEmail" class="@validation"></span>
-            </div>
-            <div id="contactPersonPhoneGroup" style="display:none;">
-              <label asp-for="Input!.ContactPersonPhone" class="@label"></label>
-              <input asp-for="Input!.ContactPersonPhone" class="@input" />
-              <span asp-validation-for="Input!.ContactPersonPhone" class="@validation"></span>
-            </div>
-          </div>
-
-          <button id="registerSubmit" type="submit" class="@btnPrimary tw:mt-5 tw:w-full tw:py-3 tw:text-base">Register</button>
-        </form>
-      </div>
-    </div>
-
-    <div class="tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:shadow-sm">
-      <div class="tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
-        <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">Existing Volunteer</h2>
-      </div>
-      <div class="tw:p-4">
-        <form method="get">
-          <div class="tw:relative">
-            <input type="text" class="@input tw:py-3 tw:text-base" id="volunteerSearch" name="volunteerSearch" placeholder="Search Volunteer" autocomplete="off">
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
-@section Scripts {
-    <partial name="_ValidationScriptsPartial" />
-}
-<script>
-    // Show/hide the volunteer category's conditional follow-up fields, and only mark
-    // them required while they're actually visible.
-    (function () {
-        var categorySelect = document.getElementById('Input_VolunteerCategory');
-        var mandateGroup = document.getElementById('mandateTypeGroup');
-        var mandateSelect = document.getElementById('Input_MandateType');
-        var institutionGroup = document.getElementById('institutionGroup');
-        var institutionInput = document.getElementById('Input_InstitutionName');
-        var placeOfWorkGroup = document.getElementById('placeOfWorkGroup');
-        var placeOfWorkInput = document.getElementById('Input_PlaceOfWork');
-        var contactPersonGroup = document.getElementById('contactPersonGroup');
-        var contactPersonInput = document.getElementById('Input_ContactPerson');
-        var contactPersonPositionGroup = document.getElementById('contactPersonPositionGroup');
-        var contactPersonPositionInput = document.getElementById('Input_ContactPersonPosition');
-        var contactPersonEmailGroup = document.getElementById('contactPersonEmailGroup');
-        var contactPersonEmailInput = document.getElementById('Input_ContactPersonEmail');
-        var contactPersonPhoneGroup = document.getElementById('contactPersonPhoneGroup');
-        var contactPersonPhoneInput = document.getElementById('Input_ContactPersonPhone');
-
-        var MANDATED = '@VolunteerCategories.MandatedCommunityHours';
-        var EDUCATIONAL = '@VolunteerCategories.EducationalPurposes';
-        var CORPORATE = '@VolunteerCategories.CorporateVolunteering';
-
-        function setVisible(group, input, visible) {
-            group.style.display = visible ? '' : 'none';
-            input.required = visible;
-            if (!visible) input.value = '';
-        }
-
-        function updateConditionalFields() {
-            var value = categorySelect.value;
-            setVisible(mandateGroup, mandateSelect, value === MANDATED);
-            setVisible(institutionGroup, institutionInput, value === EDUCATIONAL);
-            setVisible(placeOfWorkGroup, placeOfWorkInput, value === CORPORATE);
-            setVisible(contactPersonGroup, contactPersonInput, value === EDUCATIONAL || value === CORPORATE);
-            // Position/email/phone are only collected for Educational Purposes, unlike the
-            // contact person's name above which is also asked for Corporate Volunteering.
-            setVisible(contactPersonPositionGroup, contactPersonPositionInput, value === EDUCATIONAL);
-            setVisible(contactPersonEmailGroup, contactPersonEmailInput, value === EDUCATIONAL);
-            setVisible(contactPersonPhoneGroup, contactPersonPhoneInput, value === EDUCATIONAL);
-        }
-
-        categorySelect.addEventListener('change', updateConditionalFields);
-        updateConditionalFields();
-    })();
-
-    (function () {
-        var input = document.getElementById('volunteerSearch');
-        var timer = null;
-        var container = null;
-
-        function ensureContainer() {
-            if (!container) {
-                container = document.createElement('div');
-                container.className = 'tw:absolute tw:z-10 tw:mt-1 tw:max-h-60 tw:w-full tw:overflow-y-auto tw:rounded-md tw:border tw:border-slate-200 tw:bg-white tw:shadow-lg';
-                input.parentNode.appendChild(container);
+            @section Scripts {
+              <partial name="_ValidationScriptsPartial" />
             }
-            return container;
-        }
+            <script>
+              // Show/hide the volunteer category's conditional follow-up fields, and only mark
+              // them required while they're actually visible.
+              (function () {
+                var categorySelect = document.getElementById('Input_VolunteerCategory');
+                var mandateGroup = document.getElementById('mandateTypeGroup');
+                var mandateSelect = document.getElementById('Input_MandateType');
+                var institutionGroup = document.getElementById('institutionGroup');
+                var institutionInput = document.getElementById('Input_InstitutionName');
+                var placeOfWorkGroup = document.getElementById('placeOfWorkGroup');
+                var placeOfWorkInput = document.getElementById('Input_PlaceOfWork');
+                var contactPersonGroup = document.getElementById('contactPersonGroup');
+                var contactPersonInput = document.getElementById('Input_ContactPerson');
+                var contactPersonPositionGroup = document.getElementById('contactPersonPositionGroup');
+                var contactPersonPositionInput = document.getElementById('Input_ContactPersonPosition');
+                var contactPersonEmailGroup = document.getElementById('contactPersonEmailGroup');
+                var contactPersonEmailInput = document.getElementById('Input_ContactPersonEmail');
+                var contactPersonPhoneGroup = document.getElementById('contactPersonPhoneGroup');
+                var contactPersonPhoneInput = document.getElementById('Input_ContactPersonPhone');
 
-        function renderSuggestions(emails) {
-            var c = ensureContainer();
-            c.innerHTML = '';
-            emails.forEach(function (email) {
-                var el = document.createElement('button');
-                el.type = 'button';
-                el.className = 'tw:block tw:w-full tw:cursor-pointer tw:border-0 tw:bg-transparent tw:px-3 tw:py-2 tw:text-left tw:text-sm tw:text-slate-700 tw:hover:bg-slate-50';
-                el.textContent = email;
-                el.addEventListener('click', function () {
-                    input.value = email;
-                    c.innerHTML = '';
-                    fetch('/api/search/volunteer-data/' + encodeURIComponent(email))
+                var MANDATED = '@VolunteerCategories.MandatedCommunityHours';
+                var EDUCATIONAL = '@VolunteerCategories.EducationalPurposes';
+                var CORPORATE = '@VolunteerCategories.CorporateVolunteering';
+
+                function setVisible(group, input, visible) {
+                  group.style.display = visible ? '' : 'none';
+                  input.required = visible;
+                  if (!visible) input.value = '';
+                }
+
+                function updateConditionalFields() {
+                  var value = categorySelect.value;
+                  setVisible(mandateGroup, mandateSelect, value === MANDATED);
+                  setVisible(institutionGroup, institutionInput, value === EDUCATIONAL);
+                  setVisible(placeOfWorkGroup, placeOfWorkInput, value === CORPORATE);
+                  setVisible(contactPersonGroup, contactPersonInput, value === EDUCATIONAL || value === CORPORATE);
+                  // Position/email/phone are only collected for Educational Purposes, unlike the
+                  // contact person's name above which is also asked for Corporate Volunteering.
+                  setVisible(contactPersonPositionGroup, contactPersonPositionInput, value === EDUCATIONAL);
+                  setVisible(contactPersonEmailGroup, contactPersonEmailInput, value === EDUCATIONAL);
+                  setVisible(contactPersonPhoneGroup, contactPersonPhoneInput, value === EDUCATIONAL);
+                }
+
+                categorySelect.addEventListener('change', updateConditionalFields);
+                updateConditionalFields();
+              })();
+
+              (function () {
+                var input = document.getElementById('volunteerSearch');
+                var timer = null;
+                var container = null;
+
+                function ensureContainer() {
+                  if (!container) {
+                    container = document.createElement('div');
+                    container.className = 'tw:absolute tw:z-10 tw:mt-1 tw:max-h-60 tw:w-full tw:overflow-y-auto tw:rounded-md tw:border tw:border-slate-200 tw:bg-white tw:shadow-lg';
+                    input.parentNode.appendChild(container);
+                  }
+                  return container;
+                }
+
+                function renderSuggestions(emails) {
+                  var c = ensureContainer();
+                  c.innerHTML = '';
+                  emails.forEach(function (email) {
+                    var el = document.createElement('button');
+                    el.type = 'button';
+                    el.className = 'tw:block tw:w-full tw:cursor-pointer tw:border-0 tw:bg-transparent tw:px-3 tw:py-2 tw:text-left tw:text-sm tw:text-slate-700 tw:hover:bg-slate-50';
+                    el.textContent = email;
+                    el.addEventListener('click', function () {
+                      input.value = email;
+                      c.innerHTML = '';
+                      fetch('/api/search/volunteer-data/' + encodeURIComponent(email))
                         .then(function (r) { return r.json(); })
                         .then(function (data) {
-                            window.location.assign('/volunteer-clockin/' + data.volunteerId);
+                          window.location.assign('/volunteer-clockin/' + data.volunteerId);
                         });
+                    });
+                    c.appendChild(el);
+                  });
+                }
+
+                input.addEventListener('input', function (e) {
+                  var q = e.target.value;
+                  if (timer) clearTimeout(timer);
+                  if (!q || q.length < 2) { if (container) container.innerHTML = ''; return; }
+                  timer = setTimeout(function () {
+                    fetch('/api/search/volunteer?term=' + encodeURIComponent(q))
+                      .then(function (r) { return r.ok ? r.json() : []; })
+                      .then(renderSuggestions)
+                      .catch(function () { if (container) container.innerHTML = ''; });
+                  }, 250);
                 });
-                c.appendChild(el);
-            });
-        }
 
-        input.addEventListener('input', function (e) {
-            var q = e.target.value;
-            if (timer) clearTimeout(timer);
-            if (!q || q.length < 2) { if (container) container.innerHTML = ''; return; }
-            timer = setTimeout(function () {
-                fetch('/api/search/volunteer?term=' + encodeURIComponent(q))
-                    .then(function (r) { return r.ok ? r.json() : []; })
-                    .then(renderSuggestions)
-                    .catch(function () { if (container) container.innerHTML = ''; });
-            }, 250);
-        });
-
-        document.addEventListener('click', function (evt) {
-            if (container && !container.contains(evt.target) && evt.target !== input) {
-                container.innerHTML = '';
-            }
-        });
-    })();
-</script>
+                document.addEventListener('click', function (evt) {
+                  if (container && !container.contains(evt.target) && evt.target !== input) {
+                    container.innerHTML = '';
+                  }
+                });
+              })();
+            </script>
