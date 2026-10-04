@@ -216,6 +216,56 @@ public class StaffReportsController : ControllerBase
                             .FontSize(11);
 
                         column.Item()
+                            .PaddingTop(10)
+                            .Table(table =>
+                            {
+                                table.ColumnsDefinition(columns =>
+                                {
+                                    columns.RelativeColumn(2);
+                                    columns.RelativeColumn(2);
+                                    columns.RelativeColumn(2);
+                                    columns.RelativeColumn(2);
+                                    columns.RelativeColumn(2);
+                                    columns.RelativeColumn(1);
+                                });
+
+                                table.Header(header =>
+                                {
+                                    header.Cell().Background(Colors.BlueGrey.Darken4).Padding(5).AlignCenter().Text("Full Name").FontColor(Colors.White).Bold();
+                                    header.Cell().Background(Colors.BlueGrey.Darken4).Padding(5).AlignCenter().Text("ClockIn").FontColor(Colors.White).Bold();
+                                    header.Cell().Background(Colors.BlueGrey.Darken4).Padding(5).AlignCenter().Text("ClockOut").FontColor(Colors.White).Bold();
+                                    header.Cell().Background(Colors.BlueGrey.Darken4).Padding(5).AlignCenter().Text("Leave On Break").FontColor(Colors.White).Bold();
+                                    header.Cell().Background(Colors.BlueGrey.Darken4).Padding(5).AlignCenter().Text("Return from Break").FontColor(Colors.White).Bold();
+                                    header.Cell().Background(Colors.BlueGrey.Darken4).Padding(5).AlignCenter().Text("Working Hours").FontColor(Colors.White).Bold();
+                                });
+
+                                if (rows.Count == 0)
+                                {
+                                    table.Cell().ColumnSpan(6).Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text("No clocking records found for this period.");
+                                }
+
+                                foreach (var item in rows)
+                                {
+                                    double workingHours = 0;
+                                    if (item.ClockInTime.HasValue && item.ClockOutTime.HasValue)
+                                    {
+                                        workingHours = (item.ClockOutTime.Value - item.ClockInTime.Value).TotalHours;
+                                        if (item.LeaveOnBreakTime.HasValue && item.ReturnOnBreakTime.HasValue)
+                                        {
+                                            workingHours -= (item.ReturnOnBreakTime.Value - item.LeaveOnBreakTime.Value).TotalHours;
+                                        }
+                                    }
+
+                                    table.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(staffName);
+                                    table.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(_tenantClock.ToLocal(item.ClockInTime)?.ToString("dd/MM/yyyy HH:mm") ?? "-");
+                                    table.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(_tenantClock.ToLocal(item.ClockOutTime)?.ToString("dd/MM/yyyy HH:mm") ?? "-");
+                                    table.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(_tenantClock.ToLocal(item.LeaveOnBreakTime)?.ToString("dd/MM/yyyy HH:mm") ?? "-");
+                                    table.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(_tenantClock.ToLocal(item.ReturnOnBreakTime)?.ToString("dd/MM/yyyy HH:mm") ?? "-");
+                                    table.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(FormatHours(workingHours));
+                                }
+                            });
+
+                        column.Item()
                             .PaddingTop(15)
                             .Border(1)
                             .Padding(15)
@@ -459,4 +509,13 @@ public class StaffReportsController : ControllerBase
         return File(pdfBytes, "application/pdf", "staff-list.pdf");
     }
 
+    // Matches HoursWorked.cshtml.cs's own FormatHours exactly, so the PDF's per-row Working
+    // Hours column reads the same way as the on-screen table it's downloaded from.
+    private static string FormatHours(double hours)
+    {
+        var totalMinutes = (int)Math.Round(hours * 60);
+        var wholeHours = totalMinutes / 60;
+        var minutes = totalMinutes % 60;
+        return $"{wholeHours:D2}:{minutes:D2}";
+    }
 }
