@@ -4,102 +4,37 @@
 @{
     ViewData["Title"] = "Log in";
 
-    // Presentation-only branch - no change to Login.cshtml.cs (OnGet/OnPost, redirect
-    // behavior, or model binding are all untouched). Model.ReturnUrl already exists and is
-    // already populated identically whether this is a fresh visit or a redirect from an
-    // [Authorize]-protected page; this just reads that existing value to pick which look to
-    // render. Kiosk-bound destinations are the sign-up/clock-in pages a walk-up device lands
-    // on; everything else (including the "no real destination" case - empty, or "/" from
-    // hitting the root Index page while signed out) is treated as kiosk too, since
-    // OnPostAsync below already falls back to VolunteerAttendance for exactly those two
-    // cases (`string.IsNullOrEmpty(returnUrl) || returnUrl == "/"`) - this mirrors that same
-    // condition so the page shown here never disagrees with where sign-in actually lands.
-    var kioskReturnPrefixes = new[] { "/staff-clockin", "/volunteer-clockin", "/staffattendance", "/volunteerattendance" };
-    var isKioskLogin = string.IsNullOrEmpty(Model.ReturnUrl)
-        || Model.ReturnUrl == "/"
-        || kioskReturnPrefixes.Any(p => Model.ReturnUrl.StartsWith(p, StringComparison.OrdinalIgnoreCase));
-
     var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
     var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
     var btnPrimary = "tw:inline-flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
-
-    // Kiosk variant: larger touch targets and a friendlier tone, matching
-    // StaffClockPage.cshtml/VolunteerClockPage.cshtml's visual language.
-    var kioskInput = "tw:w-full tw:rounded-lg tw:border tw:border-slate-300 tw:px-4 tw:py-3 tw:text-base tw:text-slate-900 tw:focus:border-emerald-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-emerald-500";
-    var kioskLabel = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
-    var kioskBtn = "tw:block tw:w-full tw:cursor-pointer tw:rounded-lg tw:border-0 tw:bg-emerald-600 tw:px-6 tw:py-4 tw:text-center tw:text-lg tw:font-semibold tw:text-white tw:shadow-sm tw:hover:bg-emerald-700";
 }
 
-@if (isKioskLogin)
-{
-    <div class="tw:mb-6 tw:text-center">
-        <a href="/" class="tw:text-2xl tw:font-semibold tw:text-slate-900"><b>Inprem</b>Clockin</a>
-        <p class="tw:mt-1 tw:text-sm tw:text-slate-500">Staff &amp; Volunteer Clocking</p>
-    </div>
+<div class="tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:p-8 tw:shadow-sm">
+    <h1 class="tw:mb-4 tw:text-center tw:text-lg tw:font-semibold tw:text-slate-900">Admin Log in only</h1>
 
-    <div class="tw:rounded-xl tw:border tw:border-slate-200 tw:bg-white tw:p-8 tw:shadow-sm">
-        <p class="tw:mb-5 tw:text-center tw:text-base tw:font-medium tw:text-slate-600">Sign in to clock in or out</p>
-
-        <form asp-page="Login" method="post" asp-route-returnUrl="@Model.ReturnUrl">
-            <div asp-validation-summary="ModelOnly" class="tw:mb-3 tw:text-sm tw:text-red-600"></div>
-            <div class="tw:mb-4">
-                <label class="@kioskLabel">Email</label>
-                <input asp-for="Input.Email" type="email" class="@kioskInput" placeholder="Email">
-            </div>
-            <div class="tw:mb-5">
-                <label class="@kioskLabel">Password</label>
-                <input asp-for="Input.Password" type="password" class="@kioskInput" placeholder="Password">
-            </div>
-            <div class="tw:mb-5 tw:flex tw:items-center tw:gap-2">
-                <input asp-for="Input.RememberMe" type="checkbox" id="remember" class="tw:h-4 tw:w-4 tw:rounded tw:border-slate-300">
-                <label for="remember" class="tw:text-sm tw:text-slate-700">
-                    @Html.DisplayNameFor(m => m.Input.RememberMe)
-                </label>
-            </div>
-            <button type="submit" class="@kioskBtn">Sign In</button>
-        </form>
-
-        <p class="tw:mt-5 tw:text-center tw:text-sm">
-            <a asp-area="Identity" asp-page="ForgotPassword" class="tw:text-slate-500 tw:hover:underline">I forgot my password</a>
-        </p>
-    </div>
-}
-else
-{
-    <div class="tw:mb-6 tw:text-center">
-        <a href="/" class="tw:text-2xl tw:font-semibold tw:text-slate-900"><b>Inprem</b>Clockin</a>
-    </div>
-
-    <div class="tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:p-8 tw:shadow-sm">
-        <div class="tw:mb-4 tw:flex tw:items-center tw:justify-center tw:gap-2">
-            <span class="tw:rounded tw:bg-slate-900 tw:px-2 tw:py-0.5 tw:text-xs tw:font-semibold tw:tracking-wide tw:text-white tw:uppercase">Back Office</span>
+    <form asp-page="Login" method="post" asp-route-returnUrl="@Model.ReturnUrl">
+        <div asp-validation-summary="ModelOnly" class="tw:mb-3 tw:text-sm tw:text-red-600"></div>
+        <div class="tw:mb-4">
+            <label class="@label">Email</label>
+            <input asp-for="Input.Email" type="email" class="@input" placeholder="Email">
         </div>
-        <p class="tw:mb-4 tw:text-center tw:text-sm tw:text-slate-600">Sign in to start your session</p>
+        <div class="tw:mb-4">
+            <label class="@label">Password</label>
+            <input asp-for="Input.Password" type="password" class="@input" placeholder="Password">
+        </div>
+        <div class="tw:mb-4 tw:flex tw:items-center tw:gap-2">
+            <input asp-for="Input.RememberMe" type="checkbox" id="remember" class="tw:h-4 tw:w-4 tw:rounded tw:border-slate-300">
+            <label for="remember" class="tw:text-sm tw:text-slate-700">
+                @Html.DisplayNameFor(m => m.Input.RememberMe)
+            </label>
+        </div>
+        <button type="submit" class="@btnPrimary">Log in</button>
+    </form>
 
-        <form asp-page="Login" method="post" asp-route-returnUrl="@Model.ReturnUrl">
-            <div asp-validation-summary="ModelOnly" class="tw:mb-3 tw:text-sm tw:text-red-600"></div>
-            <div class="tw:mb-4">
-                <label class="@label">Email</label>
-                <input asp-for="Input.Email" type="email" class="@input" placeholder="Email">
-            </div>
-            <div class="tw:mb-4">
-                <label class="@label">Password</label>
-                <input asp-for="Input.Password" type="password" class="@input" placeholder="Password">
-            </div>
-            <div class="tw:mb-4 tw:flex tw:items-center tw:gap-2">
-                <input asp-for="Input.RememberMe" type="checkbox" id="remember" class="tw:h-4 tw:w-4 tw:rounded tw:border-slate-300">
-                <label for="remember" class="tw:text-sm tw:text-slate-700">
-                    @Html.DisplayNameFor(m => m.Input.RememberMe)
-                </label>
-            </div>
-            <button type="submit" class="@btnPrimary">Sign In</button>
-        </form>
-
-        <p class="tw:mt-4 tw:text-center tw:text-sm">
-            <a asp-area="Identity" asp-page="ForgotPassword" class="tw:text-blue-600 tw:hover:underline">I forgot my password</a>
-        </p>
-    </div>
-}
+    <p class="tw:mt-4 tw:text-center tw:text-sm">
+        <a asp-area="Identity" asp-page="ForgotPassword" class="tw:text-blue-600 tw:hover:underline">Forgot your password?</a>
+    </p>
+</div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
