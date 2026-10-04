@@ -31,6 +31,14 @@
     <button id="vbtnAdd" class="@btnPrimary">Add New</button>
   </div>
 
+  <div class="tw:mb-3 tw:flex tw:flex-wrap tw:gap-2">
+    <button type="button" id="vbtnExportCopy" class="@actionBtn">Copy</button>
+    <button type="button" id="vbtnExportCsv" class="@actionBtn">CSV</button>
+    <button type="button" id="vbtnExportExcel" class="@actionBtn">Excel</button>
+    <button type="button" id="vbtnExportPdf" class="@actionBtn">PDF</button>
+    <button type="button" id="vbtnExportPrint" class="@actionBtn">Print</button>
+  </div>
+
   <div class="tw:overflow-hidden tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white">
     <div class="tw:overflow-x-auto">
       <table class="tw:min-w-full tw:divide-y tw:divide-slate-200" id="volunteerTable">
@@ -420,6 +428,65 @@
                 if (timer) clearTimeout(timer);
                 navigateSearch(searchInput.value || '');
             }
+        });
+
+        // Export buttons always act on every row matching the currently-applied Search filter
+        // (not just the page on screen), mirrored server-side in Volunteer.cshtml.cs's handlers.
+        function currentSearchParam() {
+            return new URLSearchParams(window.location.search).get('Search') || '';
+        }
+
+        function exportUrl(handler) {
+            return '?handler=' + handler + '&Search=' + encodeURIComponent(currentSearchParam());
+        }
+
+        function fetchAllRows() {
+            return fetch(exportUrl('ExportJson')).then(function (r) { return r.json(); });
+        }
+
+        document.getElementById('vbtnExportCsv').addEventListener('click', function () {
+            window.location.href = exportUrl('ExportCsv');
+        });
+
+        document.getElementById('vbtnExportExcel').addEventListener('click', function () {
+            window.location.href = exportUrl('ExportExcel');
+        });
+
+        document.getElementById('vbtnExportPdf').addEventListener('click', function () {
+            window.location.href = exportUrl('ExportPdf');
+        });
+
+        document.getElementById('vbtnExportCopy').addEventListener('click', function () {
+            fetchAllRows().then(function (rows) {
+                var lines = [['ID', 'First Name', 'Last Name', 'Email', 'Gender', 'Phone', 'Zip'].join('\t')];
+                rows.forEach(function (r) {
+                    lines.push([r.id, r.firstName, r.lastName, r.email, r.gender, r.phone, r.zip].join('\t'));
+                });
+                navigator.clipboard.writeText(lines.join('\n')).then(function () {
+                    showToast(rows.length + ' row(s) copied to clipboard', 3000, 'success');
+                }).catch(function () {
+                    showToast('Could not copy to clipboard', 3000, 'danger');
+                });
+            });
+        });
+
+        document.getElementById('vbtnExportPrint').addEventListener('click', function () {
+            fetchAllRows().then(function (rows) {
+                var html = '<html><head><title>Volunteer List</title></head><body>'
+                    + '<h3>Volunteer List</h3>'
+                    + '<table border="1" cellspacing="0" cellpadding="4">'
+                    + '<tr><th>ID</th><th>First Name</th><th>Last Name</th><th>Email</th><th>Gender</th><th>Phone</th><th>Zip</th></tr>';
+                rows.forEach(function (r) {
+                    html += '<tr><td>' + r.id + '</td><td>' + r.firstName + '</td><td>' + r.lastName + '</td><td>'
+                        + r.email + '</td><td>' + r.gender + '</td><td>' + r.phone + '</td><td>' + r.zip + '</td></tr>';
+                });
+                html += '</table></body></html>';
+                var w = window.open('', '_blank');
+                w.document.write(html);
+                w.document.close();
+                w.focus();
+                w.print();
+            });
         });
     })();
 </script>

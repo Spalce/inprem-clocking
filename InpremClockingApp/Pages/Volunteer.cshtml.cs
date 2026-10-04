@@ -1,4 +1,5 @@
 using InpremClockingApp.Data;
+using InpremClockingApp.Helpers;
 using InpremClockingApp.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -10,11 +11,13 @@ public class Volunteer : PageModel
 {
     private readonly VolunteerService _service;
     private readonly ApplicationDbContext _db;
+    private readonly ICurrentTenantProfile _tenantProfile;
 
-    public Volunteer(VolunteerService service, ApplicationDbContext db)
+    public Volunteer(VolunteerService service, ApplicationDbContext db, ICurrentTenantProfile tenantProfile)
     {
         _service = service;
         _db = db;
+        _tenantProfile = tenantProfile;
     }
 
     public IEnumerable<Models.Volunteer>? Volunteers { get; set; }
@@ -44,6 +47,42 @@ public class Volunteer : PageModel
         ViewData["TotalPages"] = result.TotalPages;
 
         return Page();
+    }
+
+    // Export buttons (Copy/CSV/Excel/PDF/Print) always export every row matching the current
+    // Search filter, not just the one page currently on screen - int.MaxValue as the page size
+    // reuses the same SearchByName query/filter logic as the list itself instead of duplicating it.
+    private async Task<IEnumerable<RosterExport.Row>> GetFilteredRowsAsync()
+    {
+        var result = await _service.SearchByName(Search, 1, int.MaxValue).ConfigureAwait(true);
+        return result.Items.Select(v => new RosterExport.Row(
+            v.VolunteerId, v.FirstName ?? "", v.LastName ?? "", v.EmailAddress ?? "",
+            v.Gender.ToString(), v.PhoneNumber ?? "", v.ZipCode ?? ""));
+    }
+
+    public async Task<IActionResult> OnGetExportCsvAsync()
+    {
+        var bytes = RosterExport.BuildCsv(await GetFilteredRowsAsync().ConfigureAwait(true));
+        return File(bytes, "text/csv", "volunteers.csv");
+    }
+
+    public async Task<IActionResult> OnGetExportExcelAsync()
+    {
+        var bytes = RosterExport.BuildExcelHtml("Volunteer List", await GetFilteredRowsAsync().ConfigureAwait(true));
+        return File(bytes, "application/vnd.ms-excel", "volunteers.xls");
+    }
+
+    public async Task<IActionResult> OnGetExportPdfAsync()
+    {
+        var bytes = RosterExport.BuildPdf(_tenantProfile.Name, "Volunteer List", await GetFilteredRowsAsync().ConfigureAwait(true));
+        return File(bytes, "application/pdf", "volunteers.pdf");
+    }
+
+    // Backs the Copy and Print buttons, which need the full filtered row set client-side rather
+    // than a downloaded file.
+    public async Task<IActionResult> OnGetExportJsonAsync()
+    {
+        return new JsonResult(await GetFilteredRowsAsync().ConfigureAwait(true));
     }
 
     public async Task<IActionResult> OnPostCreateAsync([FromBody] Models.Volunteer model)
