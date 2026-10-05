@@ -54,6 +54,35 @@
                     </div>
                   }
 
+                  @if (Model.MultipleNameMatches)
+                  {
+                    <div id="vNameMatchModal" class="tw:fixed tw:inset-0 tw:z-50">
+                      <div class="tw:fixed tw:inset-0 tw:bg-black/50"></div>
+                      <div class="tw:pointer-events-none tw:fixed tw:inset-0 tw:flex tw:items-center tw:justify-center tw:p-4">
+                        <div class="tw:pointer-events-auto tw:w-full tw:max-w-md tw:rounded-lg tw:bg-white tw:shadow-xl">
+                          <div class="tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+                            <h5 class="tw:text-base tw:font-semibold tw:text-slate-900">Which one is you?</h5>
+                          </div>
+                          <div class="tw:p-4">
+                            <p class="tw:mb-3 tw:text-sm tw:text-slate-600">Several volunteers are registered under the name
+                              <strong>@Model.Input!.FirstName @Model.Input!.LastName</strong>. Select the email address you
+                              registered with:</p>
+                            <div class="tw:flex tw:flex-col tw:gap-2">
+                              @foreach (var m in Model.NameMatchOptions)
+                              {
+                                <a href="/volunteer-clockin/@m.Id" class="@btnWhite tw:w-full">@m.MaskedEmail</a>
+                              }
+                            </div>
+                          </div>
+                          <div class="tw:flex tw:justify-end tw:border-t tw:border-slate-200 tw:px-4 tw:py-3">
+                            <button type="submit" name="ConfirmDifferentPerson" value="true" class="@btnWhite">That's not
+                              me</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  }
+
                   <div class="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2">
                     <div>
                       <label asp-for="Input!.FirstName" class="@label"></label>
@@ -231,18 +260,18 @@
                   return container;
                 }
 
-                function renderSuggestions(emails) {
+                function renderSuggestions(items) {
                   var c = ensureContainer();
                   c.innerHTML = '';
-                  emails.forEach(function (email) {
+                  items.forEach(function (item) {
                     var el = document.createElement('button');
                     el.type = 'button';
                     el.className = 'tw:block tw:w-full tw:cursor-pointer tw:border-0 tw:bg-transparent tw:px-3 tw:py-2 tw:text-left tw:text-sm tw:text-slate-700 tw:hover:bg-slate-50';
-                    el.textContent = email;
+                    el.textContent = item.name ? item.email + ' (' + item.name + ')' : item.email;
                     el.addEventListener('click', function () {
-                      input.value = email;
+                      input.value = item.email;
                       c.innerHTML = '';
-                      fetch('/api/search/volunteer-data/' + encodeURIComponent(email))
+                      fetch('/api/search/volunteer-data/' + encodeURIComponent(item.email))
                         .then(function (r) { return r.json(); })
                         .then(function (data) {
                           window.location.assign('/volunteer-clockin/' + data.volunteerId);

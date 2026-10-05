@@ -1,4 +1,5 @@
 using InpremClockingApp.Data;
+using InpremClockingApp.Helpers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Data.SqlClient;
@@ -22,11 +23,21 @@ public class StaffAttendance : PageModel
     // been shown - and dismissed - the same-name confirmation, so the name check isn't repeated.
     [BindProperty] public bool ConfirmDifferentPerson { get; set; }
 
-    // Set when a first+last name match was found; the view renders a confirmation prompt
-    // instead of inserting, and preserves the originally entered Input values for resubmission.
+    // Set when exactly one first+last name match was found; the view renders a confirmation
+    // prompt instead of inserting, and preserves the originally entered Input values for
+    // resubmission.
     public bool NameConflict { get; set; }
     public long ExistingId { get; set; }
     public string? ExistingName { get; set; }
+
+    // Set when two or more people share the exact same first+last name; the view renders a
+    // picker modal instead of the single-name banner, since we can't assume which record is
+    // theirs. Each option's email is masked - a stranger at a walk-up kiosk who happens to share
+    // someone else's name must not be shown that other person's full email address.
+    public bool MultipleNameMatches { get; set; }
+    public List<NameMatchOption> NameMatchOptions { get; set; } = new();
+
+    public record NameMatchOption(long Id, string MaskedEmail);
 
     public Task OnGetAsync()
     {
@@ -70,18 +81,28 @@ public class StaffAttendance : PageModel
             var firstName = Input.FirstName?.Trim();
             var lastName = Input.LastName?.Trim();
 
-            var nameMatch = await _db.Staffs
-                .FirstOrDefaultAsync(e =>
+            var nameMatches = await _db.Staffs
+                .Where(e =>
                     e.FirstName != null && e.LastName != null &&
                     e.FirstName.ToLower() == firstName!.ToLower() &&
                     e.LastName.ToLower() == lastName!.ToLower())
+                .ToListAsync()
                 .ConfigureAwait(false);
 
-            if (nameMatch != null)
+            if (nameMatches.Count == 1)
             {
                 NameConflict = true;
-                ExistingId = nameMatch.StaffId;
-                ExistingName = nameMatch.FullName;
+                ExistingId = nameMatches[0].StaffId;
+                ExistingName = nameMatches[0].FullName;
+                return Page();
+            }
+
+            if (nameMatches.Count > 1)
+            {
+                MultipleNameMatches = true;
+                NameMatchOptions = nameMatches
+                    .Select(v => new NameMatchOption(v.StaffId, PrivacyMask.MaskEmail(v.EmailAddress)))
+                    .ToList();
                 return Page();
             }
         }
