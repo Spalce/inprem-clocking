@@ -4,6 +4,7 @@ using InpremClockingApp.Models;
 using InpremClockingApp.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using InpremClockingApp.Helpers;
 
 namespace InpremClockingApp.Controllers;
@@ -140,53 +141,66 @@ public class StaffController : Controller
     {
         try
         {
-            Console.WriteLine("Initial");
+            // Copy from the stored Staff row (tenant-filtered), not the posted body, so the new
+            // Volunteer always matches the staff member whose clockings are being moved.
+            var staff = await _db.Staffs.FindAsync(model.StaffId).ConfigureAwait(false);
+            if (staff == null)
+                return NotFound("Staff member not found");
+
+            var emailTaken = await _db.Volunteers
+                .AnyAsync(v => v.EmailAddress == staff.EmailAddress)
+                .ConfigureAwait(false);
+            if (emailTaken)
+                return Conflict("A volunteer with this email address already exists.");
+
             var volunteer = new Volunteer
             {
-                EmailAddress = model.EmailAddress,
-                FirstName = model.FirstName,
-                LastName = model.LastName,
-                ZipCode = model.ZipCode,
-                Gender = model.Gender,
+                TenantId = staff.TenantId,
+                EmailAddress = staff.EmailAddress,
+                FirstName = staff.FirstName,
+                LastName = staff.LastName,
+                ZipCode = staff.ZipCode,
+                Gender = staff.Gender,
                 Type = "Volunteer",
-                PhoneNumber = model.PhoneNumber,
-                Address = model.Address,
-                CreatedAt = model.CreatedAt
+                PhoneNumber = staff.PhoneNumber,
+                Address = staff.Address,
+                CreatedAt = staff.CreatedAt
             };
+            await _db.Volunteers.AddAsync(volunteer).ConfigureAwait(false);
 
-            var createVolunteer = await _volunteer.Create(volunteer).ConfigureAwait(true);
-            if (createVolunteer != null!)
+            // Historical sessions are copied as-is, including their own ClockDate - deliberately
+            // not via VolunteerClockingService.Create, which is for live clock-ins and stamps
+            // ClockDate with today (so every copy after the first collided with the
+            // one-session-per-day index and was dropped, while its original was still deleted).
+            var staffClockings = await _db.ClockingsStaff
+                .Where(c => c.StafId == staff.StaffId)
+                .ToListAsync()
+                .ConfigureAwait(false);
+
+            foreach (var item in staffClockings)
             {
-                Console.WriteLine("Vol Created");
-                var move = await _staffClock.GetAllById(model.StaffId).ConfigureAwait(false);
-                if (move != null!)
+                await _db.Clockings.AddAsync(new Clocking
                 {
-                    var clockingStaves = move.ToList();
-                    foreach (var item in clockingStaves)
-                    {
-                        var clockings = new Clocking
-                        {
-                            VoluntId = createVolunteer.VolunteerId,
-                            ClockInTime = item.ClockInTime,
-                            ClockOutTime = item.ClockOutTime,
-                            LeaveOnBreakTime = item.LeaveOnBreakTime,
-                            ReturnOnBreakTime = item.ReturnOnBreakTime,
-                            WorkingHours = item.WorkingHours,
-                            CreatedAt = item.CreatedAt
-                        };
-
-                        await _volunteerClock.Create(clockings).ConfigureAwait(true);
-                        await _staffClock.Delete(item).ConfigureAwait(false);
-                        Console.WriteLine("Clock Moved");
-                    }
-                }
-            }
-            else
-            {
-                return NotFound("Volunteer could not be created");
+                    TenantId = item.TenantId,
+                    Volunteer = volunteer,
+                    FullName = item.FullName ?? staff.FullName,
+                    ClockInTime = item.ClockInTime,
+                    ClockOutTime = item.ClockOutTime,
+                    LeaveOnBreakTime = item.LeaveOnBreakTime,
+                    ReturnOnBreakTime = item.ReturnOnBreakTime,
+                    WorkingHours = item.WorkingHours,
+                    CreatedAt = item.CreatedAt,
+                    ClockDate = item.ClockDate
+                }).ConfigureAwait(false);
             }
 
-            return Ok("Move successful");
+            _db.ClockingsStaff.RemoveRange(staffClockings);
+
+            // One SaveChanges = one transaction: the volunteer, every copied session and every
+            // deletion commit together, or (on any failure) none of them do.
+            await _db.SaveChangesAsync().ConfigureAwait(false);
+
+            return Ok($"Move successful - {staffClockings.Count} clocking record(s) moved.");
         }
         catch (Exception e)
         {
