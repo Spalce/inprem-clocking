@@ -19,32 +19,45 @@ namespace InpremClockingApp.Controllers
             _db = db;
         }
 
-        // GET api/people/emails?q=prefix
+        // GET api/people/emails?q=prefix&type=staff|volunteer
+        // "type" scopes the search to one domain - Manage Staff/Staff Report must only suggest
+        // staff emails, Manage Volunteers/Volunteer Report only volunteer emails. Omitting it
+        // searches both (kept only as a fallback; every current caller always passes it).
         [HttpGet("emails")]
-        public async Task<IActionResult> GetEmails([FromQuery] string q)
+        public async Task<IActionResult> GetEmails([FromQuery] string q, [FromQuery] string? type = null)
         {
             if (string.IsNullOrWhiteSpace(q))
-                return Ok(new string[0]);
+                return Ok(Array.Empty<object>());
 
             var prefix = q.Trim();
 
-            // Search both Staffs and Volunteers for matching emails, case-insensitive, limit results
-            var staffEmails = _db.Staffs
-                .Where(s => !string.IsNullOrEmpty(s.EmailAddress) && EF.Functions.Like(s.EmailAddress, prefix + "%"))
-                .Select(s => s.EmailAddress);
+            var staffMatchesTask = type == "volunteer"
+                ? Task.FromResult(new List<EmailMatch>())
+                : _db.Staffs
+                    .Where(s => !string.IsNullOrEmpty(s.EmailAddress) && EF.Functions.Like(s.EmailAddress, prefix + "%"))
+                    .Select(s => new EmailMatch(s.EmailAddress!, s.FirstName + " " + s.LastName))
+                    .ToListAsync();
 
-            var volunteerEmails = _db.Volunteers
-                .Where(v => !string.IsNullOrEmpty(v.EmailAddress) && EF.Functions.Like(v.EmailAddress, prefix + "%"))
-                .Select(v => v.EmailAddress);
+            var volunteerMatchesTask = type == "staff"
+                ? Task.FromResult(new List<EmailMatch>())
+                : _db.Volunteers
+                    .Where(v => !string.IsNullOrEmpty(v.EmailAddress) && EF.Functions.Like(v.EmailAddress, prefix + "%"))
+                    .Select(v => new EmailMatch(v.EmailAddress!, v.FirstName + " " + v.LastName))
+                    .ToListAsync();
 
-            var combined = await staffEmails.Union(volunteerEmails)
-                .Where(e => e != null)
-                .Distinct()
-                .OrderBy(e => e)
+            var staffMatches = await staffMatchesTask;
+            var volunteerMatches = await volunteerMatchesTask;
+
+            var combined = staffMatches.Concat(volunteerMatches)
+                .GroupBy(e => e.Email)
+                .Select(g => new { email = g.Key, name = g.First().Name })
+                .OrderBy(e => e.email)
                 .Take(25)
-                .ToListAsync();
+                .ToList();
 
             return Ok(combined);
         }
+
+        private record EmailMatch(string Email, string Name);
     }
 }

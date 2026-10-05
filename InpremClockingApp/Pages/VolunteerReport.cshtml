@@ -35,16 +35,21 @@
       <table class="tw:min-w-full tw:divide-y tw:divide-slate-200">
         <thead class="tw:bg-slate-50">
           <tr>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">ID</th>
             <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">First Name</th>
             <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Last Name</th>
             <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Email</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Gender</th>
             <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Phone</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Zip</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Category</th>
           </tr>
         </thead>
         <tbody class="tw:divide-y tw:divide-slate-100">
           @foreach (var v in Model.VolunteerList)
           {
             <tr class="tw:hover:bg-slate-50">
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@v.VolunteerId</td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@v.FirstName</td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@v.LastName</td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">
@@ -53,12 +58,15 @@
                   <a href="mailto:@v.EmailAddress" class="tw:text-blue-600 tw:hover:underline">@v.EmailAddress</a>
                 }
               </td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@v.Gender</td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">
                 @if (!string.IsNullOrWhiteSpace(v.PhoneNumber))
                 {
                   <a href="@("tel:" + v.PhoneNumber.Replace(" ", "").Replace("-", "").Replace("(", "").Replace(")", ""))" class="tw:text-blue-600 tw:hover:underline">@v.PhoneNumber</a>
                 }
               </td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@v.ZipCode</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(string.IsNullOrWhiteSpace(v.VolunteerCategory) ? "—" : v.VolunteerCategory)</td>
             </tr>
           }
         </tbody>
@@ -121,6 +129,16 @@
         var searchInput = document.getElementById('emailSearch');
         var hint = document.getElementById('emailHint');
         var timer = null;
+        var hintContainer = null;
+
+        function ensureHintContainer() {
+            if (!hintContainer) {
+                hintContainer = document.createElement('div');
+                hintContainer.className = 'tw:absolute tw:z-10 tw:mt-1 tw:max-h-60 tw:w-full tw:overflow-y-auto tw:rounded-md tw:border tw:border-slate-200 tw:bg-white tw:shadow-lg';
+                searchInput.parentNode.appendChild(hintContainer);
+            }
+            return hintContainer;
+        }
 
         // Rows are server-paginated, so search re-runs the query server-side (page reset to 1)
         // rather than filtering rows already in the DOM - a client-only filter would only ever
@@ -133,21 +151,31 @@
         }
 
         function showHints(list) {
-            hint.innerHTML = '';
-            list.slice(0, 10).forEach(function (email) {
+            var c = ensureHintContainer();
+            c.innerHTML = '';
+            if (!list.length) return;
+            hint.innerText = '';
+            list.slice(0, 10).forEach(function (item) {
                 var button = document.createElement('button');
                 button.type = 'button';
-                button.className = 'tw:mr-2 tw:cursor-pointer tw:border-0 tw:bg-transparent tw:p-0 tw:text-sm tw:text-blue-600 tw:hover:underline';
-                button.textContent = email;
+                button.className = 'tw:block tw:w-full tw:cursor-pointer tw:border-0 tw:bg-transparent tw:px-3 tw:py-2 tw:text-left tw:text-sm tw:text-slate-700 tw:hover:bg-slate-50';
+                button.textContent = item.name ? item.email + ' (' + item.name + ')' : item.email;
                 button.addEventListener('click', function () {
-                    navigateSearch(email);
+                    c.innerHTML = '';
+                    navigateSearch(item.email);
                 });
-                hint.appendChild(button);
+                c.appendChild(button);
             });
         }
 
         document.getElementById('btnSearch').addEventListener('click', function () {
             navigateSearch(searchInput.value || '');
+        });
+
+        document.addEventListener('click', function (evt) {
+            if (hintContainer && !hintContainer.contains(evt.target) && evt.target !== searchInput) {
+                hintContainer.innerHTML = '';
+            }
         });
 
         searchInput.addEventListener('input', function () {
@@ -156,12 +184,13 @@
             timer = setTimeout(function () {
                 if (!value) {
                     hint.innerText = 'Type to search all volunteers';
+                    if (hintContainer) hintContainer.innerHTML = '';
                     return;
                 }
-                fetch('/api/people/emails?q=' + encodeURIComponent(value))
+                fetch('/api/people/emails?type=volunteer&q=' + encodeURIComponent(value))
                     .then(function (response) { return response.ok ? response.json() : []; })
                     .then(showHints)
-                    .catch(function () { hint.innerHTML = ''; });
+                    .catch(function () { if (hintContainer) hintContainer.innerHTML = ''; });
             }, 250);
         });
 

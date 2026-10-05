@@ -30,7 +30,7 @@ public class SearchController : Controller
                 .Where(v => v.EmailAddress!.Contains(term) ||
                                v.FirstName!.Contains(term) ||
                                v.LastName!.Contains(term))
-                .Select(v => v.EmailAddress)
+                .Select(v => new { email = v.EmailAddress, name = v.FirstName + " " + v.LastName })
                 .ToListAsync();
             return Ok(item);
         }
@@ -51,7 +51,7 @@ public class SearchController : Controller
                 .Where(v => v.EmailAddress!.Contains(term) ||
                                v.FirstName!.Contains(term) ||
                                v.LastName!.Contains(term))
-                .Select(v => v.EmailAddress)
+                .Select(v => new { email = v.EmailAddress, name = v.FirstName + " " + v.LastName })
                 .ToListAsync();
             return Ok(item);
         }

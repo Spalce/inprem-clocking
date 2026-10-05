@@ -173,6 +173,16 @@
         var searchInput = document.getElementById('vemailSearch');
         var hint = document.getElementById('vemailHint');
         var timer = null;
+        var hintContainer = null;
+
+        function ensureHintContainer() {
+            if (!hintContainer) {
+                hintContainer = document.createElement('div');
+                hintContainer.className = 'tw:absolute tw:z-10 tw:mt-1 tw:max-h-60 tw:w-full tw:overflow-y-auto tw:rounded-md tw:border tw:border-slate-200 tw:bg-white tw:shadow-lg';
+                searchInput.parentNode.appendChild(hintContainer);
+            }
+            return hintContainer;
+        }
 
         function rowToPayload(tr) {
             return {
@@ -272,16 +282,20 @@
         }
 
         function showHints(list) {
-            hint.innerHTML = '';
-            list.slice(0, 10).forEach(function (email) {
+            var c = ensureHintContainer();
+            c.innerHTML = '';
+            if (!list.length) return;
+            hint.innerText = '';
+            list.slice(0, 10).forEach(function (item) {
                 var button = document.createElement('button');
                 button.type = 'button';
-                button.className = 'tw:mr-2 tw:cursor-pointer tw:border-0 tw:bg-transparent tw:p-0 tw:text-sm tw:text-blue-600 tw:hover:underline';
-                button.textContent = email;
+                button.className = 'tw:block tw:w-full tw:cursor-pointer tw:border-0 tw:bg-transparent tw:px-3 tw:py-2 tw:text-left tw:text-sm tw:text-slate-700 tw:hover:bg-slate-50';
+                button.textContent = item.name ? item.email + ' (' + item.name + ')' : item.email;
                 button.addEventListener('click', function () {
-                    navigateSearch(email);
+                    c.innerHTML = '';
+                    navigateSearch(item.email);
                 });
-                hint.appendChild(button);
+                c.appendChild(button);
             });
         }
 
@@ -330,13 +344,20 @@
             timer = setTimeout(function () {
                 if (!value) {
                     hint.innerText = 'Type to search all volunteers';
+                    if (hintContainer) hintContainer.innerHTML = '';
                     return;
                 }
-                fetch('/api/people/emails?q=' + encodeURIComponent(value))
+                fetch('/api/people/emails?type=volunteer&q=' + encodeURIComponent(value))
                     .then(function (response) { return response.ok ? response.json() : []; })
                     .then(showHints)
-                    .catch(function () { hint.innerHTML = ''; });
+                    .catch(function () { if (hintContainer) hintContainer.innerHTML = ''; });
             }, 250);
+        });
+
+        document.addEventListener('click', function (evt) {
+            if (hintContainer && !hintContainer.contains(evt.target) && evt.target !== searchInput) {
+                hintContainer.innerHTML = '';
+            }
         });
 
         searchInput.addEventListener('keydown', function (e) {
@@ -375,9 +396,9 @@
 
         document.getElementById('vbtnExportCopy').addEventListener('click', function () {
             fetchAllRows().then(function (rows) {
-                var lines = [['ID', 'First Name', 'Last Name', 'Email', 'Gender', 'Phone', 'Zip'].join('\t')];
+                var lines = [['ID', 'First Name', 'Last Name', 'Email', 'Gender', 'Phone', 'Zip', 'Category'].join('\t')];
                 rows.forEach(function (r) {
-                    lines.push([r.id, r.firstName, r.lastName, r.email, r.gender, r.phone, r.zip].join('\t'));
+                    lines.push([r.id, r.firstName, r.lastName, r.email, r.gender, r.phone, r.zip, r.category || ''].join('\t'));
                 });
                 navigator.clipboard.writeText(lines.join('\n')).then(function () {
                     showToast(rows.length + ' row(s) copied to clipboard', 3000, 'success');
@@ -392,10 +413,10 @@
                 var html = '<html><head><title>Volunteer List</title></head><body>'
                     + '<h3>Volunteer List</h3>'
                     + '<table border="1" cellspacing="0" cellpadding="4">'
-                    + '<tr><th>ID</th><th>First Name</th><th>Last Name</th><th>Email</th><th>Gender</th><th>Phone</th><th>Zip</th></tr>';
+                    + '<tr><th>ID</th><th>First Name</th><th>Last Name</th><th>Email</th><th>Gender</th><th>Phone</th><th>Zip</th><th>Category</th></tr>';
                 rows.forEach(function (r) {
                     html += '<tr><td>' + r.id + '</td><td>' + r.firstName + '</td><td>' + r.lastName + '</td><td>'
-                        + r.email + '</td><td>' + r.gender + '</td><td>' + r.phone + '</td><td>' + r.zip + '</td></tr>';
+                        + r.email + '</td><td>' + r.gender + '</td><td>' + r.phone + '</td><td>' + r.zip + '</td><td>' + (r.category || '') + '</td></tr>';
                 });
                 html += '</table></body></html>';
                 var w = window.open('', '_blank');
