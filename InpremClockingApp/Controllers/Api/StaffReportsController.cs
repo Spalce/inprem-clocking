@@ -1,3 +1,4 @@
+using InpremClockingApp.Helpers;
 using InpremClockingApp.Models;
 using InpremClockingApp.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -221,27 +222,27 @@ public class StaffReportsController : ControllerBase
                             {
                                 table.ColumnsDefinition(columns =>
                                 {
-                                    columns.RelativeColumn(2);
-                                    columns.RelativeColumn(2);
-                                    columns.RelativeColumn(2);
-                                    columns.RelativeColumn(2);
-                                    columns.RelativeColumn(2);
-                                    columns.RelativeColumn(1);
+                                    columns.RelativeColumn(1.5f);
+                                    columns.RelativeColumn(2.2f);
+                                    columns.RelativeColumn(2.2f);
+                                    columns.RelativeColumn(2.2f);
+                                    columns.RelativeColumn(2.2f);
+                                    columns.RelativeColumn(1.2f);
                                 });
 
                                 table.Header(header =>
                                 {
-                                    header.Cell().Background(Colors.BlueGrey.Darken4).Padding(5).AlignCenter().Text("Full Name").FontColor(Colors.White).Bold();
-                                    header.Cell().Background(Colors.BlueGrey.Darken4).Padding(5).AlignCenter().Text("ClockIn").FontColor(Colors.White).Bold();
-                                    header.Cell().Background(Colors.BlueGrey.Darken4).Padding(5).AlignCenter().Text("ClockOut").FontColor(Colors.White).Bold();
-                                    header.Cell().Background(Colors.BlueGrey.Darken4).Padding(5).AlignCenter().Text("Leave On Break").FontColor(Colors.White).Bold();
-                                    header.Cell().Background(Colors.BlueGrey.Darken4).Padding(5).AlignCenter().Text("Return from Break").FontColor(Colors.White).Bold();
-                                    header.Cell().Background(Colors.BlueGrey.Darken4).Padding(5).AlignCenter().Text("Working Hours").FontColor(Colors.White).Bold();
+                                    header.Cell().HeaderText("Full Name");
+                                    header.Cell().HeaderText("ClockIn");
+                                    header.Cell().HeaderText("ClockOut");
+                                    header.Cell().HeaderText("Leave On Break");
+                                    header.Cell().HeaderText("Return from Break");
+                                    header.Cell().HeaderText("Working Hours");
                                 });
 
                                 if (rows.Count == 0)
                                 {
-                                    table.Cell().ColumnSpan(6).Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text("No clocking records found for this period.");
+                                    table.Cell().ColumnSpan(6).BodyText("No clocking records found for this period.");
                                 }
 
                                 foreach (var item in rows)
@@ -256,12 +257,12 @@ public class StaffReportsController : ControllerBase
                                         }
                                     }
 
-                                    table.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(staffName);
-                                    table.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(_tenantClock.ToLocal(item.ClockInTime)?.ToString("dd/MM/yyyy HH:mm") ?? "-");
-                                    table.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(_tenantClock.ToLocal(item.ClockOutTime)?.ToString("dd/MM/yyyy HH:mm") ?? "-");
-                                    table.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(_tenantClock.ToLocal(item.LeaveOnBreakTime)?.ToString("dd/MM/yyyy HH:mm") ?? "-");
-                                    table.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(_tenantClock.ToLocal(item.ReturnOnBreakTime)?.ToString("dd/MM/yyyy HH:mm") ?? "-");
-                                    table.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(FormatHours(workingHours));
+                                    table.Cell().BodyText(staffName ?? "");
+                                    table.Cell().BodyText(_tenantClock.ToLocal(item.ClockInTime)?.ToString("dd/MM/yyyy HH:mm") ?? "-");
+                                    table.Cell().BodyText(_tenantClock.ToLocal(item.ClockOutTime)?.ToString("dd/MM/yyyy HH:mm") ?? "-");
+                                    table.Cell().BodyText(_tenantClock.ToLocal(item.LeaveOnBreakTime)?.ToString("dd/MM/yyyy HH:mm") ?? "-");
+                                    table.Cell().BodyText(_tenantClock.ToLocal(item.ReturnOnBreakTime)?.ToString("dd/MM/yyyy HH:mm") ?? "-");
+                                    table.Cell().BodyText(FormatHours(workingHours));
                                 }
                             });
 
@@ -386,24 +387,30 @@ public class StaffReportsController : ControllerBase
                                     columns.RelativeColumn(1);
                                     columns.RelativeColumn(1);
                                     columns.RelativeColumn(1);
+                                    columns.RelativeColumn(1);
+                                    columns.RelativeColumn(1);
                                 });
 
                                 table.Header(header =>
                                 {
-                                    header.Cell().Text("Staff").Bold();
-                                    header.Cell().Text("Date").Bold();
-                                    header.Cell().Text("Clock In").Bold();
-                                    header.Cell().Text("Clock Out").Bold();
-                                    header.Cell().Text("Hours").Bold();
+                                    header.Cell().HeaderText("Staff");
+                                    header.Cell().HeaderText("Date");
+                                    header.Cell().HeaderText("Clock In");
+                                    header.Cell().HeaderText("Clock Out");
+                                    header.Cell().HeaderText("Break Start");
+                                    header.Cell().HeaderText("Break End");
+                                    header.Cell().HeaderText("Working Hours");
                                 });
 
                                 foreach (var row in rows)
                                 {
-                                    table.Cell().Text(row.FullName ?? "");
-                                    table.Cell().Text(_tenantClock.ToLocal(row.CreatedAt)?.ToString("yyyy-MM-dd") ?? "");
-                                    table.Cell().Text(_tenantClock.ToLocal(row.ClockInTime)?.ToString("HH:mm:ss") ?? "");
-                                    table.Cell().Text(_tenantClock.ToLocal(row.ClockOutTime)?.ToString("HH:mm:ss") ?? "");
-                                    table.Cell().Text(row.WorkingHours?.ToString(@"hh\:mm\:ss") ?? "");
+                                    table.Cell().BodyText(row.FullName ?? "");
+                                    table.Cell().BodyText(_tenantClock.ToLocal(row.CreatedAt)?.ToString("yyyy-MM-dd") ?? "");
+                                    table.Cell().BodyText(_tenantClock.ToLocal(row.ClockInTime)?.ToString("HH:mm:ss") ?? "");
+                                    table.Cell().BodyText(_tenantClock.ToLocal(row.ClockOutTime)?.ToString("HH:mm:ss") ?? "");
+                                    table.Cell().BodyText(_tenantClock.ToLocal(row.LeaveOnBreakTime)?.ToString("HH:mm:ss") ?? "-");
+                                    table.Cell().BodyText(_tenantClock.ToLocal(row.ReturnOnBreakTime)?.ToString("HH:mm:ss") ?? "-");
+                                    table.Cell().BodyText(row.WorkingHours?.ToString(@"hh\:mm\:ss") ?? "");
                                 }
                             });
 
@@ -472,26 +479,35 @@ public class StaffReportsController : ControllerBase
                             {
                                 table.ColumnsDefinition(columns =>
                                 {
+                                    columns.RelativeColumn(1);
                                     columns.RelativeColumn(2);
                                     columns.RelativeColumn(2);
                                     columns.RelativeColumn(3);
+                                    columns.RelativeColumn(1);
                                     columns.RelativeColumn(2);
+                                    columns.RelativeColumn(1);
                                 });
 
                                 table.Header(header =>
                                 {
-                                    header.Cell().Text("First Name").Bold();
-                                    header.Cell().Text("Last Name").Bold();
-                                    header.Cell().Text("Email").Bold();
-                                    header.Cell().Text("Phone").Bold();
+                                    header.Cell().HeaderText("ID");
+                                    header.Cell().HeaderText("First Name");
+                                    header.Cell().HeaderText("Last Name");
+                                    header.Cell().HeaderText("Email");
+                                    header.Cell().HeaderText("Gender");
+                                    header.Cell().HeaderText("Phone");
+                                    header.Cell().HeaderText("Zip");
                                 });
 
                                 foreach (var staff in staffList)
                                 {
-                                    table.Cell().Text(staff.FirstName ?? "");
-                                    table.Cell().Text(staff.LastName ?? "");
-                                    table.Cell().Text(staff.EmailAddress ?? "");
-                                    table.Cell().Text(staff.PhoneNumber ?? "");
+                                    table.Cell().BodyText(staff.StaffId.ToString());
+                                    table.Cell().BodyText(staff.FirstName ?? "");
+                                    table.Cell().BodyText(staff.LastName ?? "");
+                                    table.Cell().BodyText(staff.EmailAddress ?? "");
+                                    table.Cell().BodyText(staff.Gender.ToString());
+                                    table.Cell().BodyText(staff.PhoneNumber ?? "");
+                                    table.Cell().BodyText(staff.ZipCode ?? "");
                                 }
                             });
                     });

@@ -1,3 +1,4 @@
+using InpremClockingApp.Helpers;
 using InpremClockingApp.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -231,27 +232,27 @@ public class VolunteerReportsController : ControllerBase
                             {
                                 table.ColumnsDefinition(columns =>
                                 {
-                                    columns.RelativeColumn(2);
-                                    columns.RelativeColumn(2);
-                                    columns.RelativeColumn(2);
-                                    columns.RelativeColumn(2);
-                                    columns.RelativeColumn(2);
-                                    columns.RelativeColumn(1);
+                                    columns.RelativeColumn(1.5f);
+                                    columns.RelativeColumn(2.2f);
+                                    columns.RelativeColumn(2.2f);
+                                    columns.RelativeColumn(2.2f);
+                                    columns.RelativeColumn(2.2f);
+                                    columns.RelativeColumn(1.2f);
                                 });
 
                                 table.Header(header =>
                                 {
-                                    header.Cell().Background(Colors.BlueGrey.Darken4).Padding(5).AlignCenter().Text("Full Name").FontColor(Colors.White).Bold();
-                                    header.Cell().Background(Colors.BlueGrey.Darken4).Padding(5).AlignCenter().Text("ClockIn").FontColor(Colors.White).Bold();
-                                    header.Cell().Background(Colors.BlueGrey.Darken4).Padding(5).AlignCenter().Text("ClockOut").FontColor(Colors.White).Bold();
-                                    header.Cell().Background(Colors.BlueGrey.Darken4).Padding(5).AlignCenter().Text("Leave On Break").FontColor(Colors.White).Bold();
-                                    header.Cell().Background(Colors.BlueGrey.Darken4).Padding(5).AlignCenter().Text("Return from Break").FontColor(Colors.White).Bold();
-                                    header.Cell().Background(Colors.BlueGrey.Darken4).Padding(5).AlignCenter().Text("Working Hours").FontColor(Colors.White).Bold();
+                                    header.Cell().HeaderText("Full Name");
+                                    header.Cell().HeaderText("ClockIn");
+                                    header.Cell().HeaderText("ClockOut");
+                                    header.Cell().HeaderText("Leave On Break");
+                                    header.Cell().HeaderText("Return from Break");
+                                    header.Cell().HeaderText("Working Hours");
                                 });
 
                                 if (rows.Count == 0)
                                 {
-                                    table.Cell().ColumnSpan(6).Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text("No clocking records found for this period.");
+                                    table.Cell().ColumnSpan(6).BodyText("No clocking records found for this period.");
                                 }
 
                                 foreach (var vm in rows)
@@ -269,12 +270,12 @@ public class VolunteerReportsController : ControllerBase
                                         }
                                     }
 
-                                    table.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(volunteerName);
-                                    table.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(_tenantClock.ToLocal(item.ClockInTime)?.ToString("dd/MM/yyyy HH:mm") ?? "-");
-                                    table.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(_tenantClock.ToLocal(item.ClockOutTime)?.ToString("dd/MM/yyyy HH:mm") ?? "-");
-                                    table.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(_tenantClock.ToLocal(item.LeaveOnBreakTime)?.ToString("dd/MM/yyyy HH:mm") ?? "-");
-                                    table.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(_tenantClock.ToLocal(item.ReturnOnBreakTime)?.ToString("dd/MM/yyyy HH:mm") ?? "-");
-                                    table.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(FormatHours(workingHours));
+                                    table.Cell().BodyText(volunteerName ?? "");
+                                    table.Cell().BodyText(_tenantClock.ToLocal(item.ClockInTime)?.ToString("dd/MM/yyyy HH:mm") ?? "-");
+                                    table.Cell().BodyText(_tenantClock.ToLocal(item.ClockOutTime)?.ToString("dd/MM/yyyy HH:mm") ?? "-");
+                                    table.Cell().BodyText(_tenantClock.ToLocal(item.LeaveOnBreakTime)?.ToString("dd/MM/yyyy HH:mm") ?? "-");
+                                    table.Cell().BodyText(_tenantClock.ToLocal(item.ReturnOnBreakTime)?.ToString("dd/MM/yyyy HH:mm") ?? "-");
+                                    table.Cell().BodyText(FormatHours(workingHours));
                                 }
                             });
 
@@ -400,25 +401,31 @@ public class VolunteerReportsController : ControllerBase
                                     columns.RelativeColumn(1);
                                     columns.RelativeColumn(1);
                                     columns.RelativeColumn(1);
+                                    columns.RelativeColumn(1);
+                                    columns.RelativeColumn(1);
                                 });
 
                                 table.Header(header =>
                                 {
-                                    header.Cell().Text("Volunteer").Bold();
-                                    header.Cell().Text("Date").Bold();
-                                    header.Cell().Text("Clock In").Bold();
-                                    header.Cell().Text("Clock Out").Bold();
-                                    header.Cell().Text("Hours").Bold();
+                                    header.Cell().HeaderText("Volunteer");
+                                    header.Cell().HeaderText("Date");
+                                    header.Cell().HeaderText("Clock In");
+                                    header.Cell().HeaderText("Clock Out");
+                                    header.Cell().HeaderText("Break Start");
+                                    header.Cell().HeaderText("Break End");
+                                    header.Cell().HeaderText("Working Hours");
                                 });
 
                                 foreach (var vm in rows)
                                 {
                                     var item = vm.Clocking?.FirstOrDefault();
-                                    table.Cell().Text(item?.FullName ?? "");
-                                    table.Cell().Text(_tenantClock.ToLocal(item?.CreatedAt)?.ToString("yyyy-MM-dd") ?? "");
-                                    table.Cell().Text(_tenantClock.ToLocal(item?.ClockInTime)?.ToString("HH:mm:ss") ?? "");
-                                    table.Cell().Text(_tenantClock.ToLocal(item?.ClockOutTime)?.ToString("HH:mm:ss") ?? "");
-                                    table.Cell().Text(item?.WorkingHours?.ToString(@"hh\:mm\:ss") ?? "");
+                                    table.Cell().BodyText(item?.FullName ?? "");
+                                    table.Cell().BodyText(_tenantClock.ToLocal(item?.CreatedAt)?.ToString("yyyy-MM-dd") ?? "");
+                                    table.Cell().BodyText(_tenantClock.ToLocal(item?.ClockInTime)?.ToString("HH:mm:ss") ?? "");
+                                    table.Cell().BodyText(_tenantClock.ToLocal(item?.ClockOutTime)?.ToString("HH:mm:ss") ?? "");
+                                    table.Cell().BodyText(_tenantClock.ToLocal(item?.LeaveOnBreakTime)?.ToString("HH:mm:ss") ?? "-");
+                                    table.Cell().BodyText(_tenantClock.ToLocal(item?.ReturnOnBreakTime)?.ToString("HH:mm:ss") ?? "-");
+                                    table.Cell().BodyText(item?.WorkingHours?.ToString(@"hh\:mm\:ss") ?? "");
                                 }
                             });
 
@@ -487,26 +494,38 @@ public class VolunteerReportsController : ControllerBase
                             {
                                 table.ColumnsDefinition(columns =>
                                 {
+                                    columns.RelativeColumn(1);
                                     columns.RelativeColumn(2);
                                     columns.RelativeColumn(2);
                                     columns.RelativeColumn(3);
+                                    columns.RelativeColumn(1);
+                                    columns.RelativeColumn(2);
+                                    columns.RelativeColumn(1);
                                     columns.RelativeColumn(2);
                                 });
 
                                 table.Header(header =>
                                 {
-                                    header.Cell().Text("First Name").Bold();
-                                    header.Cell().Text("Last Name").Bold();
-                                    header.Cell().Text("Email").Bold();
-                                    header.Cell().Text("Phone").Bold();
+                                    header.Cell().HeaderText("ID");
+                                    header.Cell().HeaderText("First Name");
+                                    header.Cell().HeaderText("Last Name");
+                                    header.Cell().HeaderText("Email");
+                                    header.Cell().HeaderText("Gender");
+                                    header.Cell().HeaderText("Phone");
+                                    header.Cell().HeaderText("Zip");
+                                    header.Cell().HeaderText("Category");
                                 });
 
                                 foreach (var volunteer in volunteerList)
                                 {
-                                    table.Cell().Text(volunteer.FirstName ?? "");
-                                    table.Cell().Text(volunteer.LastName ?? "");
-                                    table.Cell().Text(volunteer.EmailAddress ?? "");
-                                    table.Cell().Text(volunteer.PhoneNumber ?? "");
+                                    table.Cell().BodyText(volunteer.VolunteerId.ToString());
+                                    table.Cell().BodyText(volunteer.FirstName ?? "");
+                                    table.Cell().BodyText(volunteer.LastName ?? "");
+                                    table.Cell().BodyText(volunteer.EmailAddress ?? "");
+                                    table.Cell().BodyText(volunteer.Gender.ToString());
+                                    table.Cell().BodyText(volunteer.PhoneNumber ?? "");
+                                    table.Cell().BodyText(volunteer.ZipCode ?? "");
+                                    table.Cell().BodyText(string.IsNullOrWhiteSpace(volunteer.VolunteerCategory) ? "-" : volunteer.VolunteerCategory);
                                 }
                             });
                     });

@@ -64,7 +64,9 @@
             <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Date</th>
             <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Clock In</th>
             <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Clock Out</th>
-            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Hours</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Break Start</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Break End</th>
+            <th class="tw:px-4 tw:py-3 tw:text-left tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-slate-500">Working Hours</th>
           </tr>
         </thead>
         <tbody class="tw:divide-y tw:divide-slate-100">
@@ -75,6 +77,8 @@
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@TenantClock.ToLocal(row.CreatedAt)?.ToString("yyyy-MM-dd")</td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(TenantClock.ToLocal(row.ClockInTime)?.ToString("HH:mm:ss") ?? "")</td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(TenantClock.ToLocal(row.ClockOutTime)?.ToString("HH:mm:ss") ?? "")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(TenantClock.ToLocal(row.LeaveOnBreakTime)?.ToString("HH:mm:ss") ?? "")</td>
+              <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(TenantClock.ToLocal(row.ReturnOnBreakTime)?.ToString("HH:mm:ss") ?? "")</td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(row.WorkingHours?.ToString(@"hh\:mm\:ss") ?? "")</td>
             </tr>
           }

@@ -6,21 +6,31 @@ namespace InpremClockingApp.Helpers;
 
 // Shared by the Manage Staff / Manage Volunteers pages' export buttons (Copy/CSV/Excel/PDF/Print)
 // - both pages have the same roster shape (Id/FirstName/LastName/Email/Gender/Phone/Zip), so the
-// file-building logic lives here once instead of being duplicated per page.
+// file-building logic lives here once instead of being duplicated per page. Category is optional
+// (null for Staff, which has no such concept) - the column is only added to the export when at
+// least one row actually carries a category, so a Staff export never shows a pointless blank column.
 public static class RosterExport
 {
-    public record Row(long Id, string FirstName, string LastName, string Email, string Gender, string Phone, string Zip);
+    public record Row(long Id, string FirstName, string LastName, string Email, string Gender, string Phone, string Zip, string? Category = null);
 
-    private static readonly string[] Headers = { "ID", "First Name", "Last Name", "Email", "Gender", "Phone", "Zip" };
+    private static readonly string[] BaseHeaders = { "ID", "First Name", "Last Name", "Email", "Gender", "Phone", "Zip" };
 
-    private static IEnumerable<string[]> ToCells(IEnumerable<Row> rows) =>
-        rows.Select(r => new[] { r.Id.ToString(), r.FirstName, r.LastName, r.Email, r.Gender, r.Phone, r.Zip });
+    private static string[] HeadersFor(bool includeCategory) =>
+        includeCategory ? BaseHeaders.Append("Category").ToArray() : BaseHeaders;
+
+    private static IEnumerable<string[]> ToCells(IEnumerable<Row> rows, bool includeCategory) =>
+        rows.Select(r => includeCategory
+            ? new[] { r.Id.ToString(), r.FirstName, r.LastName, r.Email, r.Gender, r.Phone, r.Zip, r.Category ?? "" }
+            : new[] { r.Id.ToString(), r.FirstName, r.LastName, r.Email, r.Gender, r.Phone, r.Zip });
 
     public static byte[] BuildCsv(IEnumerable<Row> rows)
     {
+        var rowList = rows.ToList();
+        var includeCategory = rowList.Any(r => r.Category != null);
+
         var sb = new StringBuilder();
-        sb.AppendLine(string.Join(",", Headers.Select(EscapeCsv)));
-        foreach (var cells in ToCells(rows))
+        sb.AppendLine(string.Join(",", HeadersFor(includeCategory).Select(EscapeCsv)));
+        foreach (var cells in ToCells(rowList, includeCategory))
         {
             sb.AppendLine(string.Join(",", cells.Select(EscapeCsv)));
         }
@@ -43,13 +53,16 @@ public static class RosterExport
     // versus pulling in a dedicated OOXML library for what's otherwise a simple tabular export).
     public static byte[] BuildExcelHtml(string title, IEnumerable<Row> rows)
     {
+        var rowList = rows.ToList();
+        var includeCategory = rowList.Any(r => r.Category != null);
+
         var sb = new StringBuilder();
         sb.Append("<html><head><meta charset=\"utf-8\"></head><body>");
         sb.Append($"<h3>{System.Net.WebUtility.HtmlEncode(title)}</h3>");
         sb.Append("<table border=\"1\"><tr>");
-        foreach (var h in Headers) sb.Append($"<th>{System.Net.WebUtility.HtmlEncode(h)}</th>");
+        foreach (var h in HeadersFor(includeCategory)) sb.Append($"<th>{System.Net.WebUtility.HtmlEncode(h)}</th>");
         sb.Append("</tr>");
-        foreach (var cells in ToCells(rows))
+        foreach (var cells in ToCells(rowList, includeCategory))
         {
             sb.Append("<tr>");
             foreach (var c in cells) sb.Append($"<td>{System.Net.WebUtility.HtmlEncode(c ?? "")}</td>");
@@ -62,6 +75,8 @@ public static class RosterExport
     public static byte[] BuildPdf(string tenantName, string title, IEnumerable<Row> rows)
     {
         var rowList = rows.ToList();
+        var includeCategory = rowList.Any(r => r.Category != null);
+        var headers = HeadersFor(includeCategory);
 
         return Document.Create(container =>
         {
@@ -95,26 +110,21 @@ public static class RosterExport
                                     columns.RelativeColumn(1);
                                     columns.RelativeColumn(2);
                                     columns.RelativeColumn(2);
-                                    columns.RelativeColumn(3);
+                                    columns.RelativeColumn(4);
                                     columns.RelativeColumn(1);
                                     columns.RelativeColumn(2);
                                     columns.RelativeColumn(1);
+                                    if (includeCategory) columns.RelativeColumn(2);
                                 });
 
                                 table.Header(header =>
                                 {
-                                    foreach (var h in Headers) header.Cell().Text(h).Bold();
+                                    foreach (var h in headers) header.Cell().HeaderText(h);
                                 });
 
-                                foreach (var r in rowList)
+                                foreach (var r in ToCells(rowList, includeCategory))
                                 {
-                                    table.Cell().Text(r.Id.ToString());
-                                    table.Cell().Text(r.FirstName ?? "");
-                                    table.Cell().Text(r.LastName ?? "");
-                                    table.Cell().Text(r.Email ?? "");
-                                    table.Cell().Text(r.Gender ?? "");
-                                    table.Cell().Text(r.Phone ?? "");
-                                    table.Cell().Text(r.Zip ?? "");
+                                    foreach (var cell in r) table.Cell().BodyText(cell ?? "");
                                 }
                             });
                     });

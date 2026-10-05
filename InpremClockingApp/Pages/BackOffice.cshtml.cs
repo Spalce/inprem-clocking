@@ -1,4 +1,5 @@
 using InpremClockingApp.Data;
+using InpremClockingApp.Helpers;
 using InpremClockingApp.Models;
 using InpremClockingApp.Models.Identity;
 using InpremClockingApp.Services;
@@ -150,16 +151,16 @@ namespace InpremClockingApp.Pages
 
                                     table.Header(header =>
                                     {
-                                        header.Cell().Background(Colors.BlueGrey.Darken4).Padding(5).AlignCenter().Text("Year").FontColor(Colors.White).Bold();
-                                        header.Cell().Background(Colors.BlueGrey.Darken4).Padding(5).AlignCenter().Text("Month").FontColor(Colors.White).Bold();
-                                        header.Cell().Background(Colors.BlueGrey.Darken4).Padding(5).AlignCenter().Text("Total Hours").FontColor(Colors.White).Bold();
+                                        header.Cell().HeaderText("Year");
+                                        header.Cell().HeaderText("Month");
+                                        header.Cell().HeaderText("Total Hours");
                                     });
 
                                     foreach (var row in monthlyBreakdown)
                                     {
-                                        table.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(row.Year.ToString());
-                                        table.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(row.MonthName);
-                                        table.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(row.Hours.ToString());
+                                        table.Cell().BodyText(row.Year.ToString());
+                                        table.Cell().BodyText(row.MonthName);
+                                        table.Cell().BodyText(row.Hours.ToString());
                                     }
                                 });
                         });

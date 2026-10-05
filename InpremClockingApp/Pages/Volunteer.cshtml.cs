@@ -57,7 +57,8 @@ public class Volunteer : PageModel
         var result = await _service.SearchByName(Search, 1, int.MaxValue).ConfigureAwait(true);
         return result.Items.Select(v => new RosterExport.Row(
             v.VolunteerId, v.FirstName ?? "", v.LastName ?? "", v.EmailAddress ?? "",
-            v.Gender.ToString(), v.PhoneNumber ?? "", v.ZipCode ?? ""));
+            v.Gender.ToString(), v.PhoneNumber ?? "", v.ZipCode ?? "",
+            string.IsNullOrWhiteSpace(v.VolunteerCategory) ? "-" : v.VolunteerCategory));
     }
 
     public async Task<IActionResult> OnGetExportCsvAsync()
