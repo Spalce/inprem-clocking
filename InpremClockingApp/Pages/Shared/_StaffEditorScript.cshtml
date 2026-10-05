@@ -25,6 +25,141 @@
         }
     }
 
+    // Opens in a new tab (not the same one) so clicking a match to check it doesn't discard
+    // whatever the admin has already typed into the still-open Add New form. The trailing icon
+    // signals that up front, since a link quietly opening elsewhere can otherwise be surprising.
+    function nameMatchLink(m) {
+        var a = document.createElement('a');
+        a.href = '/StaffDetails?id=' + m.id;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.title = 'Opens in a new tab';
+        a.appendChild(document.createTextNode(m.name + ' (' + m.email + ') '));
+        var icon = document.createElement('i');
+        icon.className = 'fas fa-external-link-alt tw:text-xs';
+        a.appendChild(icon);
+        return a;
+    }
+
+    function nameConflictButtons(onConfirm, onCancel) {
+        var row = document.createElement('div');
+        row.className = 'tw:flex tw:gap-2';
+
+        var proceedBtn = document.createElement('button');
+        proceedBtn.type = 'button';
+        proceedBtn.className = 'tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700';
+        proceedBtn.textContent = "This is a different person - Create Anyway";
+        proceedBtn.addEventListener('click', onConfirm);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-slate-300 tw:bg-white tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium tw:text-slate-700 tw:hover:bg-slate-50';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', onCancel);
+
+        row.appendChild(proceedBtn);
+        row.appendChild(cancelBtn);
+        return row;
+    }
+
+    // Builds (or rebuilds) the picker modal used for the multi-match case - not pre-rendered in
+    // _StaffEditorModal since it's only ever needed here, triggered by a 409 response.
+    function ensureNameConflictModal() {
+        var existing = document.getElementById('sNameConflictModal');
+        if (existing) existing.remove();
+
+        var root = document.createElement('div');
+        root.id = 'sNameConflictModal';
+        root.setAttribute('data-modal-root', '');
+        root.className = 'tw:fixed tw:inset-0 tw:z-50';
+
+        var backdrop = document.createElement('div');
+        backdrop.className = 'tw:fixed tw:inset-0 tw:bg-black/50';
+        backdrop.setAttribute('data-modal-dismiss', 'sNameConflictModal');
+
+        var wrap = document.createElement('div');
+        wrap.className = 'tw:pointer-events-none tw:fixed tw:inset-0 tw:flex tw:items-center tw:justify-center tw:p-4';
+
+        var panel = document.createElement('div');
+        panel.className = 'tw:pointer-events-auto tw:w-full tw:max-w-md tw:rounded-lg tw:bg-white tw:shadow-xl';
+
+        var header = document.createElement('div');
+        header.className = 'tw:border-b tw:border-slate-200 tw:px-4 tw:py-3';
+        var h5 = document.createElement('h5');
+        h5.className = 'tw:text-base tw:font-semibold tw:text-slate-900';
+        h5.textContent = 'Possible Duplicate';
+        header.appendChild(h5);
+
+        var body = document.createElement('div');
+        body.className = 'tw:p-4';
+
+        var footer = document.createElement('div');
+        footer.className = 'tw:border-t tw:border-slate-200 tw:px-4 tw:py-3';
+
+        panel.appendChild(header);
+        panel.appendChild(body);
+        panel.appendChild(footer);
+        wrap.appendChild(panel);
+        root.appendChild(backdrop);
+        root.appendChild(wrap);
+        document.body.appendChild(root);
+
+        return { body: body, footer: footer };
+    }
+
+    // Shown when OnPostCreateAsync responds 409 with { nameConflict, matches } - an admin isn't a
+    // walk-up stranger, so (unlike the kiosk's version of this prompt) full name/email are shown
+    // rather than masked, and each match links to its Details page so the admin can check it
+    // before deciding. A single match stays as an inline banner; two or more use a picker modal.
+    function showNameConflict(obj, onConfirm) {
+        var firstName = document.getElementById('FirstName').value;
+        var lastName = document.getElementById('LastName').value;
+
+        if (obj.matches.length > 1) {
+            var modal = ensureNameConflictModal();
+
+            var intro = document.createElement('p');
+            intro.className = 'tw:mb-3 tw:text-sm tw:text-slate-600';
+            intro.textContent = 'Staff members named ' + firstName + ' ' + lastName + ' already exist. Open a record to check it, or confirm this is a different person.';
+            modal.body.appendChild(intro);
+
+            var list = document.createElement('div');
+            list.className = 'tw:flex tw:flex-col tw:gap-2';
+            obj.matches.forEach(function (m) {
+                var link = nameMatchLink(m);
+                link.className = 'tw:block tw:rounded-md tw:border tw:border-slate-200 tw:px-3 tw:py-2 tw:text-sm tw:text-blue-600 tw:hover:bg-slate-50 tw:hover:underline';
+                list.appendChild(link);
+            });
+            modal.body.appendChild(list);
+
+            modal.footer.appendChild(nameConflictButtons(
+                function () { closeModal('sNameConflictModal'); onConfirm(); },
+                function () { closeModal('sNameConflictModal'); }
+            ));
+
+            openModal('sNameConflictModal');
+            return;
+        }
+
+        var container = document.getElementById('editorErrors');
+        container.innerHTML = '';
+
+        var box = document.createElement('div');
+        box.className = 'tw:mb-2 tw:rounded-md tw:bg-amber-50 tw:p-3';
+
+        var intro = document.createElement('p');
+        intro.className = 'tw:mb-2 tw:text-sm tw:text-amber-800';
+        intro.appendChild(document.createTextNode('A staff member named '));
+        var link = nameMatchLink(obj.matches[0]);
+        link.className = 'tw:font-semibold tw:text-amber-900 tw:underline';
+        intro.appendChild(link);
+        intro.appendChild(document.createTextNode(' already exists. Is this a different person?'));
+        box.appendChild(intro);
+
+        box.appendChild(nameConflictButtons(onConfirm, function () { container.innerHTML = ''; }));
+        container.appendChild(box);
+    }
+
     function setModalTitle(text) {
         document.getElementById('editorModalTitle').innerText = text;
     }
@@ -43,7 +178,7 @@
         openModal('editorModal');
     }
 
-    document.getElementById('btnSave').addEventListener('click', function () {
+    function saveStaff(confirmDifferentPerson) {
         clearEditorErrors();
         var id = document.getElementById('StaffId').value;
         var payload = {
@@ -58,7 +193,10 @@
         };
 
         // Absolute path - this script runs from both /Staff and /StaffDetails.
-        fetch(id ? '/Staff?handler=Update' : '/Staff?handler=Create', {
+        var url = (id ? '/Staff?handler=Update' : '/Staff?handler=Create') +
+            (confirmDifferentPerson ? '&confirmDifferentPerson=true' : '');
+
+        fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -68,7 +206,15 @@
                 location.reload();
                 return;
             }
-            return response.json().then(function (json) { throw json; });
-        }).catch(showEditorErrors);
-    });
+            return response.json().then(function (json) {
+                if (response.status === 409 && json && json.nameConflict) {
+                    showNameConflict(json, function () { saveStaff(true); });
+                } else {
+                    showEditorErrors(json);
+                }
+            });
+        }).catch(function () { showEditorErrors({ error: 'Request failed.' }); });
+    }
+
+    document.getElementById('btnSave').addEventListener('click', function () { saveStaff(false); });
 </script>

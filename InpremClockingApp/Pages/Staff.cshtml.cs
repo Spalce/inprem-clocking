@@ -36,6 +36,11 @@ public class Staff : PageModel
     [BindProperty(SupportsGet = true)]
     public int PageSize { get; set; } = 20;
 
+    // Posted (as a query string flag, since the request body is the JSON staff payload) once the
+    // admin has already seen - and dismissed - the same-name confirmation on OnPostCreateAsync.
+    [BindProperty(SupportsGet = true)]
+    public bool ConfirmDifferentPerson { get; set; }
+
     public async Task<IActionResult> OnGetAsync()
     {
         var result = await _service.SearchByName(Search, PageNumber, PageSize).ConfigureAwait(true);
@@ -215,6 +220,24 @@ public class Staff : PageModel
                 return BadRequest(new { errors });
             }
             return RedirectToPage("./Staff");
+        }
+
+        // A same-name match (email is already confirmed clear) is only a soft signal - warn the
+        // admin and let them confirm before creating, unless they already dismissed this once for
+        // the current submission. Unlike the kiosk's version of this check, there's no need to
+        // mask the email here - an admin already has full read access to every staff record.
+        if (!ConfirmDifferentPerson && !string.IsNullOrWhiteSpace(model.FirstName) && !string.IsNullOrWhiteSpace(model.LastName))
+        {
+            var nameMatches = await _service.FindByFullName(model.FirstName, model.LastName).ConfigureAwait(true);
+            if (nameMatches.Count > 0)
+            {
+                return new ObjectResult(new
+                {
+                    nameConflict = true,
+                    matches = nameMatches.Select(s => new { id = s.StaffId, name = s.FullName, email = s.EmailAddress })
+                })
+                { StatusCode = StatusCodes.Status409Conflict };
+            }
         }
 
         model.CreatedAt = DateTime.UtcNow;

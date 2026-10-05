@@ -53,6 +53,17 @@ public class StaffService
         return await _db.Staffs.FirstOrDefaultAsync(e => e.EmailAddress == email).ConfigureAwait(false)!;
     }
 
+    // Same soft same-name check used by the kiosk sign-up pages, reused here so Manage Staff's
+    // "Add New" can warn an admin before creating what might be a duplicate person.
+    public async Task<List<Staff>> FindByFullName(string firstName, string lastName)
+    {
+        return await _db.Staffs
+            .Where(e => e.FirstName != null && e.LastName != null &&
+                        e.FirstName.ToLower() == firstName.ToLower() &&
+                        e.LastName.ToLower() == lastName.ToLower())
+            .ToListAsync().ConfigureAwait(false);
+    }
+
     public async Task<Staff> Create(Staff model)
     {
         try
