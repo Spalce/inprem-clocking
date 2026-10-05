@@ -381,10 +381,11 @@
         }
     })();
 
+    // Prefill clock-in with the current time in the tenant's timezone - rendered server-side,
+    // not from the browser's clock, since OnPostAsync interprets this value as tenant-local time
+    // (a device in another timezone would otherwise save a clock-in hours off).
     document.addEventListener('DOMContentLoaded', function () {
-        const now = new Date();
-        const isoLocal = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0,16);
-        if (document.getElementById('vclockIn')) document.getElementById('vclockIn').value = isoLocal;
+        if (document.getElementById('vclockIn')) document.getElementById('vclockIn').value = '@TenantClock.NowLocal().ToString("yyyy-MM-ddTHH:mm", System.Globalization.CultureInfo.InvariantCulture)';
     });
 
 </script>
