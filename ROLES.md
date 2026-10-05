@@ -148,7 +148,8 @@ session.
 | `/BackOffice`, `/Staff`, `/StaffDetails`, `/Volunteer`, `/VolunteerDetails`, `/User`, `/StaffClocking`, `/VolunteerClocking`, `/StaffReport`, `/StaffClockingReport`, `/VolunteerReport`, `/VolunteerClockingReport`, `/HoursWorked` | `AdminOnly` (role `Admin`) |
 | `/Identity/Account/Register` | `AdminOnly` (role `Admin`) |
 | `/Platform/Tenants`, `/Platform/Tenants/{id}` | `SuperAdminOnly` (role `SuperAdmin`) — gated at the folder level (`AuthorizeFolder("/Platform", ...)`), so any future `/Platform/*` page is covered automatically |
-| `/StaffAttendance`, `/VolunteerAttendance`, `/staff-clockin/{id}`, `/volunteer-clockin/{id}`, `/Index`, `/Privacy` | `[Authorize]` only — any signed-in account |
+| `/StaffAttendance`, `/VolunteerAttendance`, `/staff-clockin/{id}`, `/volunteer-clockin/{id}`, `/Privacy` | `[Authorize]` only — any signed-in account |
+| `/Index` (`/`) | None — public landing page, matching the reference app's `/`. Shows an "ADMIN" heading and a Login button (no decorative banner image, unlike the reference, since we don't have a non-misleading asset for it). |
 | Everything else under `/Identity/Account/...` (Login, Logout, forgot-password, 2FA, manage-account pages) | Identity's own built-in rules (e.g. Login/Logout/ForgotPassword are open to anonymous by necessity; Manage pages require being signed in as whoever they belong to) |
 
 The API controllers behind these pages now carry matching `[Authorize]` attributes of their

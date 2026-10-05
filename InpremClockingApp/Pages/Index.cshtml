@@ -1,8 +1,62 @@
-﻿@page
-@using Microsoft.AspNetCore.Authorization;
+@page
 @model InpremClockingApp.Pages.IndexModel
-@attribute [Authorize]
 @{
-    ViewData["Title"] = "Home page";
+    // Standalone (no shared Layout) rather than reusing _Login.cshtml - that layout's wrapper is
+    // capped at max-w-md for the real Login/Register pages, too narrow for this page's two-column
+    // (image + text) card, and widening it there would affect every Identity page that uses it.
+    Layout = null;
+    ViewData["Title"] = "Home";
+
+    var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-8 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
 }
-<p>No content is here</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>@ViewData["Title"] - Inprem Clockin App</title>
+
+  <link rel="stylesheet" href="~/lib/fontawesome-free/css/all.min.css">
+  <link rel="stylesheet" href="~/css/site.css" asp-append-version="true"/>
+  <link rel="stylesheet" href="~/InpremClockingApp.styles.css" asp-append-version="true"/>
+  <link rel="stylesheet" href="~/css/tailwind.css" asp-append-version="true"/>
+</head>
+<body class="tw:flex tw:min-h-screen tw:items-center tw:justify-center tw:bg-slate-50 tw:font-sans tw:text-slate-900 tw:antialiased">
+
+<div class="tw:w-full tw:max-w-2xl tw:px-4 tw:py-12">
+  <div class="tw:overflow-hidden tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:shadow-sm">
+    <div class="tw:flex tw:flex-col tw:sm:flex-row">
+      <!-- Placeholder for the reference site's decorative "Volunteer Clock-in" banner image - not
+           a link there either, so this stays a plain div. Swap the contents for an <img> once the
+           real asset is provided. -->
+      <div class="tw:flex tw:items-center tw:justify-center tw:border-b tw:border-slate-200 tw:bg-slate-50 tw:p-6 tw:sm:w-48 tw:sm:border-b-0 tw:sm:border-r">
+        <div class="tw:text-center tw:text-slate-400">
+          <i class="fas fa-image tw:text-2xl"></i>
+          <p class="tw:mt-2 tw:text-xs tw:font-medium">Volunteer Clock-in banner image placeholder</p>
+        </div>
+      </div>
+
+      <div class="tw:flex-1 tw:p-8">
+        <div class="tw:mb-6 tw:text-center">
+          <h2 class="tw:text-xl tw:font-bold tw:tracking-wide tw:text-slate-900">INPREM HOLISTIC COMMUNITY RESOURCE CENTER</h2>
+          <p class="tw:mt-1 tw:text-sm tw:font-medium tw:tracking-wide tw:text-slate-500">CLOCKING SYSTEM</p>
+        </div>
+
+        <h1 class="tw:mb-6 tw:text-center tw:text-lg tw:font-semibold tw:text-slate-900">ADMIN</h1>
+
+        <div class="tw:text-center">
+          <a asp-area="Identity" asp-page="/Account/Login" class="@btnPrimary">Login</a>
+        </div>
+
+        <div class="tw:mt-6 tw:text-center tw:text-xs tw:text-slate-500">
+          <p>Copyright &copy; 2019 INPREM HOLISTIC COMMUNITY RESOURCE CENTER. All rights reserved.</p>
+          <!-- Not a link - matches the reference site, where this is present but inactive. -->
+          <p class="tw:mt-1">Terms &amp; Conditions</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
