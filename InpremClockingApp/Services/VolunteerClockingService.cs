@@ -204,6 +204,55 @@ public class VolunteerClockingService
         return true;
     }
 
+    // Admin correction of an existing, already-completed record (the "Edit" action on
+    // VolunteerClocking) - the one gap flagged most prominently in backoffice-review.md. Only the
+    // clocking-window fields are touched; the owning volunteer and the record's calendar day are
+    // left alone, since reassigning those is a different, riskier operation than fixing a
+    // mistyped timestamp. All timestamps are expected already converted to UTC by the caller.
+    public async Task<(bool Success, string? Error)> UpdateTimes(
+        long id, DateTime? clockIn, DateTime? clockOut, DateTime? leaveOnBreak, DateTime? returnOnBreak)
+    {
+        var item = await _db.Clockings.FindAsync(id).ConfigureAwait(false);
+        if (item == null)
+            return (false, "Clocking record not found.");
+
+        if (clockIn == null)
+            return (false, "Clock In is required.");
+
+        if (clockOut.HasValue && clockOut <= clockIn)
+            return (false, "Clock Out must be after Clock In.");
+
+        if (leaveOnBreak.HasValue != returnOnBreak.HasValue)
+            return (false, "Enter both Break Start and Break End, or leave both blank.");
+
+        if (leaveOnBreak.HasValue && returnOnBreak.HasValue && returnOnBreak <= leaveOnBreak)
+            return (false, "Break End must be after Break Start.");
+
+        TimeSpan? workingHours = null;
+        if (clockOut.HasValue)
+        {
+            workingHours = clockOut - clockIn;
+            if (leaveOnBreak.HasValue && returnOnBreak.HasValue)
+                workingHours -= returnOnBreak - leaveOnBreak;
+
+            // WorkingHours is stored as a SQL `time` column (00:00:00 to 23:59:59.9999999) - same
+            // bound already enforced by the live Clock Out action (see ClockOut above).
+            if (workingHours < TimeSpan.Zero || workingHours >= TimeSpan.FromDays(1))
+                return (false, "The resulting working hours must be between 0 and 24 hours - check the break times.");
+        }
+
+        item.ClockInTime = clockIn;
+        item.ClockOutTime = clockOut;
+        item.LeaveOnBreakTime = leaveOnBreak;
+        item.ReturnOnBreakTime = returnOnBreak;
+        item.WorkingHours = workingHours;
+
+        _db.Clockings.Update(item);
+        await _db.SaveChangesAsync().ConfigureAwait(false);
+
+        return (true, null);
+    }
+
     public async Task<bool> BreakStart(Clocking model)
     {
         var item = await _db.Clockings.FindAsync(model.ClockingId).ConfigureAwait(false);

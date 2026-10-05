@@ -543,13 +543,7 @@ public class VolunteerReportsController : ControllerBase
         return File(pdfBytes, "application/pdf", "volunteer-list.pdf");
     }
 
-    // Matches HoursWorked.cshtml.cs's own FormatHours exactly, so the PDF's per-row Working
-    // Hours column reads the same way as the on-screen table it's downloaded from.
-    private static string FormatHours(double hours)
-    {
-        var totalMinutes = (int)Math.Round(hours * 60);
-        var wholeHours = totalMinutes / 60;
-        var minutes = totalMinutes % 60;
-        return $"{wholeHours:D2}:{minutes:D2}";
-    }
+    // Delegates to the shared helper so the PDF's per-row Working Hours column reads the same way
+    // as the on-screen table it's downloaded from.
+    private static string FormatHours(double hours) => WorkingHoursFormat.ToHoursMinutes(hours);
 }

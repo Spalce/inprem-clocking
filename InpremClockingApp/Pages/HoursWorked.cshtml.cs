@@ -1,3 +1,4 @@
+using InpremClockingApp.Helpers;
 using InpremClockingApp.Models;
 using InpremClockingApp.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -169,15 +170,7 @@ public class HoursWorkedModel : PageModel
         return Page();
     }
 
-    public string FormatHours(double hours)
-    {
-        var totalMinutes = (int)Math.Round(hours * 60);
-
-        var wholeHours = totalMinutes / 60;
-        var minutes = totalMinutes % 60;
-
-        return $"{wholeHours:D2}:{minutes:D2}";
-    }
+    public string FormatHours(double hours) => WorkingHoursFormat.ToHoursMinutes(hours);
 
     public string FormatDateTime(DateTime? value)
     {

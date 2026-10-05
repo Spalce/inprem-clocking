@@ -47,6 +47,20 @@ public class StaffClocking : PageModel
         return Page();
     }
 
+    private async Task<IActionResult> RenderWithDataAsync()
+    {
+        var paged = await _service.GetPaged(PageNumber, PageSize).ConfigureAwait(true);
+        Model!.Clocking = paged.Items;
+        Model.Staff = await _staff.GetAll().ConfigureAwait(true);
+
+        ViewData["TotalCount"] = paged.TotalCount;
+        ViewData["Page"] = paged.Page;
+        ViewData["PageSize"] = paged.PageSize;
+        ViewData["TotalPages"] = paged.TotalPages;
+
+        return Page();
+    }
+
     public async Task<IActionResult> OnPostAsync()
     {
         var staff = await _staff.GetById(ClockingStaff.StafId).ConfigureAwait(true);
@@ -65,6 +79,16 @@ public class StaffClocking : PageModel
             ? _tenantClock.ToUtc(ClockingStaff.ClockInTime.Value)
             : DateTime.UtcNow;
         ClockingStaff.ClockOutTime = _tenantClock.ToUtc(ClockingStaff.ClockOutTime);
+
+        // Catches exactly the bug that produced negative working hours: a manually-entered Clock
+        // Out earlier than Clock In (e.g. meant for the next day, or an AM/PM slip). Nothing short
+        // of this check stops that from being saved as-is.
+        if (ClockingStaff.ClockOutTime.HasValue && ClockingStaff.ClockOutTime <= ClockingStaff.ClockInTime)
+        {
+            ViewData["Error"] = "Clock Out must be after Clock In.";
+            return await RenderWithDataAsync().ConfigureAwait(true);
+        }
+
         ClockingStaff.CreatedAt = DateTime.UtcNow;
 
         if (ClockingStaff.ClockOutTime != null)
@@ -73,16 +97,7 @@ public class StaffClocking : PageModel
         await _service.Create(ClockingStaff).ConfigureAwait(true);
 
         // repopulate list so the newly created clocking shows immediately
-        var paged = await _service.GetPaged(PageNumber, PageSize).ConfigureAwait(true);
-        Model!.Clocking = paged.Items;
-        Model.Staff = await _staff.GetAll().ConfigureAwait(true);
-
-        ViewData["TotalCount"] = paged.TotalCount;
-        ViewData["Page"] = paged.Page;
-        ViewData["PageSize"] = paged.PageSize;
-        ViewData["TotalPages"] = paged.TotalPages;
-
-        return Page();
+        return await RenderWithDataAsync().ConfigureAwait(true);
     }
 
     public async Task<IActionResult> OnPostClockOutAsync([FromBody] ClockingStaff model)
@@ -110,5 +125,26 @@ public class StaffClocking : PageModel
             return RedirectToPage("./StaffClocking");
 
         return RedirectToPage("./StaffClocking");
+    }
+
+    // Corrects an existing, already-completed record (e.g. a bad manually-entered timestamp) -
+    // the admin-side counterpart to the validation added to OnPostAsync above. Only the clocking
+    // fields are editable; the owning staff member and the record's day are not.
+    public async Task<IActionResult> OnPostEditAsync([FromBody] ClockingStaff model)
+    {
+        // ClockInTime/ClockOutTime/break times arrive as org-local wall-clock values from
+        // datetime-local inputs - convert to UTC for storage, matching every other write path.
+        var clockIn = _tenantClock.ToUtc(model.ClockInTime);
+        var clockOut = _tenantClock.ToUtc(model.ClockOutTime);
+        var leaveOnBreak = _tenantClock.ToUtc(model.LeaveOnBreakTime);
+        var returnOnBreak = _tenantClock.ToUtc(model.ReturnOnBreakTime);
+
+        var (success, error) = await _service.UpdateTimes(
+            model.ClockingStaffId, clockIn, clockOut, leaveOnBreak, returnOnBreak).ConfigureAwait(true);
+
+        if (!success)
+            return BadRequest(new { error });
+
+        return new OkResult();
     }
 }

@@ -6,7 +6,10 @@
     var input = "tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm tw:text-slate-900 tw:focus:border-blue-500 tw:focus:outline-none tw:focus:ring-1 tw:focus:ring-blue-500";
     var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
     var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
+    var btnWhite = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-slate-300 tw:bg-white tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-slate-700 tw:hover:bg-slate-50";
     var actionBtn = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:px-2.5 tw:py-1 tw:text-xs tw:font-medium tw:text-white";
+    var iconBtnEdit = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-100 tw:px-2.5 tw:py-1.5 tw:text-sm tw:text-blue-700 tw:hover:bg-blue-200";
+    var iconBtnDetails = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-slate-200 tw:px-2.5 tw:py-1.5 tw:text-sm tw:text-slate-700 tw:hover:bg-slate-300";
 }
 
 <div class="tw:mx-auto tw:max-w-7xl tw:px-4 tw:py-6 tw:sm:px-6 tw:lg:px-8">
@@ -24,6 +27,10 @@
       <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">Manual Clocking Here</h2>
     </div>
     <div class="tw:p-4">
+      @if (ViewData["Error"] != null)
+      {
+        <div class="tw:mb-3 tw:rounded-md tw:bg-red-50 tw:px-3 tw:py-2 tw:text-sm tw:text-red-700">@ViewData["Error"]</div>
+      }
       <form asp-page="VolunteerClocking" method="post">
         <div class="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2 tw:lg:grid-cols-6 tw:lg:items-end">
           <div class="tw:lg:col-span-3">
@@ -70,7 +77,13 @@
         <tbody class="tw:divide-y tw:divide-slate-100">
           @foreach (var c in Model.Model?.Clocking ?? Enumerable.Empty<InpremClockingApp.Models.Clocking>())
           {
-            <tr class="tw:hover:bg-slate-50">
+            <tr class="tw:hover:bg-slate-50"
+                data-id="@c.ClockingId"
+                data-full-name="@c.FullName"
+                data-clock-in="@(TenantClock.ToLocal(c.ClockInTime)?.ToString("yyyy-MM-ddTHH:mm"))"
+                data-clock-out="@(TenantClock.ToLocal(c.ClockOutTime)?.ToString("yyyy-MM-ddTHH:mm"))"
+                data-break-start="@(TenantClock.ToLocal(c.LeaveOnBreakTime)?.ToString("yyyy-MM-ddTHH:mm"))"
+                data-break-end="@(TenantClock.ToLocal(c.ReturnOnBreakTime)?.ToString("yyyy-MM-ddTHH:mm"))">
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@c.FullName</td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@TenantClock.ToLocal(c.CreatedAt)?.ToString("yyyy-MM-dd")</td>
               <td class="tw:px-4 tw:py-3 tw:text-sm tw:whitespace-nowrap tw:text-slate-700">@(TenantClock.ToLocal(c.ClockInTime)?.ToString("HH:mm:ss") ?? "")</td>
@@ -83,6 +96,8 @@
                   <button class="@actionBtn tw:bg-emerald-600 tw:hover:bg-emerald-700" onclick="vpostAction('ClockOut', { ClockingId: @c.ClockingId })">Clock Out</button>
                   <button class="@actionBtn tw:bg-amber-500 tw:hover:bg-amber-600" onclick="vpostAction('BreakStart', { ClockingId: @c.ClockingId })">Break Start</button>
                   <button class="@actionBtn tw:bg-sky-500 tw:hover:bg-sky-600" onclick="vpostAction('BreakEnd', { ClockingId: @c.ClockingId })">Break End</button>
+                  <button class="@iconBtnEdit btn-edit-clocking" title="Edit"><i class="fas fa-pencil-alt"></i></button>
+                  <button class="@iconBtnDetails btn-details-clocking" title="Details"><i class="fas fa-eye"></i></button>
                 </div>
               </td>
             </tr>
@@ -125,6 +140,64 @@
   </div>
 </div>
 
+<div id="editClockingModal" data-modal-root class="tw:fixed tw:inset-0 tw:z-50 tw:hidden">
+  <div class="tw:fixed tw:inset-0 tw:bg-black/50" data-modal-dismiss="editClockingModal"></div>
+  <div class="tw:pointer-events-none tw:fixed tw:inset-0 tw:flex tw:items-center tw:justify-center tw:p-4">
+    <div class="tw:pointer-events-auto tw:w-full tw:max-w-md tw:rounded-lg tw:bg-white tw:shadow-xl">
+      <div class="tw:flex tw:items-center tw:justify-between tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+        <h5 class="tw:text-base tw:font-semibold tw:text-slate-900">Edit Clocking Record - <span id="editClockingName"></span></h5>
+        <button type="button" class="tw:cursor-pointer tw:border-0 tw:bg-transparent tw:text-xl tw:leading-none tw:text-slate-400 tw:hover:text-slate-600" data-modal-dismiss="editClockingModal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="tw:p-4">
+        <div id="editClockingErrors" class="tw:mb-2"></div>
+        <input type="hidden" id="editClockingId" />
+        <div class="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2">
+          <div>
+            <label class="@label">Clock In</label>
+            <input id="editClockIn" type="datetime-local" class="@input" />
+          </div>
+          <div>
+            <label class="@label">Clock Out</label>
+            <input id="editClockOut" type="datetime-local" class="@input" />
+          </div>
+          <div>
+            <label class="@label">Break Start</label>
+            <input id="editBreakStart" type="datetime-local" class="@input" />
+          </div>
+          <div>
+            <label class="@label">Break End</label>
+            <input id="editBreakEnd" type="datetime-local" class="@input" />
+          </div>
+        </div>
+      </div>
+      <div class="tw:flex tw:justify-end tw:gap-2 tw:border-t tw:border-slate-200 tw:px-4 tw:py-3">
+        <button type="button" class="@btnWhite" data-modal-dismiss="editClockingModal">Cancel</button>
+        <button type="button" id="btnSaveClockingEdit" class="@btnPrimary">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="detailsClockingModal" data-modal-root class="tw:fixed tw:inset-0 tw:z-50 tw:hidden">
+  <div class="tw:fixed tw:inset-0 tw:bg-black/50" data-modal-dismiss="detailsClockingModal"></div>
+  <div class="tw:pointer-events-none tw:fixed tw:inset-0 tw:flex tw:items-center tw:justify-center tw:p-4">
+    <div class="tw:pointer-events-auto tw:w-full tw:max-w-md tw:rounded-lg tw:bg-white tw:shadow-xl">
+      <div class="tw:flex tw:items-center tw:justify-between tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+        <h5 class="tw:text-base tw:font-semibold tw:text-slate-900">Clocking Details - <span id="detailsClockingName"></span></h5>
+        <button type="button" class="tw:cursor-pointer tw:border-0 tw:bg-transparent tw:text-xl tw:leading-none tw:text-slate-400 tw:hover:text-slate-600" data-modal-dismiss="detailsClockingModal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="tw:p-4" id="detailsClockingBody"></div>
+      <div class="tw:flex tw:justify-end tw:gap-2 tw:border-t tw:border-slate-200 tw:px-4 tw:py-3">
+        <button type="button" class="@btnWhite" data-modal-dismiss="detailsClockingModal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 
     async function vpostAction(action, data) {
@@ -145,6 +218,101 @@
             location.reload();
         }
     }
+
+    // Edit an existing, already-completed clocking record (correcting a bad timestamp) - only
+    // the clocking-window fields are editable, not the owning volunteer or the record's day.
+    (function () {
+        var table = document.getElementById('vclockingTable');
+
+        function openEditModal(tr) {
+            document.getElementById('editClockingId').value = tr.getAttribute('data-id') || '';
+            document.getElementById('editClockingName').textContent = tr.getAttribute('data-full-name') || '';
+            document.getElementById('editClockIn').value = tr.getAttribute('data-clock-in') || '';
+            document.getElementById('editClockOut').value = tr.getAttribute('data-clock-out') || '';
+            document.getElementById('editBreakStart').value = tr.getAttribute('data-break-start') || '';
+            document.getElementById('editBreakEnd').value = tr.getAttribute('data-break-end') || '';
+            document.getElementById('editClockingErrors').innerHTML = '';
+            openModal('editClockingModal');
+        }
+
+        // Read-only view of the row's already-rendered cells - no fetch needed, just presented as
+        // label/value lines instead of a dense table row.
+        function openDetailsModal(tr) {
+            document.getElementById('detailsClockingName').textContent = tr.getAttribute('data-full-name') || '';
+
+            var body = document.getElementById('detailsClockingBody');
+            body.innerHTML = '';
+            [
+                ['Date', tr.children[1].textContent],
+                ['Clock In', tr.children[2].textContent],
+                ['Clock Out', tr.children[3].textContent],
+                ['Break Start', tr.children[4].textContent],
+                ['Break End', tr.children[5].textContent],
+                ['Working Hours', tr.children[6].textContent]
+            ].forEach(function (field) {
+                var line = document.createElement('p');
+                line.className = 'tw:mt-2 tw:text-sm tw:text-slate-600';
+                line.appendChild(document.createTextNode(field[0] + ': '));
+
+                var value = document.createElement('span');
+                value.className = 'tw:font-semibold tw:text-slate-900';
+                value.textContent = field[1] && field[1].trim() ? field[1].trim() : '—';
+                line.appendChild(value);
+
+                body.appendChild(line);
+            });
+
+            openModal('detailsClockingModal');
+        }
+
+        table.addEventListener('click', function (event) {
+            var editBtn = event.target.closest('.btn-edit-clocking');
+            if (editBtn) {
+                openEditModal(editBtn.closest('tr'));
+                return;
+            }
+
+            var detailsBtn = event.target.closest('.btn-details-clocking');
+            if (detailsBtn) {
+                openDetailsModal(detailsBtn.closest('tr'));
+            }
+        });
+
+        document.getElementById('btnSaveClockingEdit').addEventListener('click', function () {
+            var errors = document.getElementById('editClockingErrors');
+            errors.innerHTML = '';
+
+            var payload = {
+                ClockingId: parseInt(document.getElementById('editClockingId').value || '0'),
+                ClockInTime: document.getElementById('editClockIn').value || null,
+                ClockOutTime: document.getElementById('editClockOut').value || null,
+                LeaveOnBreakTime: document.getElementById('editBreakStart').value || null,
+                ReturnOnBreakTime: document.getElementById('editBreakEnd').value || null
+            };
+
+            fetch('?handler=Edit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(function (response) {
+                if (response.ok) {
+                    location.reload();
+                    return;
+                }
+                return response.json().then(function (json) {
+                    var p = document.createElement('div');
+                    p.className = 'tw:rounded-md tw:bg-red-50 tw:px-3 tw:py-2 tw:text-sm tw:text-red-700';
+                    p.textContent = (json && json.error) || 'Request failed.';
+                    errors.appendChild(p);
+                });
+            }).catch(function () {
+                var p = document.createElement('div');
+                p.className = 'tw:rounded-md tw:bg-red-50 tw:px-3 tw:py-2 tw:text-sm tw:text-red-700';
+                p.textContent = 'Request failed.';
+                errors.appendChild(p);
+            });
+        });
+    })();
 
     // Volunteer search-and-select (name or email) for the manual clocking form
     (function () {
