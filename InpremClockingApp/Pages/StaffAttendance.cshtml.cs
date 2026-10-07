@@ -67,7 +67,7 @@ public class StaffAttendance : PageModel
         {
             var matchedOnEmail = email != null &&
                 string.Equals(emailOrPhoneMatch.EmailAddress, email, StringComparison.OrdinalIgnoreCase);
-            TempData["Message"] = matchedOnEmail
+            TempData["Error"] = matchedOnEmail
                 ? "A staff member with this email address is already registered."
                 : "A staff member with this phone number is already registered.";
             return RedirectToPage("./StaffAttendance");
@@ -120,7 +120,7 @@ public class StaffAttendance : PageModel
             // Lost a race with a concurrent registration using the same email. The unique index
             // on EmailAddress is the real guarantee; the check above is just the fast path that
             // avoids hitting the constraint in the common, non-racing case.
-            TempData["Message"] = "A staff member with this email address is already registered.";
+            TempData["Error"] = "A staff member with this email address is already registered.";
             return RedirectToPage("./StaffAttendance");
         }
 

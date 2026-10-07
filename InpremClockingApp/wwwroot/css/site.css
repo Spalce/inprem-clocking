@@ -111,3 +111,41 @@
     margin-bottom: 10px;
     margin-left: 1rem
 }
+
+/* Prominent toast - showToast(text, duration, type, { prominent: true }). Top-centre, solid and
+   larger than the default bottom-right toast, for confirmations users must not miss (e.g.
+   "Volunteer registered successfully!" on the kiosk). Default toasts are unaffected. */
+.alerts.alerts-prominent {
+    top: 1.5rem;
+    bottom: auto;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    padding-left: 0;
+    width: max-content;
+    max-width: calc(100vw - 2rem)
+}
+
+.alerts.alerts-prominent .alert {
+    margin-left: 0;
+    padding: 1rem 1.25rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+    align-items: center;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, .25)
+}
+
+.alerts.alerts-prominent .alert.alert-success {
+    background-color: #15803d;
+    color: #fff
+}
+
+.alerts.alerts-prominent .alert.alert-danger {
+    background-color: #b91c1c;
+    color: #fff
+}
+
+.alerts.alerts-prominent .alert.alert-warning {
+    background-color: #b45309;
+    color: #fff
+}

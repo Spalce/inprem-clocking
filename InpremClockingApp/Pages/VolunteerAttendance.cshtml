@@ -32,27 +32,32 @@
           <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">New Volunteer</h2>
         </div>
         <div class="tw:p-4">
-          @if (TempData["Message"] != null)
-          {
-            <div class="tw:mb-4 tw:rounded-md tw:bg-emerald-50 tw:px-3 tw:py-2 tw:text-sm tw:text-emerald-700">
-              @TempData["Message"]</div>
-            }
-
+            @* Messages and validation errors are shown as pop-ups (see the script at the bottom),
+               not above the form, so they can't be missed. Field errors also stay inline. *@
             <form id="registerForm" method="post">
-              <div asp-validation-summary="ModelOnly" class="tw:mb-3 tw:text-sm tw:text-red-600"></div>
-
               @if (Model.NameConflict)
               {
-                <div class="tw:mb-4 tw:rounded-md tw:bg-amber-50 tw:p-3">
-                  <p class="tw:mb-2 tw:text-sm tw:text-amber-800">A volunteer named <strong>@Model.ExistingName</strong> is
-                    already registered. Is this you?</p>
-                    <div class="tw:flex tw:gap-2">
-                      <a href="/volunteer-clockin/@Model.ExistingId" class="@btnPrimary">Yes, that's me</a>
-                      <button type="submit" name="ConfirmDifferentPerson" value="true" class="@btnWhite">No, this is a different
-                        person</button>
+                <div id="vNameConflictModal" class="tw:fixed tw:inset-0 tw:z-50" role="dialog" aria-modal="true"
+                     aria-labelledby="vNameConflictTitle">
+                  <div class="tw:fixed tw:inset-0 tw:bg-black/50"></div>
+                  <div class="tw:pointer-events-none tw:fixed tw:inset-0 tw:flex tw:items-center tw:justify-center tw:p-4">
+                    <div class="tw:pointer-events-auto tw:w-full tw:max-w-md tw:rounded-lg tw:bg-white tw:shadow-xl">
+                      <div class="tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+                        <h5 id="vNameConflictTitle" class="tw:text-base tw:font-semibold tw:text-slate-900">Is this you?</h5>
+                      </div>
+                      <div class="tw:p-4">
+                        <p class="tw:text-sm tw:text-slate-600">A volunteer named <strong>@Model.ExistingName</strong> is
+                          already registered.</p>
+                      </div>
+                      <div class="tw:flex tw:flex-wrap tw:justify-end tw:gap-2 tw:border-t tw:border-slate-200 tw:px-4 tw:py-3">
+                        <button type="submit" name="ConfirmDifferentPerson" value="true" class="@btnWhite">No, this is a
+                          different person</button>
+                        <a href="/volunteer-clockin/@Model.ExistingId" class="@btnPrimary">Yes, that's me</a>
                       </div>
                     </div>
-                  }
+                  </div>
+                </div>
+              }
 
                   @if (Model.MultipleNameMatches)
                   {
@@ -121,7 +126,7 @@
                     <div class="tw:sm:col-span-2">
                       <label asp-for="Input!.VolunteerCategory" class="@label">Which volunteer category do you fall
                         under?</label>
-                        <select asp-for="Input!.VolunteerCategory" class="@input" required>
+                        <select asp-for="Input!.VolunteerCategory" class="@input" required data-val-required="Select a volunteer category">
                           <option value="">-- Select category --</option>
                           <option value="@VolunteerCategories.MandatedCommunityHours">Mandated Community Hours</option>
                           <option value="@VolunteerCategories.MofcVolunteerHub">MOFC Volunteer Hub</option>
@@ -134,7 +139,7 @@
                         </div>
                         <div class="tw:sm:col-span-2" id="mandateTypeGroup" style="display:none;">
                           <label asp-for="Input!.MandateType" class="@label">Which of these applies to you?</label>
-                          <select asp-for="Input!.MandateType" class="@input">
+                          <select asp-for="Input!.MandateType" class="@input" data-msg-required="Please select which mandate applies">
                             <option value="">-- Select --</option>
                             <option value="@VolunteerMandateTypes.CourtOrders">Court orders</option>
                             <option value="@VolunteerMandateTypes.Diversion">Diversion</option>
@@ -144,32 +149,32 @@
                         </div>
                         <div id="institutionGroup" style="display:none;">
                           <label asp-for="Input!.InstitutionName" class="@label"></label>
-                          <input asp-for="Input!.InstitutionName" class="@input" />
+                          <input asp-for="Input!.InstitutionName" class="@input" data-msg-required="Name of institution is required" />
                           <span asp-validation-for="Input!.InstitutionName" class="@validation"></span>
                         </div>
                         <div id="placeOfWorkGroup" style="display:none;">
                           <label asp-for="Input!.PlaceOfWork" class="@label"></label>
-                          <input asp-for="Input!.PlaceOfWork" class="@input" />
+                          <input asp-for="Input!.PlaceOfWork" class="@input" data-msg-required="Place of work is required" />
                           <span asp-validation-for="Input!.PlaceOfWork" class="@validation"></span>
                         </div>
                         <div id="contactPersonGroup" style="display:none;">
                           <label asp-for="Input!.ContactPerson" class="@label"></label>
-                          <input asp-for="Input!.ContactPerson" class="@input" />
+                          <input asp-for="Input!.ContactPerson" class="@input" data-msg-required="Contact person is required" />
                           <span asp-validation-for="Input!.ContactPerson" class="@validation"></span>
                         </div>
                         <div id="contactPersonPositionGroup" style="display:none;">
                           <label asp-for="Input!.ContactPersonPosition" class="@label"></label>
-                          <input asp-for="Input!.ContactPersonPosition" class="@input" />
+                          <input asp-for="Input!.ContactPersonPosition" class="@input" data-msg-required="Contact person position is required" />
                           <span asp-validation-for="Input!.ContactPersonPosition" class="@validation"></span>
                         </div>
                         <div id="contactPersonEmailGroup" style="display:none;">
                           <label asp-for="Input!.ContactPersonEmail" class="@label"></label>
-                          <input asp-for="Input!.ContactPersonEmail" class="@input" />
+                          <input asp-for="Input!.ContactPersonEmail" class="@input" data-msg-required="Contact person email is required" />
                           <span asp-validation-for="Input!.ContactPersonEmail" class="@validation"></span>
                         </div>
                         <div id="contactPersonPhoneGroup" style="display:none;">
                           <label asp-for="Input!.ContactPersonPhone" class="@label"></label>
-                          <input asp-for="Input!.ContactPersonPhone" class="@input" />
+                          <input asp-for="Input!.ContactPersonPhone" class="@input" data-msg-required="Contact person phone is required" />
                           <span asp-validation-for="Input!.ContactPersonPhone" class="@validation"></span>
                         </div>
                       </div>
@@ -199,7 +204,44 @@
             @section Scripts {
               <partial name="_ValidationScriptsPartial" />
             }
+            @{
+              var serverErrors = ViewData.ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage)
+                .Where(m => !string.IsNullOrWhiteSpace(m))
+                .Distinct()
+                .ToList();
+            }
             <script>
+              // Pop-ups for this form. Server-side outcomes are shown once the page has loaded
+              // (showAlert/showToast are defined by the layout, after this script).
+              document.addEventListener('DOMContentLoaded', function () {
+                @if (TempData["Error"] is string registerError)
+                {
+                  <text>showAlert('Already registered', @Json.Serialize(registerError), 'danger');</text>
+                }
+                else if (serverErrors.Count > 0)
+                {
+                  <text>showAlert('Please fix the following', @Json.Serialize(serverErrors), 'danger');</text>
+                }
+                @if (TempData["Message"] is string registerMessage)
+                {
+                  <text>showToast(@Json.Serialize(registerMessage), 6000, 'success', { prominent: true });</text>
+                }
+              });
+
+              // Client-side validation failures on submit. Deferred so it opens after jQuery
+              // Validate has focused the first invalid field - closing the pop-up returns there.
+              $('#registerForm').on('invalid-form.popup', function (e, validator) {
+                var messages = [];
+                $.each(validator.errorList, function (_, err) {
+                  if (messages.indexOf(err.message) < 0) messages.push(err.message);
+                });
+                setTimeout(function () {
+                  showAlert('Please fill the highlighted fields', messages, 'danger');
+                }, 0);
+              });
+
               // Show/hide the volunteer category's conditional follow-up fields, and only mark
               // them required while they're actually visible.
               (function () {
@@ -235,11 +277,11 @@
                   setVisible(institutionGroup, institutionInput, value === EDUCATIONAL);
                   setVisible(placeOfWorkGroup, placeOfWorkInput, value === CORPORATE);
                   setVisible(contactPersonGroup, contactPersonInput, value === EDUCATIONAL || value === CORPORATE);
-                  // Position/email/phone are only collected for Educational Purposes, unlike the
-                  // contact person's name above which is also asked for Corporate Volunteering.
-                  setVisible(contactPersonPositionGroup, contactPersonPositionInput, value === EDUCATIONAL);
-                  setVisible(contactPersonEmailGroup, contactPersonEmailInput, value === EDUCATIONAL);
-                  setVisible(contactPersonPhoneGroup, contactPersonPhoneInput, value === EDUCATIONAL);
+                  // The contact person's position/email/phone are collected for both categories
+                  // that have a contact person (Educational Purposes and Corporate Volunteering).
+                  setVisible(contactPersonPositionGroup, contactPersonPositionInput, value === EDUCATIONAL || value === CORPORATE);
+                  setVisible(contactPersonEmailGroup, contactPersonEmailInput, value === EDUCATIONAL || value === CORPORATE);
+                  setVisible(contactPersonPhoneGroup, contactPersonPhoneInput, value === EDUCATIONAL || value === CORPORATE);
                 }
 
                 categorySelect.addEventListener('change', updateConditionalFields);

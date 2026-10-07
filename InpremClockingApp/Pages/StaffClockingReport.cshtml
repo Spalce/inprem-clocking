@@ -263,7 +263,7 @@
           a.remove();
           URL.revokeObjectURL(url);
         })
-        .catch(function(){ alert('Failed to download PDF'); });
+        .catch(function(){ showAlert('Download failed', 'The PDF could not be downloaded. Please try again.', 'danger'); });
     });
   })();
 </script>

@@ -229,6 +229,9 @@
             if (category === CORPORATE) {
                 rows.push(['Place of Work', tr.getAttribute('data-place-of-work')]);
                 rows.push(['Contact Person', tr.getAttribute('data-contact-person')]);
+                rows.push(['Contact Person Position', tr.getAttribute('data-contact-person-position')]);
+                rows.push(['Contact Person Email', tr.getAttribute('data-contact-person-email')]);
+                rows.push(['Contact Person Phone', tr.getAttribute('data-contact-person-phone')]);
             }
 
             // Built as DOM nodes with textContent (not innerHTML) - these values are

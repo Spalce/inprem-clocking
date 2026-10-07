@@ -27,9 +27,14 @@
       <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">Manual Clocking Here</h2>
     </div>
     <div class="tw:p-4">
-      @if (ViewData["Error"] != null)
+      @if (ViewData["Error"] is string clockingError)
       {
-        <div class="tw:mb-3 tw:rounded-md tw:bg-red-50 tw:px-3 tw:py-2 tw:text-sm tw:text-red-700">@ViewData["Error"]</div>
+        @* Shown as a pop-up (defined by the layout) rather than above the form, so it can't be missed. *@
+        <script>
+          document.addEventListener('DOMContentLoaded', function () {
+            showAlert('Clocking not saved', @Json.Serialize(clockingError), 'danger');
+          });
+        </script>
       }
       <form asp-page="VolunteerClocking" method="post">
         <div class="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2 tw:lg:grid-cols-6 tw:lg:items-end">

@@ -61,6 +61,14 @@
 </div>
 
 <script >
+    // "Registered successfully!" from the register form, which redirects here - shown once
+    // the layout (which defines showToast) has loaded.
+    @if (TempData["Message"] is string registeredMessage)
+    {
+        <text>document.addEventListener('DOMContentLoaded', function () {
+            showToast(@Json.Serialize(registeredMessage), 6000, 'success', { prominent: true });
+        });</text>
+    }
 
     $("#clockin").click(function(){
         $.ajax({
@@ -73,7 +81,7 @@
                 // of which button was pressed (this was the real bug, not something specific
                 // to Clock In - that button's error path, which doesn't redirect, just made it
                 // easy to mistake "the fix works here" for "the fix only applies here").
-                setTimeout(function() { window.location.assign('/StaffAttendance'); }, 5000);
+                setTimeout(function() { window.location.assign('/StaffAttendance'); }, 3000);
             },
             error: function (xhr) {
                 if (xhr.status === 409) {
@@ -97,7 +105,7 @@
                 // of which button was pressed (this was the real bug, not something specific
                 // to Clock In - that button's error path, which doesn't redirect, just made it
                 // easy to mistake "the fix works here" for "the fix only applies here").
-                setTimeout(function() { window.location.assign('/StaffAttendance'); }, 5000);
+                setTimeout(function() { window.location.assign('/StaffAttendance'); }, 3000);
             },
             error: function (xhr) {
                showToast('Oops! An error occured. Try again', 7000, 'danger');
@@ -116,7 +124,7 @@
                 // of which button was pressed (this was the real bug, not something specific
                 // to Clock In - that button's error path, which doesn't redirect, just made it
                 // easy to mistake "the fix works here" for "the fix only applies here").
-                setTimeout(function() { window.location.assign('/StaffAttendance'); }, 5000);
+                setTimeout(function() { window.location.assign('/StaffAttendance'); }, 3000);
             },
             error: function (xhr) {
                showToast('Oops! An error occured. Try again', 7000, 'danger');
@@ -135,7 +143,7 @@
                 // of which button was pressed (this was the real bug, not something specific
                 // to Clock In - that button's error path, which doesn't redirect, just made it
                 // easy to mistake "the fix works here" for "the fix only applies here").
-                setTimeout(function() { window.location.assign('/StaffAttendance'); }, 5000);
+                setTimeout(function() { window.location.assign('/StaffAttendance'); }, 3000);
             },
             error: function (xhr) {
                showToast('Oops! An error occured. Try again', 7000, 'danger');

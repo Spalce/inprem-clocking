@@ -104,6 +104,8 @@ public class Volunteer : PageModel
             ModelState.AddModelError("EmailAddress", "Please enter a valid email address");
         }
 
+        VolunteerCategoryValidation.Validate(model, ModelState);
+
         // FirstName / LastName are optional for new registrations (search-by-email workflows).
         // Normalize missing names to empty strings so DB inserts don't fail with NULL.
         if (string.IsNullOrWhiteSpace(model.FirstName)) model.FirstName = string.Empty;
@@ -187,6 +189,8 @@ public class Volunteer : PageModel
 
         if (!new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(model.EmailAddress))
             ModelState.AddModelError("EmailAddress", "Please enter a valid email address");
+
+        VolunteerCategoryValidation.Validate(model, ModelState);
 
         if (!ModelState.IsValid)
         {

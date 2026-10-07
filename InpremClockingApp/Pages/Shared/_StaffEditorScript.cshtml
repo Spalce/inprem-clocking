@@ -1,28 +1,35 @@
+<script src="~/js/form-validation.js" asp-append-version="true"></script>
 <script>
     // Shared by Staff.cshtml and StaffDetails.cshtml alongside _StaffEditorModal - not wrapped
     // in an IIFE so both pages' own scripts can call openEditor(...) directly. Must be included
     // after the modal markup (these elements must already exist) and before each page's own
     // script.
+
+    // Same rules and wording as the Staff model's attributes (which the server re-applies) - see
+    // FormValidation (wwwroot/js/form-validation.js).
+    var STAFF_RULES = {
+        FirstName: { required: 'First name is required', pattern: [FormValidation.NAME_PATTERN, 'Only alphabets are allowed'], maxLength: [100, 'First name should not be more than 100 characters'] },
+        LastName: { required: 'Last name is required', pattern: [FormValidation.NAME_PATTERN, 'Only alphabets are allowed'], maxLength: [100, 'Last name should not be more than 100 characters'] },
+        EmailAddress: { required: 'Email address is required', email: 'Please enter a valid email address', maxLength: [100, 'Email address should not be more than 100 characters'] },
+        Gender: { required: 'Select Gender' },
+        PhoneNumber: { required: 'Phone number is required', minLength: [10, 'Phone Number cannot be less than 10 digits'], maxLength: [20, 'Phone Number length should not be more than 20'] },
+        ZipCode: { required: 'Enter a Zip Code' },
+        Address: { minLength: [10, 'Address cannot be less than 10 characters'], maxLength: [255, 'Address length should not be more than 255 characters'] }
+    };
+
+    // Server ModelState keys (model property names) -> this dialog's field ids (the same here).
+    var STAFF_FIELD_IDS = {
+        FirstName: 'FirstName', LastName: 'LastName', EmailAddress: 'EmailAddress', Gender: 'Gender',
+        PhoneNumber: 'PhoneNumber', ZipCode: 'ZipCode', Address: 'Address'
+    };
+
     function clearEditorErrors() {
-        document.getElementById('editorErrors').innerHTML = '';
+        FormValidation.clearErrors(document.getElementById('editorForm'));
     }
 
+    // Errors are shown under each field plus in the shared pop-up, not above the form.
     function showEditorErrors(obj) {
-        var container = document.getElementById('editorErrors');
-        container.innerHTML = '';
-        if (obj && obj.errors) {
-            Object.keys(obj.errors).forEach(function (key) {
-                var p = document.createElement('div');
-                p.className = 'tw:text-sm tw:text-red-600';
-                p.innerText = key + ': ' + obj.errors[key].join('; ');
-                container.appendChild(p);
-            });
-        } else {
-            var p = document.createElement('div');
-            p.className = 'tw:text-sm tw:text-red-600';
-            p.innerText = obj && obj.error ? obj.error : 'Request failed.';
-            container.appendChild(p);
-        }
+        FormValidation.showServerErrors(document.getElementById('editorForm'), obj, STAFF_FIELD_IDS);
     }
 
     // Opens in a new tab (not the same one) so clicking a match to check it doesn't discard
@@ -110,54 +117,34 @@
     // Shown when OnPostCreateAsync responds 409 with { nameConflict, matches } - an admin isn't a
     // walk-up stranger, so (unlike the kiosk's version of this prompt) full name/email are shown
     // rather than masked, and each match links to its Details page so the admin can check it
-    // before deciding. A single match stays as an inline banner; two or more use a picker modal.
+    // before deciding. Always a pop-up (one match or several), not a banner above the form.
     function showNameConflict(obj, onConfirm) {
         var firstName = document.getElementById('FirstName').value;
         var lastName = document.getElementById('LastName').value;
-
-        if (obj.matches.length > 1) {
-            var modal = ensureNameConflictModal();
-
-            var intro = document.createElement('p');
-            intro.className = 'tw:mb-3 tw:text-sm tw:text-slate-600';
-            intro.textContent = 'Staff members named ' + firstName + ' ' + lastName + ' already exist. Open a record to check it, or confirm this is a different person.';
-            modal.body.appendChild(intro);
-
-            var list = document.createElement('div');
-            list.className = 'tw:flex tw:flex-col tw:gap-2';
-            obj.matches.forEach(function (m) {
-                var link = nameMatchLink(m);
-                link.className = 'tw:block tw:rounded-md tw:border tw:border-slate-200 tw:px-3 tw:py-2 tw:text-sm tw:text-blue-600 tw:hover:bg-slate-50 tw:hover:underline';
-                list.appendChild(link);
-            });
-            modal.body.appendChild(list);
-
-            modal.footer.appendChild(nameConflictButtons(
-                function () { closeModal('sNameConflictModal'); onConfirm(); },
-                function () { closeModal('sNameConflictModal'); }
-            ));
-
-            openModal('sNameConflictModal');
-            return;
-        }
-
-        var container = document.getElementById('editorErrors');
-        container.innerHTML = '';
-
-        var box = document.createElement('div');
-        box.className = 'tw:mb-2 tw:rounded-md tw:bg-amber-50 tw:p-3';
+        var modal = ensureNameConflictModal();
 
         var intro = document.createElement('p');
-        intro.className = 'tw:mb-2 tw:text-sm tw:text-amber-800';
-        intro.appendChild(document.createTextNode('A staff member named '));
-        var link = nameMatchLink(obj.matches[0]);
-        link.className = 'tw:font-semibold tw:text-amber-900 tw:underline';
-        intro.appendChild(link);
-        intro.appendChild(document.createTextNode(' already exists. Is this a different person?'));
-        box.appendChild(intro);
+        intro.className = 'tw:mb-3 tw:text-sm tw:text-slate-600';
+        intro.textContent = obj.matches.length > 1
+            ? 'Staff members named ' + firstName + ' ' + lastName + ' already exist. Open a record to check it, or confirm this is a different person.'
+            : 'A staff member named ' + firstName + ' ' + lastName + ' already exists. Open the record to check it, or confirm this is a different person.';
+        modal.body.appendChild(intro);
 
-        box.appendChild(nameConflictButtons(onConfirm, function () { container.innerHTML = ''; }));
-        container.appendChild(box);
+        var list = document.createElement('div');
+        list.className = 'tw:flex tw:flex-col tw:gap-2';
+        obj.matches.forEach(function (m) {
+            var link = nameMatchLink(m);
+            link.className = 'tw:block tw:rounded-md tw:border tw:border-slate-200 tw:px-3 tw:py-2 tw:text-sm tw:text-blue-600 tw:hover:bg-slate-50 tw:hover:underline';
+            list.appendChild(link);
+        });
+        modal.body.appendChild(list);
+
+        modal.footer.appendChild(nameConflictButtons(
+            function () { closeModal('sNameConflictModal'); onConfirm(); },
+            function () { closeModal('sNameConflictModal'); }
+        ));
+
+        openModal('sNameConflictModal');
     }
 
     function setModalTitle(text) {
@@ -179,7 +166,7 @@
     }
 
     function saveStaff(confirmDifferentPerson) {
-        clearEditorErrors();
+        if (!FormValidation.validate(document.getElementById('editorForm'), STAFF_RULES)) return;
         var id = document.getElementById('StaffId').value;
         var payload = {
             StaffId: id ? parseInt(id) : 0,

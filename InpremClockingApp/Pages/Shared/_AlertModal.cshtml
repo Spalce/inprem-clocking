@@ -1,0 +1,102 @@
+@* Shared pop-up for validation/error messages, included by both layouts. Use from any page via
+   showAlert(title, message, type, onClose) - message is a string or an array of strings (shown as
+   a list), type is 'danger' | 'warning' | 'success' | 'info'. Messages are inserted as text, never
+   HTML. Success confirmations use showToast(..., { prominent: true }) instead, since they
+   shouldn't need dismissing. Pages calling this on load must wait for DOMContentLoaded: this
+   script runs after @RenderBody(). *@
+<div id="appAlertModal" class="tw:fixed tw:inset-0 tw:z-50" role="alertdialog" aria-modal="true"
+     aria-labelledby="appAlertTitle" aria-describedby="appAlertMessage" hidden>
+  <div id="appAlertBackdrop" class="tw:fixed tw:inset-0 tw:bg-black/50"></div>
+  <div class="tw:pointer-events-none tw:fixed tw:inset-0 tw:flex tw:items-center tw:justify-center tw:p-4">
+    <div class="tw:pointer-events-auto tw:w-full tw:max-w-md tw:rounded-lg tw:bg-white tw:shadow-xl">
+      <div class="tw:flex tw:items-center tw:gap-2 tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+        <span id="appAlertIcon" class="material-icons" aria-hidden="true"></span>
+        <h5 id="appAlertTitle" class="tw:text-base tw:font-semibold tw:text-slate-900"></h5>
+      </div>
+      <div id="appAlertMessage" class="tw:p-4 tw:text-sm tw:text-slate-700"></div>
+      <div class="tw:flex tw:justify-end tw:border-t tw:border-slate-200 tw:px-4 tw:py-3">
+        <button type="button" id="appAlertOk"
+                class="tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var ICONS = {
+      danger: ['error', 'tw:text-red-600'],
+      warning: ['warning', 'tw:text-amber-600'],
+      success: ['check_circle', 'tw:text-emerald-600'],
+      info: ['info', 'tw:text-blue-600']
+    };
+    var modal = document.getElementById('appAlertModal');
+    var okButton = document.getElementById('appAlertOk');
+    var backdrop = document.getElementById('appAlertBackdrop');
+    var onCloseCallback = null;
+    var returnFocusTo = null;
+
+    function close() {
+      modal.hidden = true;
+      document.removeEventListener('keydown', onKeyDown, true);
+      var callback = onCloseCallback;
+      onCloseCallback = null;
+      if (callback) {
+        callback();
+      } else if (returnFocusTo && returnFocusTo.focus) {
+        returnFocusTo.focus();
+      }
+    }
+
+    // Registered in the capture phase and stops propagation for Escape, so it runs before - and
+    // instead of - layout.js's document-level Escape handler, which closes every open
+    // [data-modal-root] dialog: dismissing this pop-up must not also close (and discard) an
+    // Add/Edit form open underneath it.
+    function onKeyDown(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        close();
+      } else if (e.key === 'Tab') {
+        // OK is the only control - keep focus inside the pop-up.
+        e.preventDefault();
+        okButton.focus();
+      }
+    }
+
+    okButton.addEventListener('click', close);
+    backdrop.addEventListener('click', close);
+
+    window.showAlert = function (title, message, type, onClose) {
+      var icon = ICONS[type] || ICONS.info;
+      var iconEl = document.getElementById('appAlertIcon');
+      iconEl.textContent = icon[0];
+      iconEl.className = 'material-icons ' + icon[1];
+      document.getElementById('appAlertTitle').textContent = title;
+
+      var body = document.getElementById('appAlertMessage');
+      body.textContent = '';
+      var lines = (Array.isArray(message) ? message : [message]).filter(function (l) { return l; });
+      if (lines.length > 1) {
+        var list = document.createElement('ul');
+        list.className = 'tw:list-disc tw:space-y-1 tw:pl-5';
+        lines.forEach(function (line) {
+          var item = document.createElement('li');
+          item.textContent = line;
+          list.appendChild(item);
+        });
+        body.appendChild(list);
+      } else {
+        body.textContent = lines[0] || '';
+      }
+
+      if (modal.hidden) {
+        returnFocusTo = document.activeElement;
+        document.addEventListener('keydown', onKeyDown, true);
+      }
+      onCloseCallback = onClose || null;
+      modal.hidden = false;
+      okButton.focus();
+    };
+  })();
+</script>

@@ -21,13 +21,13 @@ public class Staff
     [StringLength(100)]
     public string EmailAddress { get; set; } = string.Empty;
 
-    [Required]
+    [Required(ErrorMessage = "First name is required")]
     [DisplayName("First Name")]
     [StringLength(100)]
     [RegularExpression("^[A-Za-z]+(?: +[A-Za-z]+)*$", ErrorMessage = "Only alphabets are allowed")]
     public string? FirstName { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Last name is required")]
     [DisplayName("Last Name")]
     [StringLength(100)]
     [RegularExpression("^[A-Za-z]+(?: +[A-Za-z]+)*$", ErrorMessage = "Only alphabets are allowed")]
@@ -42,7 +42,7 @@ public class Staff
 
     public string? Type { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Phone number is required")]
     [DisplayName("Phone Number")]
     [MinLength(10, ErrorMessage = "Phone Number cannot be less than 10 digits")]
     [MaxLength(20, ErrorMessage = "Phone Number length should not be more than 20")]

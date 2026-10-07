@@ -19,6 +19,29 @@ app's first background job running a daily sweep that generates upcoming invoice
 non-payment from `Active` → `PastDue` → `Suspended`. Nothing yet *enforces* a `Suspended`
 subscription — that's Phase 9.
 
+## Pending implementation
+
+### Typed clock times are always read as the tenant's timezone (added 2026-10-07)
+
+Found while testing the single-tenant SmarterASP deploy, from devices on UTC+0 while Inprem's
+tenant timezone is `America/New_York` (UTC−4 during DST).
+
+**Already fixed:** the "add clocking" forms (`StaffClocking.cshtml`, `VolunteerClocking.cshtml`)
+pre-filled Clock In from the *browser's* clock, but `OnPostAsync` interprets the value as
+tenant-local time, so the saved clock-in landed hours in the future and a later live Clock Out
+produced negative hours, clamped to `00:00:00`. The prefill is now rendered server-side from
+`TenantClock.NowLocal()`.
+
+**Still pending:** if a tester *types* a time, it's still read as New York time. Typing their own
+local time will still be 4 hours off. Options (none chosen yet):
+
+1. **Label the inputs** with the timezone they're interpreted in (e.g. "Clock In (Eastern Time)")
+   on the add-clocking forms, the Edit modal, and the report date-range filters.
+2. **Set the tenant's timezone to where its users actually are** - data only, no code change
+   (`UPDATE Tenants SET TimeZoneId = '<IANA id>'`, or the provider portal's tenant edit page).
+   Existing records then display in that zone; for Inprem's real use it must stay
+   `America/New_York` (Columbus, OH).
+
 ## Goal
 
 Part 1 made the app multi-tenant. Part 2 makes it operable as a SaaS product: a provider

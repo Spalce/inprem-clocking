@@ -67,3 +67,4 @@ ol {
    reaches Pages/*.cshtml (outside wwwroot). Point it there explicitly. */
 @source "../../Pages/**/*.cshtml";
 @source "../../Areas/**/*.cshtml";
+@source "../js/**/*.js"; /* our own scripts (e.g. form-validation.js) set classes too - not wwwroot/lib */

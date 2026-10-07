@@ -28,27 +28,32 @@
         <h2 class="tw:text-sm tw:font-semibold tw:text-slate-900">New Staff</h2>
       </div>
       <div class="tw:p-4">
-        @if (TempData["Message"] != null)
-        {
-          <div class="tw:mb-4 tw:rounded-md tw:bg-emerald-50 tw:px-3 tw:py-2 tw:text-sm tw:text-emerald-700">
-            @TempData["Message"]</div>
-          }
-
+          @* Messages and validation errors are shown as pop-ups (see the script at the bottom),
+             not above the form, so they can't be missed. Field errors also stay inline. *@
           <form id="registerForm" method="post">
-            <div asp-validation-summary="ModelOnly" class="tw:mb-3 tw:text-sm tw:text-red-600"></div>
-
             @if (Model.NameConflict)
             {
-              <div class="tw:mb-4 tw:rounded-md tw:bg-amber-50 tw:p-3">
-                <p class="tw:mb-2 tw:text-sm tw:text-amber-800">A staff member named <strong>@Model.ExistingName</strong> is
-                  already registered. Is this you?</p>
-                  <div class="tw:flex tw:gap-2">
-                    <a href="/staff-clockin/@Model.ExistingId" class="@btnPrimary">Yes, that's me</a>
-                    <button type="submit" name="ConfirmDifferentPerson" value="true" class="@btnWhite">No, this is a different
-                      person</button>
+              <div id="sNameConflictModal" class="tw:fixed tw:inset-0 tw:z-50" role="dialog" aria-modal="true"
+                   aria-labelledby="sNameConflictTitle">
+                <div class="tw:fixed tw:inset-0 tw:bg-black/50"></div>
+                <div class="tw:pointer-events-none tw:fixed tw:inset-0 tw:flex tw:items-center tw:justify-center tw:p-4">
+                  <div class="tw:pointer-events-auto tw:w-full tw:max-w-md tw:rounded-lg tw:bg-white tw:shadow-xl">
+                    <div class="tw:border-b tw:border-slate-200 tw:px-4 tw:py-3">
+                      <h5 id="sNameConflictTitle" class="tw:text-base tw:font-semibold tw:text-slate-900">Is this you?</h5>
+                    </div>
+                    <div class="tw:p-4">
+                      <p class="tw:text-sm tw:text-slate-600">A staff member named <strong>@Model.ExistingName</strong> is
+                        already registered.</p>
+                    </div>
+                    <div class="tw:flex tw:flex-wrap tw:justify-end tw:gap-2 tw:border-t tw:border-slate-200 tw:px-4 tw:py-3">
+                      <button type="submit" name="ConfirmDifferentPerson" value="true" class="@btnWhite">No, this is a
+                        different person</button>
+                      <a href="/staff-clockin/@Model.ExistingId" class="@btnPrimary">Yes, that's me</a>
                     </div>
                   </div>
-                }
+                </div>
+              </div>
+            }
 
                 @if (Model.MultipleNameMatches)
                 {
@@ -141,7 +146,44 @@
       @section Scripts {
         <partial name="_ValidationScriptsPartial" />
       }
+      @{
+        var serverErrors = ViewData.ModelState.Values
+          .SelectMany(v => v.Errors)
+          .Select(e => e.ErrorMessage)
+          .Where(m => !string.IsNullOrWhiteSpace(m))
+          .Distinct()
+          .ToList();
+      }
       <script>
+        // Pop-ups for this form. Server-side outcomes are shown once the page has loaded
+        // (showAlert/showToast are defined by the layout, after this script).
+        document.addEventListener('DOMContentLoaded', function () {
+          @if (TempData["Error"] is string registerError)
+          {
+            <text>showAlert('Already registered', @Json.Serialize(registerError), 'danger');</text>
+          }
+          else if (serverErrors.Count > 0)
+          {
+            <text>showAlert('Please fix the following', @Json.Serialize(serverErrors), 'danger');</text>
+          }
+          @if (TempData["Message"] is string registerMessage)
+          {
+            <text>showToast(@Json.Serialize(registerMessage), 6000, 'success', { prominent: true });</text>
+          }
+        });
+
+        // Client-side validation failures on submit. Deferred so it opens after jQuery
+        // Validate has focused the first invalid field - closing the pop-up returns there.
+        $('#registerForm').on('invalid-form.popup', function (e, validator) {
+          var messages = [];
+          $.each(validator.errorList, function (_, err) {
+            if (messages.indexOf(err.message) < 0) messages.push(err.message);
+          });
+          setTimeout(function () {
+            showAlert('Please fill the highlighted fields', messages, 'danger');
+          }, 0);
+        });
+
         (function () {
           var input = document.getElementById('staffSearch');
           var timer = null;

@@ -21,13 +21,13 @@ public class Volunteer
     [StringLength(100)]
     public string EmailAddress { get; set; } = string.Empty;
 
-    [Required]
+    [Required(ErrorMessage = "First name is required")]
     [DisplayName("First Name")]
     [StringLength(100)]
     [RegularExpression("^[A-Za-z]+(?: +[A-Za-z]+)*$", ErrorMessage = "Only alphabets are allowed")]
     public string? FirstName { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Last name is required")]
     [DisplayName("Last Name")]
     [StringLength(100)]
     [RegularExpression("^[A-Za-z]+(?: +[A-Za-z]+)*$", ErrorMessage = "Only alphabets are allowed")]
@@ -41,7 +41,7 @@ public class Volunteer
 
     public string? Type { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Phone number is required")]
     [DisplayName("Phone Number")]
     [MinLength(10, ErrorMessage = "Phone Number cannot be less than 10 digits")]
     [MaxLength(20, ErrorMessage = "Phone Number length should not be more than 20")]
@@ -78,7 +78,7 @@ public class Volunteer
     [StringLength(200)]
     public string? ContactPerson { get; set; }
 
-    // Only collected for the Educational Purposes category (see ValidateVolunteerCategory in
+    // Only collected for the Educational Purposes and Corporate Volunteering categories (see ValidateVolunteerCategory in
     // VolunteerAttendance.cshtml.cs) - not required on this shared model for the same reason as
     // the other questionnaire fields above.
     [DisplayName("Contact Person Position")]

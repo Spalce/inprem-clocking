@@ -70,7 +70,7 @@ public class VolunteerAttendance : PageModel
         {
             var matchedOnEmail = email != null &&
                 string.Equals(emailOrPhoneMatch.EmailAddress, email, StringComparison.OrdinalIgnoreCase);
-            TempData["Message"] = matchedOnEmail
+            TempData["Error"] = matchedOnEmail
                 ? "A volunteer with this email address is already registered."
                 : "A volunteer with this phone number is already registered.";
             return RedirectToPage("./VolunteerAttendance");
@@ -123,7 +123,7 @@ public class VolunteerAttendance : PageModel
             // Lost a race with a concurrent registration using the same email. The unique index
             // on EmailAddress is the real guarantee; the check above is just the fast path that
             // avoids hitting the constraint in the common, non-racing case.
-            TempData["Message"] = "A volunteer with this email address is already registered.";
+            TempData["Error"] = "A volunteer with this email address is already registered.";
             return RedirectToPage("./VolunteerAttendance");
         }
 
@@ -137,46 +137,13 @@ public class VolunteerAttendance : PageModel
         return ex.InnerException is SqlException sqlEx && (sqlEx.Number == 2601 || sqlEx.Number == 2627);
     }
 
-    // The volunteer category question and its category-specific follow-up fields are only
-    // required here on the sign-up questionnaire - kept off the Volunteer model itself since
-    // that type is also bound by the admin Manage Volunteers panel, which never sends these.
+    // The volunteer category question and its category-specific follow-up fields - same rules
+    // as the back-office Add/Edit Volunteer dialog, see VolunteerCategoryValidation.
     private void ValidateVolunteerCategory()
     {
         if (Input == null)
             return;
 
-        if (string.IsNullOrWhiteSpace(Input.VolunteerCategory))
-        {
-            ModelState.AddModelError("Input.VolunteerCategory", "Please select which volunteer category you fall under");
-            return;
-        }
-
-        switch (Input.VolunteerCategory)
-        {
-            case VolunteerCategories.MandatedCommunityHours:
-                if (string.IsNullOrWhiteSpace(Input.MandateType))
-                    ModelState.AddModelError("Input.MandateType", "Please select which mandate applies");
-                break;
-
-            case VolunteerCategories.EducationalPurposes:
-                if (string.IsNullOrWhiteSpace(Input.InstitutionName))
-                    ModelState.AddModelError("Input.InstitutionName", "Name of institution is required");
-                if (string.IsNullOrWhiteSpace(Input.ContactPerson))
-                    ModelState.AddModelError("Input.ContactPerson", "Contact person is required");
-                if (string.IsNullOrWhiteSpace(Input.ContactPersonPosition))
-                    ModelState.AddModelError("Input.ContactPersonPosition", "Contact person position is required");
-                if (string.IsNullOrWhiteSpace(Input.ContactPersonEmail))
-                    ModelState.AddModelError("Input.ContactPersonEmail", "Contact person email is required");
-                if (string.IsNullOrWhiteSpace(Input.ContactPersonPhone))
-                    ModelState.AddModelError("Input.ContactPersonPhone", "Contact person phone is required");
-                break;
-
-            case VolunteerCategories.CorporateVolunteering:
-                if (string.IsNullOrWhiteSpace(Input.PlaceOfWork))
-                    ModelState.AddModelError("Input.PlaceOfWork", "Place of work is required");
-                if (string.IsNullOrWhiteSpace(Input.ContactPerson))
-                    ModelState.AddModelError("Input.ContactPerson", "Contact person is required");
-                break;
-        }
+        VolunteerCategoryValidation.Validate(Input, ModelState, "Input.");
     }
 }

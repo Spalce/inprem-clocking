@@ -256,7 +256,7 @@
                 window.URL.revokeObjectURL(downloadUrl);
             })
             .catch(function (error) {
-                alert(error.message);
+                showAlert('Download failed', error.message, 'danger');
             });
     });
   </script>

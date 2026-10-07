@@ -76,6 +76,9 @@
       {
         <p class="@line">Place of Work: <span class="@value">@(string.IsNullOrWhiteSpace(v.PlaceOfWork) ? "—" : v.PlaceOfWork)</span></p>
         <p class="@line">Contact Person: <span class="@value">@(string.IsNullOrWhiteSpace(v.ContactPerson) ? "—" : v.ContactPerson)</span></p>
+        <p class="@line">Contact Person Position: <span class="@value">@(string.IsNullOrWhiteSpace(v.ContactPersonPosition) ? "—" : v.ContactPersonPosition)</span></p>
+        <p class="@line">Contact Person Email: @if (!string.IsNullOrWhiteSpace(v.ContactPersonEmail)) { <a href="mailto:@v.ContactPersonEmail" class="@linkValue">@v.ContactPersonEmail</a> } else { <span class="@value">—</span> }</p>
+        <p class="@line">Contact Person Phone: @if (!string.IsNullOrWhiteSpace(v.ContactPersonPhone)) { <a href="@("tel:" + v.ContactPersonPhone.Replace(" ", "").Replace("-", "").Replace("(", "").Replace(")", ""))" class="@linkValue">@v.ContactPersonPhone</a> } else { <span class="@value">—</span> }</p>
       }
     </div>
     <div class="tw:flex tw:justify-start tw:gap-2 tw:border-t tw:border-slate-200 tw:px-4 tw:py-3">
