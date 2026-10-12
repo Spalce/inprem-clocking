@@ -76,7 +76,7 @@ public static class TestSqlServer
     private static async Task<string> StartContainerAsync()
     {
         // Testcontainers' resource reaper removes the container when the test process exits.
-        _container = new MsSqlBuilder().WithImage("mcr.microsoft.com/mssql/server:2022-latest").Build();
+        _container = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest").Build();
         await _container.StartAsync().ConfigureAwait(false);
         return _container.GetConnectionString();
     }

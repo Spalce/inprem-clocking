@@ -1,0 +1,18 @@
+# High/critical advisories already present in the approved app (fix/login-admin-only, 1061ea8),
+# all transitive. G0 may not change the app's packages; upgrading them is a Phase 0 follow-up
+# (see docs/multitenancy/build/PROGRESS.md). Format: <package id> <advisory id>. Remove a line
+# once the package is upgraded; scripts/ci/check_vulnerable_packages.py reports stale lines.
+
+# via the 8.0.0 EF Core / Identity packages (checked with `dotnet nuget why`); System.Formats.Asn1
+# and System.Text.Json also come through the scaffolding package below
+Microsoft.Data.SqlClient             GHSA-98G6-XH36-X2P7
+Azure.Identity                       GHSA-5MFX-4WCX-RV27
+System.Formats.Asn1                  GHSA-447R-WPH3-92PM
+Microsoft.Extensions.Caching.Memory  GHSA-QJ66-M88J-HMGJ
+System.Text.Json                     GHSA-HH2W-P6RV-4G7W
+System.Text.Json                     GHSA-8G4Q-XG66-9FP4
+
+# via Microsoft.VisualStudio.Web.CodeGeneration.Design 8.0.0 (scaffolding tool, design-time only)
+NuGet.Packaging                      GHSA-68W7-72JG-6QPP
+NuGet.Common                         GHSA-6QMF-MMC7-6C2P
+NuGet.Protocol                       GHSA-6QMF-MMC7-6C2P

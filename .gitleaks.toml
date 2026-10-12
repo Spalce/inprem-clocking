@@ -1,0 +1,24 @@
+# Secret scanning for CI (.github/workflows/ci.yml). Keeps gitleaks' default rules and adds the
+# two credential shapes this codebase actually uses, which the defaults do not detect.
+title = "InpremClockingApp"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "csharp-network-credential"
+description = "Literal password passed to System.Net.NetworkCredential"
+regex = '''NetworkCredential\(\s*"[^"]*"\s*,\s*"([^"]+)"\s*\)'''
+secretGroup = 1
+keywords = ["networkcredential"]
+
+[[rules]]
+id = "connection-string-password"
+description = "Password inside a SQL Server connection string"
+regex = '''(?i)(?:password|pwd)\s*=\s*([^;"'\s<>{}$]{4,})'''
+secretGroup = 1
+keywords = ["password=", "pwd="]
+
+  [rules.allowlist]
+  description = "Placeholders, not credentials"
+  regexes = ['''(?i)^(redacted|placeholder|changeme|your[-_]?password)$''']
