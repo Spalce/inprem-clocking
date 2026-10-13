@@ -5,14 +5,14 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** G0 (all steps and exit checks done)
-- **Next step:** Developer merges `mt/g0` into `mt/integration`; then Phase 0 / Step 0.1 — Solution structure (`02-phase0-foundation.md`, branch `mt/phase0`)
-- **Branch:** `mt/g0`
+- **Next step:** Phase 0 / Step 0.1 — Solution structure (`02-phase0-foundation.md`, branch `mt/phase0` from `mt/integration`)
+- **Branch:** `mt/integration` (G0 merged)
 
 ## Phase status
 
 | Phase | Status | Exit checks passed | Merged into `mt/integration` |
 |---|---|---|---|
-| G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | — (developer merges) |
+| G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
 | 0 Foundation | Not started | — | — |
 | 1 Provider Console | Not started | — | — |
 | 2 PayPal core | Not started | — | — |
@@ -54,7 +54,7 @@ _(date — what was tested — result)_
 
 _(date — phase/step — summary — tests — next)_
 
-- **2026-10-13 — G0 complete; ready for the developer to review and merge `mt/g0` into `mt/integration`.** The developer clarified that the inspected backup was the test deployment (corrected since; not going live), so `inspection-results.md` was relabelled.
+- **2026-10-13 — G0 complete; `mt/g0` merged into `mt/integration` (`ee940f8`)** at the developer's request, after review: clean Release build, Baseline 316/316, UI 5/5, no new vulnerable packages, no new secrets. The developer clarified that the inspected backup was the test deployment (corrected since; not going live), so `inspection-results.md` was relabelled.
 
 - **2026-10-13 — G0-2 — Inspection of the supplied backup (later identified as the test deployment).**
   - Restored `db_aa61e6_inpremdb3_10_5_2026_8.bak` (SQL Server 2022) in a throwaway local SQL Server 2022 container, ran 01–03, then deleted the container.
