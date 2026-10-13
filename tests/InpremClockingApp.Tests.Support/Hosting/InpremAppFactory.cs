@@ -18,7 +18,6 @@ namespace InpremClockingApp.Tests.Support.Hosting;
 /// <list type="bullet">
 /// <item>environment <c>Testing</c>: no user-secrets or per-environment appsettings are loaded;</item>
 /// <item>both DbContexts point at the test database;</item>
-/// <item><c>SeedAdmin:*</c> / <c>SeedSuperAdmin:*</c> are blanked, so no account is created from configuration;</item>
 /// <item>data-protection keys are in memory unless <c>persistKeys</c> is set (then they go to the
 /// test database's platform.DataProtectionKeys, as in a real deployment);</item>
 /// <item><see cref="BillingBackgroundService"/> is not started, so no timer races the tests;</item>
@@ -34,6 +33,7 @@ internal class InpremAppFactory : WebApplicationFactory<Program>
     private readonly IReadOnlyDictionary<string, string?> _settings;
     private readonly bool _persistKeys;
     private readonly Action<IServiceCollection>? _configureServices;
+    private readonly IConfigurationSource? _extraConfiguration;
 
     /// <summary>Every email the app sent through the platform's IEmailSender.</summary>
     public CapturingEmailSender Emails { get; } = new();
@@ -42,8 +42,10 @@ internal class InpremAppFactory : WebApplicationFactory<Program>
         string connectionString,
         IReadOnlyDictionary<string, string?>? settings = null,
         bool persistKeys = false,
-        Action<IServiceCollection>? configureServices = null)
+        Action<IServiceCollection>? configureServices = null,
+        IConfigurationSource? extraConfiguration = null)
     {
+        _extraConfiguration = extraConfiguration;
         _connectionString = connectionString;
         _settings = settings ?? new Dictionary<string, string?>();
         _persistKeys = persistKeys;
@@ -62,13 +64,10 @@ internal class InpremAppFactory : WebApplicationFactory<Program>
             var values = new Dictionary<string, string?>
             {
                 ["ConnectionStrings:DefaultConnection"] = _connectionString,
-                ["SeedAdmin:Email"] = "",
-                ["SeedAdmin:Password"] = "",
-                ["SeedSuperAdmin:Email"] = "",
-                ["SeedSuperAdmin:Password"] = "",
             };
             foreach (var (key, value) in _settings) values[key] = value;
             config.AddInMemoryCollection(values);
+            if (_extraConfiguration != null) config.Add(_extraConfiguration);
         });
 
         builder.ConfigureTestServices(services =>

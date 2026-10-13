@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 0 Foundation (in progress)
-- **Next step:** Phase 0 / Step 0.6 — Remove hardcoded credentials (C2-5)
+- **Next step:** Phase 0 / Step 0.7 — Provider users, bootstrap and recovery
 - **Branch:** `mt/phase0` (from `mt/integration` `1b59b6b`)
 
 ## Phase status
@@ -13,7 +13,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | Phase | Status | Exit checks passed | Merged into `mt/integration` |
 |---|---|---|---|
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
-| 0 Foundation | In progress (Steps 0.1–0.5 done) | — | — |
+| 0 Foundation | In progress (Steps 0.1–0.6 done) | — | — |
 | 1 Provider Console | Not started | — | — |
 | 2 PayPal core | Not started | — | — |
 | 3 Website API | Not started | — | — |
@@ -58,6 +58,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **Test project naming.** The Phase 0 file says to create `Inprem.Platform.Tests`; `TESTING.md` lists `.Unit`, `.Integration` and `.Architecture`, which G0 created. The three existing projects are used.
 - **EF Core version.** The platform projects use EF Core **8.0.0**, the approved app's version, so referencing them changes nothing in the app's runtime. Upgrading EF Core (which fixes the known advisories) is still a deliberate step to take with a baseline run.
 - **Deploying step 0.2.** Apply `scripts/migrations/platform-M1a-up.idempotent.sql` **before** deploying, because the app keeps its cookie keys in `platform.DataProtectionKeys`. Users are signed out once: the cookie is renamed to `.Inprem.App` and keys move from `App_Data` to the database. `Site:AppHost`/`AdminHost` are empty (any host) until the cutover. See `scripts/migrations/README.md`.
+- **No account is created at startup any more (step 0.6).** Existing databases keep their admins. A new, empty database has no account until the provider bootstrap of step 0.7. `ROLES.md` and `Test.md` were updated. P0-5 ("secret scan 0 findings") still needs the `EmailService` credential rotated and its `.gitleaksignore` line removed.
 - **Tests tagged `ChangedBy`** record behaviour the design changes on purpose: same admin email in two organizations (D2/C3-6) and no lockout (C3-7). Both change in Phase 0 step 0.4.
 - **Playwright browsers** are a one-time install per machine: `pwsh tests/InpremClockingApp.Tests.Ui/bin/Debug/net8.0/playwright.ps1 install chromium` (CI must do the same).
 
@@ -68,6 +69,15 @@ _(date — what was tested — result)_
 ## Log
 
 _(date — phase/step — summary — tests — next)_
+
+- **2026-10-13 — Phase 0 / Step 0.6 — Remove hardcoded credentials (C2-5).**
+  - `IdentitySeeder` only ensures the `Admin` and `SuperAdmin` roles (SuperAdmin is still used by the old Platform pages and the login redirect). No account comes from `SeedAdmin:*` / `SeedSuperAdmin:*`, and those keys are gone from code, docs (`ROLES.md`, `Test.md`) and the test host.
+  - Tests:
+    - Architecture `NoSeedConfigurationTests` scans app and platform source/config for the keys.
+    - Integration `NoSeededAccountsTests` records every configuration key the app reads during start-up, sign-in and a kiosk request. No seed key is read; with the keys set, no account is created; both roles exist.
+    - Both tests were shown to fail against the old seeder.
+  - Results: Unit 40, Architecture 11, Baseline 320, Integration 49, UI 5. No new advisories.
+  - Next: Step 0.7, provider users, bootstrap and recovery.
 
 - **2026-10-13 — Phase 0 / Step 0.5 — Isolation hardening (C2-1).**
   - **Fail-closed user filter.** No organization: no account visible. With one: its Active members, plus accounts of it without any membership row. It reads a read-only `platform.TenantMemberships` view mapped in `ApplicationDbContext`, excluded from migrations.

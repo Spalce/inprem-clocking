@@ -97,7 +97,8 @@ public class TestInfrastructureTests : IClassFixture<AppFixture>
     {
         await using var db = _app.CreateDbContext();
 
-        // Only the four seeded tenant admins exist: the test host blanks SeedAdmin/SeedSuperAdmin.
+        // Only the four seeded tenant admins exist: the app creates no account from configuration
+        // (Phase 0 step 0.6; before, the test host had to blank the seed keys).
         Assert.Equal(4, await db.Users.IgnoreQueryFilters().CountAsync());
     }
 

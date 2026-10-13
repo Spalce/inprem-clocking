@@ -236,7 +236,7 @@ Org", timezone `America/Chicago`, admin `admin@acmetest.example` /
 `AcmeTest@2026!`), and re-set its subscription to `29.99`/`Monthly`/`Active` via its
 detail page, to match the state this guide assumes at the start of each section.
 
-If `admin@super.org` itself is ever missing (e.g. a fresh database), it's seeded at
-startup from the `SeedSuperAdmin:Email`/`SeedSuperAdmin:Password` configuration keys
-(`dotnet user-secrets`, not checked into source) - set those and restart the app once
-to recreate it.
+If `admin@super.org` itself is ever missing (e.g. a fresh database), it is no longer
+created from configuration keys (removed in multi-tenancy Phase 0 step 0.6). Give an
+existing account the `SuperAdmin` role directly in `AspNetUserRoles`; the Provider Console
+bootstrap replaces this in Phase 1 (`docs/multitenancy/`).

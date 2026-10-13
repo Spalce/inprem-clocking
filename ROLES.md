@@ -21,10 +21,10 @@ The platform operator. Not tied to any organization using the app — exists to 
 tenants, not to run one day-to-day.
 
 **How the account is created**
-- Manually, via the `SeedSuperAdmin:Email` / `SeedSuperAdmin:Password` configuration keys
-  (`IdentitySeeder.SeedSuperAdminAsync`, runs at every startup, does nothing once that email
-  already exists) — or by directly adding a row to `AspNetUserRoles` linking an existing
-  account to the `SuperAdmin` role.
+- By directly adding a row to `AspNetUserRoles` linking an existing account to the
+  `SuperAdmin` role. (Accounts are no longer created from configuration keys: that was removed
+  in multi-tenancy Phase 0 step 0.6. The Provider Console's bootstrap replaces this role in
+  Phase 1; see `docs/multitenancy/`.)
 - There is no self-serve or in-app way to become a SuperAdmin. This is intentional.
 
 **Tenant scoping**: `AppUser.TenantId` is always left `null` for this role. A SuperAdmin
