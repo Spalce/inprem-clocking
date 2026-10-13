@@ -1,4 +1,6 @@
+using Inprem.Platform.Domain.Audit;
 using Inprem.Platform.Domain.Memberships;
+using Inprem.Platform.Domain.Provider;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
@@ -27,6 +29,18 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
     /// <summary>Read-only view of the approved app's dbo.Tenants (owned by ApplicationDbContext's migrations).</summary>
     public DbSet<TenantRow> Tenants { get; set; } = null!;
 
+    /// <summary>Read-only view of the account columns the platform reads from dbo.AspNetUsers.</summary>
+    public DbSet<AccountRow> Accounts { get; set; } = null!;
+
+    public DbSet<ProviderUser> ProviderUsers { get; set; } = null!;
+    public DbSet<Invitation> ProviderInvitations { get; set; } = null!;
+    public DbSet<RecoveryRecord> RecoveryRecords { get; set; } = null!;
+
+    /// <summary>Append-only (refused here on save, and by a trigger in the database).</summary>
+    public DbSet<AuditEntry> AuditEntries { get; set; } = null!;
+    public DbSet<UsedCode> UsedCodes { get; set; } = null!;
+    public DbSet<SecurityAttempt> SecurityAttempts { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);
@@ -49,6 +63,89 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
             membership.HasIndex(m => m.TenantId);
         });
 
+        modelBuilder.Entity<ProviderUser>(user =>
+        {
+            user.ToTable("ProviderUsers");
+            user.HasKey(u => u.UserId);
+            user.Property(u => u.UserId).HasMaxLength(450);
+            user.Property(u => u.Role).HasConversion<string>().HasMaxLength(20);
+            user.Property(u => u.Status).HasConversion<string>().HasMaxLength(20);
+            user.Property(u => u.CreatedUtc).HasColumnType("datetime2");
+            user.Ignore(u => u.IsActiveOwner);
+        });
+
+        modelBuilder.Entity<Invitation>(invitation =>
+        {
+            invitation.ToTable("ProviderInvitations");
+            invitation.HasKey(i => i.Id);
+            invitation.Property(i => i.Id).ValueGeneratedNever();
+            invitation.Property(i => i.Email).HasMaxLength(256);
+            invitation.Property(i => i.UserId).HasMaxLength(450);
+            invitation.Property(i => i.Purpose).HasConversion<string>().HasMaxLength(30);
+            invitation.Property(i => i.TokenHash).HasMaxLength(64).IsUnicode(false);
+            invitation.Property(i => i.CreatedBy).HasMaxLength(300);
+            invitation.HasIndex(i => i.TokenHash).IsUnique();
+            invitation.HasIndex(i => i.UserId);
+        });
+
+        modelBuilder.Entity<RecoveryRecord>(recovery =>
+        {
+            recovery.ToTable("RecoveryRecords");
+            recovery.HasKey(r => r.Id);
+            recovery.Property(r => r.Id).ValueGeneratedNever();
+            recovery.Property(r => r.Level).HasConversion<string>().HasMaxLength(30);
+            recovery.Property(r => r.Status).HasConversion<string>().HasMaxLength(20);
+            recovery.Property(r => r.TargetUserId).HasMaxLength(450);
+            recovery.Property(r => r.TargetEmail).HasMaxLength(256);
+            recovery.Property(r => r.NewEmail).HasMaxLength(256);
+            recovery.Property(r => r.Operator).HasMaxLength(300);
+            recovery.Property(r => r.Reason).HasMaxLength(1000);
+            recovery.Property(r => r.FirstApproverEmail).HasMaxLength(256);
+            recovery.Property(r => r.SecondApproverEmail).HasMaxLength(256);
+            recovery.Property(r => r.FirstApprovalTokenHash).HasMaxLength(64).IsUnicode(false);
+            recovery.Property(r => r.SecondApprovalTokenHash).HasMaxLength(64).IsUnicode(false);
+            recovery.HasIndex(r => r.FirstApprovalTokenHash).IsUnique().HasFilter("[FirstApprovalTokenHash] IS NOT NULL");
+            recovery.HasIndex(r => r.SecondApprovalTokenHash).IsUnique().HasFilter("[SecondApprovalTokenHash] IS NOT NULL");
+            recovery.HasIndex(r => new { r.TargetUserId, r.CreatedUtc });
+        });
+
+        modelBuilder.Entity<AuditEntry>(audit =>
+        {
+            audit.ToTable("AuditEntries");
+            audit.HasKey(a => a.Id);
+            audit.Property(a => a.Id).UseIdentityColumn();
+            audit.Property(a => a.Actor).HasMaxLength(300);
+            audit.Property(a => a.Action).HasMaxLength(100);
+            audit.Property(a => a.Target).HasMaxLength(450);
+            audit.Property(a => a.Details).HasMaxLength(2000);
+            audit.HasIndex(a => a.OccurredUtc);
+        });
+
+        modelBuilder.Entity<UsedCode>(code =>
+        {
+            code.ToTable("UsedCodes");
+            code.HasKey(c => c.CodeHash);
+            code.Property(c => c.CodeHash).HasMaxLength(64).IsUnicode(false);
+            code.Property(c => c.Purpose).HasMaxLength(30);
+        });
+
+        modelBuilder.Entity<SecurityAttempt>(attempt =>
+        {
+            attempt.ToTable("SecurityAttempts");
+            attempt.HasKey(a => a.Id);
+            attempt.Property(a => a.Kind).HasMaxLength(30);
+            attempt.Property(a => a.Source).HasMaxLength(300);
+            attempt.HasIndex(a => new { a.Kind, a.OccurredUtc });
+        });
+
+        modelBuilder.Entity<AccountRow>(account =>
+        {
+            account.ToTable("AspNetUsers", "dbo", t => t.ExcludeFromMigrations());
+            account.HasKey(a => a.Id);
+            account.Property(a => a.Id).HasMaxLength(450);
+            account.Property(a => a.Email).HasMaxLength(256);
+        });
+
         modelBuilder.Entity<TenantRow>(tenant =>
         {
             tenant.ToTable("Tenants", "dbo", t => t.ExcludeFromMigrations());
@@ -57,9 +154,58 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
         });
     }
 
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        RefuseAuditChanges();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        RefuseAuditChanges();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    /// <summary>The audit log is append-only: an entry is never changed or removed.</summary>
+    private void RefuseAuditChanges()
+    {
+        if (ChangeTracker.Entries<AuditEntry>().Any(e => e.State is EntityState.Modified or EntityState.Deleted))
+        {
+            throw new InvalidOperationException("Audit entries are append-only; they cannot be changed or deleted.");
+        }
+    }
+
     /// <summary>Options shared by the app and the design-time factory.</summary>
     public static void Configure(DbContextOptionsBuilder options, string connectionString) =>
         options.UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", Schema));
+}
+
+/// <summary>The columns of dbo.AspNetUsers the platform reads (never written through this context).</summary>
+public sealed class AccountRow
+{
+    public string Id { get; set; } = "";
+    public string? Email { get; set; }
+    public bool TwoFactorEnabled { get; set; }
+}
+
+/// <summary>A one-time code (bootstrap or break-glass) that has been used; only its hash is kept.</summary>
+public sealed class UsedCode
+{
+    public string CodeHash { get; set; } = "";
+    public string Purpose { get; set; } = "";
+    public DateTime UsedUtc { get; set; }
+}
+
+/// <summary>One bootstrap or break-glass attempt, for rate limits and locks.</summary>
+public sealed class SecurityAttempt
+{
+    public long Id { get; set; }
+    public string Kind { get; set; } = "";
+    public bool Succeeded { get; set; }
+
+    /// <summary>Who or where from: operator name or client address. Never the code.</summary>
+    public string Source { get; set; } = "";
+    public DateTime OccurredUtc { get; set; }
 }
 
 /// <summary>The columns of dbo.Tenants the platform reads.</summary>

@@ -2,6 +2,7 @@ using System.Net;
 using System.Security.Cryptography;
 using InpremClockingApp.Hosting;
 using InpremClockingApp.Models.Identity;
+using InpremClockingApp.Provider;
 using InpremClockingApp.Tests.Support.Database;
 using InpremClockingApp.Tests.Support.Hosting;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -58,6 +59,12 @@ public class HostIsolationTests : IAsyncLifetime
         await using var admin = SiteHosts.Factory(_db.ConnectionString, "Admin");
         using var client = admin.Client();
 
+        // On the Admin site the Provider Console is the whole site (/, /Index, /Login, /setup ...):
+        // an App URL that is also a console route reaches the console, never the App page.
+        var consoleUrls = admin.Endpoints().Where(e => e.Area == SiteMap.ProviderArea)
+            .Select(e => SiteHosts.SampleUrl(e.Pattern)).OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
+        appUrls = appUrls.Where(u => !consoleUrls.Contains(u)).ToList();
+
         // Every back-office page, kiosk page, Identity page and API route of the App site is gone.
         foreach (var url in appUrls)
         {
@@ -65,7 +72,9 @@ public class HostIsolationTests : IAsyncLifetime
             Assert.True((await client.PostAsync(url, new StringContent(""))).StatusCode == HttpStatusCode.NotFound, $"POST {url} is served on the Admin site.");
         }
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/provider-probe")).StatusCode);
-        Assert.All(admin.Endpoints(), e => Assert.Equal(SiteMap.ProviderArea, e.Area));
+        Assert.Equal(HttpStatusCode.Found, (await client.GetAsync("/")).StatusCode); // console home: sign in first
+        Assert.All(admin.Endpoints().Where(e => e.Pattern.TrimStart('/') != ProviderHosting.HealthPath.TrimStart('/')),
+            e => Assert.Equal(SiteMap.ProviderArea, e.Area));
     }
 
     [Fact]

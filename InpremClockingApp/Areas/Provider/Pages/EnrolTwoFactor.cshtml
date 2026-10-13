@@ -1,0 +1,45 @@
+@page
+@model EnrolTwoFactorModel
+@{
+    ViewData["Title"] = "Set up two-factor sign-in";
+}
+
+<div class="@ProviderUi.Card">
+    @if (Model.RecoveryCodes != null)
+    {
+        <h1 class="@ProviderUi.Title">Save your recovery codes</h1>
+        <div class="@ProviderUi.Success">Two-factor sign-in is on.</div>
+        <p class="tw:mb-4 tw:text-sm tw:text-slate-700">
+            Each code below signs you in once if you lose your authenticator app. Store them offline now
+            (printed, or in a password manager). <strong>They are shown only this once.</strong>
+        </p>
+        <ul class="tw:mb-6 tw:space-y-3 tw:text-sm tw:text-slate-900" data-testid="recovery-codes">
+            @foreach (var code in Model.RecoveryCodes)
+            {
+                <li><code>@code</code></li>
+            }
+        </ul>
+        <a asp-page="/Index" asp-area="Provider" class="@ProviderUi.Button">I have saved them - continue</a>
+    }
+    else
+    {
+        <h1 class="@ProviderUi.Title">Set up two-factor sign-in</h1>
+        <p class="@ProviderUi.Lead">The Provider Console needs an authenticator app (for example Microsoft Authenticator or Google Authenticator).</p>
+
+        <p class="tw:mb-2 tw:text-sm tw:text-slate-700">1. In the app, add an account and enter this key:</p>
+        <p class="tw:mb-4 tw:rounded-md tw:border tw:border-slate-200 tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:font-semibold tw:text-slate-900" data-testid="shared-key"><code>@Model.SharedKey</code></p>
+        <p class="tw:mb-4 @ProviderUi.Small">Or, if your app accepts a setup link: <code data-testid="authenticator-uri">@Model.AuthenticatorUri</code></p>
+
+        <p class="tw:mb-2 tw:text-sm tw:text-slate-700">2. Enter the 6-digit code the app shows:</p>
+
+        @if (Model.Error != null)
+        {
+            <div class="@ProviderUi.Error" data-testid="error">@Model.Error</div>
+        }
+
+        <form method="post" autocomplete="off">
+            <input asp-for="Code" inputmode="numeric" autocomplete="one-time-code" class="@ProviderUi.Input" required />
+            <button type="submit" class="@ProviderUi.Button">Turn on two-factor sign-in</button>
+        </form>
+    }
+</div>

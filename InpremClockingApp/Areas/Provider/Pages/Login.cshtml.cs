@@ -1,0 +1,55 @@
+using Inprem.Platform.Application.Provider;
+using InpremClockingApp.Models.Identity;
+using InpremClockingApp.Provider;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+
+namespace InpremClockingApp.Areas.Provider.Pages;
+
+/// <summary>
+/// Provider sign-in (design 5.5): provider users only, lockout after 5 failures (C3-7 settings).
+/// The same message for an unknown email, a tenant account and a wrong password.
+/// </summary>
+[ProviderAccess(ProviderAccessLevel.Anonymous)]
+public class LoginModel : PageModel
+{
+    public const string Refused = "Invalid sign-in attempt.";
+
+    private readonly SignInManager<AppUser> _signIn;
+    private readonly UserManager<AppUser> _users;
+    private readonly ProviderSecurityService _provider;
+
+    public LoginModel(SignInManager<AppUser> signIn, UserManager<AppUser> users, ProviderSecurityService provider)
+    {
+        _signIn = signIn;
+        _users = users;
+        _provider = provider;
+    }
+
+    [BindProperty] public string Email { get; set; } = "";
+    [BindProperty] public string Password { get; set; } = "";
+
+    public string? Error { get; private set; }
+
+    public void OnGet()
+    {
+    }
+
+    public async Task<IActionResult> OnPostAsync()
+    {
+        var user = string.IsNullOrWhiteSpace(Email) ? null : await _users.FindByEmailAsync(Email.Trim());
+        if (user == null || await _provider.FindUsableProviderUserAsync(user.Id, HttpContext.RequestAborted) == null)
+        {
+            Error = Refused;
+            return Page();
+        }
+
+        var result = await _signIn.PasswordSignInAsync(user, Password, isPersistent: false, lockoutOnFailure: true);
+        if (result.RequiresTwoFactor) return RedirectToPage("/LoginWith2fa", new { area = "Provider" });
+        if (result.Succeeded) return RedirectToPage("/EnrolTwoFactor", new { area = "Provider" });
+
+        Error = result.IsLockedOut ? "This account is locked after too many failed attempts. Try again in 15 minutes." : Refused;
+        return Page();
+    }
+}

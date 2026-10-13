@@ -1,0 +1,21 @@
+@page
+@model LoginWithRecoveryCodeModel
+@{
+    ViewData["Title"] = "Sign in with a recovery code";
+}
+
+<div class="@ProviderUi.Card">
+    <h1 class="@ProviderUi.Title">Sign in with a recovery code</h1>
+    <p class="@ProviderUi.Lead">Enter one of the recovery codes you saved when you set up two-factor. You will then set up a new authenticator app.</p>
+
+    @if (Model.Error != null)
+    {
+        <div class="@ProviderUi.Error" data-testid="error">@Model.Error</div>
+    }
+
+    <form method="post" autocomplete="off">
+        <label asp-for="RecoveryCode" class="@ProviderUi.Label">Recovery code</label>
+        <input asp-for="RecoveryCode" class="@ProviderUi.Input" required />
+        <button type="submit" class="@ProviderUi.Button">Sign in</button>
+    </form>
+</div>

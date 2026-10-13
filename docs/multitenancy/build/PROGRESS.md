@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 0 Foundation (in progress)
-- **Next step:** Phase 0 / Step 0.7 — Provider users, bootstrap and recovery
+- **Next step:** Phase 0 / Step 0.8 — Background jobs
 - **Branch:** `mt/phase0` (from `mt/integration` `1b59b6b`)
 
 ## Phase status
@@ -13,7 +13,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | Phase | Status | Exit checks passed | Merged into `mt/integration` |
 |---|---|---|---|
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
-| 0 Foundation | In progress (Steps 0.1–0.6 done) | — | — |
+| 0 Foundation | In progress (Steps 0.1–0.7 done) | — | — |
 | 1 Provider Console | Not started | — | — |
 | 2 PayPal core | Not started | — | — |
 | 3 Website API | Not started | — | — |
@@ -59,6 +59,12 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **EF Core version.** The platform projects use EF Core **8.0.0**, the approved app's version, so referencing them changes nothing in the app's runtime. Upgrading EF Core (which fixes the known advisories) is still a deliberate step to take with a baseline run.
 - **Deploying step 0.2.** Apply `scripts/migrations/platform-M1a-up.idempotent.sql` **before** deploying, because the app keeps its cookie keys in `platform.DataProtectionKeys`. Users are signed out once: the cookie is renamed to `.Inprem.App` and keys move from `App_Data` to the database. `Site:AppHost`/`AdminHost` are empty (any host) until the cutover. See `scripts/migrations/README.md`.
 - **No account is created at startup any more (step 0.6).** Existing databases keep their admins. A new, empty database has no account until the provider bootstrap of step 0.7. `ROLES.md` and `Test.md` were updated. P0-5 ("secret scan 0 findings") still needs the `EmailService` credential rotated and its `.gitleaksignore` line removed.
+- **Provider console sessions: no 8-hour / 30-minute limits yet (step 0.7).** Design 5.5 asks for 8 hours maximum and 30 minutes idle on the Admin site, plus an IP allow-list. The step 0.7 text doesn't ask for them; they belong with the console in Phase 1. Lockout (5 tries / 15 minutes) already applies.
+- **No QR code on the two-factor page (step 0.7).** The app ships no QR library, and none is loaded from outside. The page shows the key and an `otpauth://` link, which every authenticator app accepts by typing. A QR code can come with the Phase 1 console.
+- **One Provider Owner until Phase 1 (D16).** Inviting provider users is a Phase 1 console screen. Until then the console banner and `/health` (Degraded) warn, as designed. Level 2 (peer reset) is a tested use case without a screen until Phase 1.
+- **Level 4 completes by command after its delay (step 0.7).** `provider recover --complete --id <id>` is run by the operator once the 24 hours have passed. The background jobs of step 0.8 could do it automatically; that is an open choice.
+- **Provider emails go through the approved app's mailbox (step 0.7).** Bootstrap and recovery emails use `IEmailSender` → `ApprovedAppEmailSender` → `EmailService`, the hardcoded SMTP account still waiting on the owner's confirmation. "SMS where configured" (design 5.4) comes with Twilio in Phase 5.
+- **Bootstrap after an unused, expired first invitation (step 0.7).** A new bootstrap code invites the same person again; the used code is refused for good (runbook section 2).
 - **Tests tagged `ChangedBy`** record behaviour the design changes on purpose: same admin email in two organizations (D2/C3-6) and no lockout (C3-7). Both change in Phase 0 step 0.4.
 - **Playwright browsers** are a one-time install per machine: `pwsh tests/InpremClockingApp.Tests.Ui/bin/Debug/net8.0/playwright.ps1 install chromium` (CI must do the same).
 
@@ -69,6 +75,43 @@ _(date — what was tested — result)_
 ## Log
 
 _(date — phase/step — summary — tests — next)_
+
+- **2026-10-13 — Phase 0 / Step 0.7 — Provider users, bootstrap and recovery (design section 5).**
+  - **Domain:** `ProviderUser` (Owner / Billing / Support; Invited / Active / Disabled), `Invitation` (token hash, expiry, consumed / revoked), `RecoveryRecord` (Levels 1–4, approvals, Level 4 delay) and `AuditEntry` (append-only).
+  - **Application:** `ProviderSecurityService`, one use case per action, shared by the server commands and the setup page:
+    - bootstrap and invitations;
+    - Level 1 record, Level 2 peer reset (no screen until Phase 1), Levels 3 and 4 with approvals.
+    - Codes and link tokens are compared and stored only as SHA-256 hashes (`SecretTokens`).
+    - Rate limits: bootstrap 5 failures an hour; break-glass locks for 24 hours after 3 failures; one recovery per account per 24 hours.
+    - Every action is audited and emailed to all active owners and `Security:Mailbox`.
+  - **Platform migration M1b** (`ProviderUsers`, `ProviderInvitations`, `RecoveryRecords`, `AuditEntries`, `UsedCodes`, `SecurityAttempts`):
+    - a database trigger makes the audit log append-only (error 50010), and `PlatformDbContext` refuses audit changes too;
+    - scripts rehearsed (up `1|6|1|2|0|0`, idempotent, down clean).
+  - **Server commands** (`dotnet InpremClockingApp.dll provider bootstrap|recover ...`) run before `app.Run()` and exit, never starting the web server:
+    - `--dry-run` on all of them;
+    - the code is asked for at a prompt when `--code` is left out;
+    - output never shows a code, token or link.
+  - **Provider pages** (area `Provider`: `/setup` on the Admin site, `/Provider/...` with `SiteMode=All`):
+    - setup (404 once an owner exists or without `Bootstrap:CodeHash`);
+    - login, authenticator code, recovery code (Level 1), logout;
+    - accept invitation, two-factor enrolment (ten recovery codes shown once);
+    - recovery approval (shows the request; approving needs a button);
+    - console home with the "fewer than two owners" banner.
+  - **Page protections:**
+    - An access gate on the whole area: provider user, two-factor enrolled and used, security stamp checked on every request, so a recovery signs sessions out at once.
+    - Antiforgery checked on Provider forms; `Referrer-Policy: no-referrer`.
+    - Tenant accounts get no console and keep their App session.
+    - `TenantContextMiddleware` skips Provider requests.
+  - **`/health`** (Admin site only, on its host): Degraded below two active owners with two-factor.
+  - **Changed files:** `Program.cs` (C2-2: provider registration, command dispatch, health endpoint), `Hosting/SiteRouting.cs` (console at the Admin site root), `Hosting/TenantContextMiddleware.cs`.
+  - **Runbook:** `docs/multitenancy/runbooks/bootstrap-and-recovery.md`; its PowerShell code/hash snippet was checked against the app's hashing.
+  - **Tests:**
+    - Unit +39: every refusal path, dry runs, hashing, notifications, the Level 4 delay.
+    - Integration +11 end to end: the setup-page journey (wrong code, invitation, enrolment, sign-in, Level 1), command bootstrap and Level 3, Level 4 with delay and `--complete`, Level 2, break-glass lock, append-only audit, no stored secrets.
+    - The host-isolation test now allows the console at the Admin site root and `/health`.
+    - Two access-gate mutations (no per-request stamp check, no re-enrol check) were caught by the tests.
+  - **Results:** Unit 79, Architecture 11, Baseline 320, Integration 60, UI 5. No new advisories; no model drift in either context.
+  - **Next:** Step 0.8, background jobs.
 
 - **2026-10-13 — Phase 0 / Step 0.6 — Remove hardcoded credentials (C2-5).**
   - `IdentitySeeder` only ensures the `Admin` and `SuperAdmin` roles (SuperAdmin is still used by the old Platform pages and the login redirect). No account comes from `SeedAdmin:*` / `SeedSuperAdmin:*`, and those keys are gone from code, docs (`ROLES.md`, `Test.md`) and the test host.

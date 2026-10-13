@@ -1,0 +1,23 @@
+@page
+@model LoginModel
+@{
+    ViewData["Title"] = "Provider sign-in";
+}
+
+<div class="@ProviderUi.Card">
+    <h1 class="@ProviderUi.Title">Provider Console</h1>
+    <p class="@ProviderUi.Lead">Sign in with your provider account.</p>
+
+    @if (Model.Error != null)
+    {
+        <div class="@ProviderUi.Error" data-testid="error">@Model.Error</div>
+    }
+
+    <form method="post">
+        <label asp-for="Email" class="@ProviderUi.Label">Email</label>
+        <input asp-for="Email" type="email" autocomplete="username" class="@ProviderUi.Input" required />
+        <label asp-for="Password" class="@ProviderUi.Label">Password</label>
+        <input asp-for="Password" type="password" autocomplete="current-password" class="@ProviderUi.Input" required />
+        <button type="submit" class="@ProviderUi.Button">Sign in</button>
+    </form>
+</div>

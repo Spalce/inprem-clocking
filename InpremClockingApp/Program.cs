@@ -3,6 +3,7 @@ using InpremClockingApp.Helpers;
 using InpremClockingApp.Hosting;
 using Inprem.Platform.Infrastructure;
 using InpremClockingApp.Models.Identity;
+using InpremClockingApp.Provider;
 using InpremClockingApp.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
@@ -14,7 +15,8 @@ using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 
-var builder = WebApplication.CreateBuilder(args);
+// `provider <command>` arguments (server commands, see below) are not host configuration.
+var builder = WebApplication.CreateBuilder(ProviderCommands.HostArgs(args));
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
 // var connection = "Server=.\SQLEXPRESS;Initial Catalog=DB_A65635_inpremdb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True";
@@ -61,6 +63,10 @@ builder.AddTenancy();
 
 // Account security: lockout (C3-7) and the platform's email sender.
 builder.AddAccountSecurity();
+
+// Provider users, bootstrap and recovery (design section 5): Provider area access gate,
+// shared use cases for the server commands and the setup page, owners health check.
+builder.AddProviderSecurity();
 
 // Registered after AddDefaultIdentity so it overrides Identity's default factory - stamps the
 // TenantId claim onto every sign-in (see AppUserClaimsPrincipalFactory, multi-tenancy.md).
@@ -132,6 +138,13 @@ using (var scope = app.Services.CreateScope())
     await IdentitySeeder.SeedAsync(scope.ServiceProvider, app.Configuration);
 }
 
+// Server commands (`dotnet InpremClockingApp.dll provider bootstrap|recover ...`): run, then exit
+// without starting the web server.
+if (ProviderCommands.IsCommand(args))
+{
+    return await ProviderCommands.RunAsync(app.Services, args);
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -158,7 +171,9 @@ app.UseEndpoints(endpoints =>
 {
     endpoints.MapRazorPages();
     endpoints.MapControllers();
+    endpoints.MapProviderHealth();
 });
 
 
 app.Run();
+return 0;

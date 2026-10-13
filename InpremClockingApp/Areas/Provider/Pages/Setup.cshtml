@@ -1,0 +1,31 @@
+@page
+@model SetupModel
+@{
+    ViewData["Title"] = "Provider setup";
+}
+
+<div class="@ProviderUi.Card">
+    <h1 class="@ProviderUi.Title">Set up the first Provider Owner</h1>
+
+    @if (Model.Done != null)
+    {
+        <div class="@ProviderUi.Success" data-testid="done">@Model.Done</div>
+    }
+    else
+    {
+        <p class="@ProviderUi.Lead">Enter the one-time bootstrap code from the secret store and the owner's email. The owner receives a link to set a password and two-factor sign-in.</p>
+
+        @if (Model.Error != null)
+        {
+            <div class="@ProviderUi.Error" data-testid="error">@Model.Error</div>
+        }
+
+        <form method="post" autocomplete="off">
+            <label asp-for="Email" class="@ProviderUi.Label">Owner email</label>
+            <input asp-for="Email" type="email" class="@ProviderUi.Input" required />
+            <label asp-for="Code" class="@ProviderUi.Label">Bootstrap code</label>
+            <input asp-for="Code" type="password" class="@ProviderUi.Input" required />
+            <button type="submit" class="@ProviderUi.Button">Invite the owner</button>
+        </form>
+    }
+</div>

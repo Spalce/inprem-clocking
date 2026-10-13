@@ -1,0 +1,33 @@
+@page
+@model AcceptInvitationModel
+@using Inprem.Platform.Domain.Provider
+@{
+    ViewData["Title"] = "Provider account";
+}
+
+<div class="@ProviderUi.Card">
+    @if (Model.Invitation == null)
+    {
+        <h1 class="@ProviderUi.Title">Link not valid</h1>
+        <p class="@ProviderUi.Lead" data-testid="invalid">This link has expired or has already been used. Ask a Provider Owner for a new one.</p>
+    }
+    else
+    {
+        <h1 class="@ProviderUi.Title">@(Model.Invitation.Purpose == InvitationPurpose.ProviderRecovery ? "Set a new password" : "Set up your provider account")</h1>
+        <p class="@ProviderUi.Lead">For @Model.Invitation.Email. Next you will set up two-factor sign-in.</p>
+
+        @if (Model.Error != null)
+        {
+            <div class="@ProviderUi.Error" data-testid="error">@Model.Error</div>
+        }
+
+        <form method="post" autocomplete="off">
+            <input type="hidden" asp-for="Token" />
+            <label asp-for="Password" class="@ProviderUi.Label">Password</label>
+            <input asp-for="Password" type="password" autocomplete="new-password" class="@ProviderUi.Input" required />
+            <label asp-for="ConfirmPassword" class="@ProviderUi.Label">Confirm password</label>
+            <input asp-for="ConfirmPassword" type="password" autocomplete="new-password" class="@ProviderUi.Input" required />
+            <button type="submit" class="@ProviderUi.Button">Set password</button>
+        </form>
+    }
+</div>

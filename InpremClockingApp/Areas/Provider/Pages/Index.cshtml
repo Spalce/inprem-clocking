@@ -1,0 +1,24 @@
+@page
+@model IndexModel
+@using Inprem.Platform.Application.Provider
+@{
+    ViewData["Title"] = "Provider Console";
+}
+
+<div class="@ProviderUi.Card">
+    <h1 class="@ProviderUi.Title">Provider Console</h1>
+
+    @if (!Model.Owners.MeetsMinimum)
+    {
+        <div class="@ProviderUi.Error" data-testid="owners-warning">
+            Not ready for production: @Model.Owners.EnrolledOwners of the required @OwnerStatus.Minimum Provider Owners
+            are active with two-factor sign-in. Invite a second owner before go-live.
+        </div>
+    }
+
+    <p class="@ProviderUi.Lead">Signed in as @User.Identity?.Name. The console screens are added in the next phase.</p>
+
+    <form method="post" asp-page="/Logout" asp-area="Provider">
+        <button type="submit" class="@ProviderUi.Button">Sign out</button>
+    </form>
+</div>

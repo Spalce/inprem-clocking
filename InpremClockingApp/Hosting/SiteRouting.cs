@@ -48,6 +48,16 @@ public sealed class SitePageRouteConvention : IPageRouteModelConvention
             return;
         }
 
+        // On a dedicated Admin site the console is the whole site: /setup, /Login, ... rather than
+        // /Provider/setup. With SiteMode All it stays under /Provider, next to the App pages.
+        if (site == SiteMode.Admin && _site.SiteMode == SiteMode.Admin)
+        {
+            foreach (var selector in model.Selectors.Where(s => s.AttributeRouteModel?.Template != null))
+            {
+                selector.AttributeRouteModel!.Template = WithoutAreaPrefix(selector.AttributeRouteModel.Template!);
+            }
+        }
+
         var host = _site.HostFor(site);
         if (host == null) return;
 
@@ -55,6 +65,13 @@ public sealed class SitePageRouteConvention : IPageRouteModelConvention
         {
             selector.EndpointMetadata.Add(new HostAttribute(host));
         }
+    }
+
+    private static string WithoutAreaPrefix(string template)
+    {
+        if (string.Equals(template, SiteMap.ProviderArea, StringComparison.OrdinalIgnoreCase)) return "";
+        var prefix = SiteMap.ProviderArea + "/";
+        return template.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? template[prefix.Length..] : template;
     }
 }
 

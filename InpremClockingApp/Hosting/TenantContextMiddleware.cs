@@ -14,6 +14,8 @@ namespace InpremClockingApp.Hosting;
 /// and the request continues anonymously (protected pages then send them to the login page).
 /// <list type="bullet">
 /// <item>Platform operators (SuperAdmin, no organization) are left as they are.</item>
+/// <item>Provider area requests (the Provider Console, design section 5) are not organization
+/// requests: no tenant context, nobody signed out here; <c>ProviderAccessFilter</c> guards them.</item>
 /// <item>Someone with several Active memberships who has not chosen yet is sent to
 /// "Choose organization" (GET) or refused (other methods).</item>
 /// </list>
@@ -43,7 +45,8 @@ public sealed class TenantContextMiddleware
     public async Task InvokeAsync(HttpContext context, TenantContext tenantContext, IMembershipService memberships)
     {
         var user = context.User;
-        if (user.Identity?.IsAuthenticated != true)
+        if (user.Identity?.IsAuthenticated != true ||
+            string.Equals(context.GetRouteValue("area") as string, SiteMap.ProviderArea, StringComparison.OrdinalIgnoreCase))
         {
             await _next(context);
             return;

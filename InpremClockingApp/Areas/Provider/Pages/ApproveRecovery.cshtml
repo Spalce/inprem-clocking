@@ -1,0 +1,57 @@
+@page
+@model ApproveRecoveryModel
+@using Inprem.Platform.Domain.Provider
+@{
+    ViewData["Title"] = "Approve recovery";
+    var recovery = Model.Recovery;
+}
+
+<div class="@ProviderUi.Card">
+    <h1 class="@ProviderUi.Title">Approve a provider recovery</h1>
+
+    @if (Model.Result != null)
+    {
+        <div class="@(Model.Result.Succeeded ? ProviderUi.Success : ProviderUi.Error)" data-testid="result">@Model.Result.Message</div>
+    }
+
+    @if (recovery == null)
+    {
+        <p class="@ProviderUi.Lead" data-testid="invalid">This approval link is not valid.</p>
+    }
+    else if (Model.Result == null)
+    {
+        @if (recovery.Status != RecoveryStatus.PendingApproval || recovery.AlreadyApprovedByThisLink || DateTime.UtcNow >= recovery.ApprovalExpiresUtc)
+        {
+            <p class="@ProviderUi.Lead" data-testid="closed">Nothing to approve: this recovery is @recovery.Status.ToString().ToLowerInvariant()@(recovery.AlreadyApprovedByThisLink ? " and you have already approved it" : "").</p>
+        }
+        else
+        {
+            <div class="tw:mb-4 tw:space-y-3 tw:text-sm tw:text-slate-700" data-testid="request">
+                <p><strong class="tw:text-slate-900">Level @((int)recovery.Level)</strong>
+                    @(recovery.Level == RecoveryLevel.BreakGlassReplace ? "break-glass replace" : "break-glass reissue")
+                    of the Provider Owner <strong class="tw:text-slate-900">@recovery.TargetEmail</strong>.</p>
+                @if (recovery.Level == RecoveryLevel.BreakGlassReplace)
+                {
+                    <p>The owner will be disabled and <strong class="tw:text-slate-900">@recovery.NewEmail</strong> invited as a new owner. Written approval: @recovery.Reason.</p>
+                }
+                else
+                {
+                    <p>The owner's password and two-factor will be removed, every session signed out, and a 1-hour link to set a new password sent to their existing email.</p>
+                }
+                <p>Started by @recovery.Operator. Approve only if you know about this request and agree. Valid until @recovery.ApprovalExpiresUtc.ToString("HH:mm") UTC.</p>
+            </div>
+
+            <form method="post">
+                <input type="hidden" asp-for="Token" />
+                @if (recovery.Level == RecoveryLevel.BreakGlassReplace)
+                {
+                    <label class="tw:mb-4 tw:flex tw:items-center tw:gap-2 tw:text-sm tw:text-slate-700">
+                        <input asp-for="WaiveDelay" type="checkbox" />
+                        Waive the 24-hour delay (it only applies if both approvers waive it)
+                    </label>
+                }
+                <button type="submit" class="@ProviderUi.Button">Approve</button>
+            </form>
+        }
+    }
+</div>

@@ -1,0 +1,25 @@
+@page
+@model LoginWith2faModel
+@{
+    ViewData["Title"] = "Two-factor sign-in";
+}
+
+<div class="@ProviderUi.Card">
+    <h1 class="@ProviderUi.Title">Two-factor sign-in</h1>
+    <p class="@ProviderUi.Lead">Enter the 6-digit code from your authenticator app.</p>
+
+    @if (Model.Error != null)
+    {
+        <div class="@ProviderUi.Error" data-testid="error">@Model.Error</div>
+    }
+
+    <form method="post" autocomplete="off">
+        <label asp-for="Code" class="@ProviderUi.Label">Authenticator code</label>
+        <input asp-for="Code" inputmode="numeric" autocomplete="one-time-code" class="@ProviderUi.Input" required />
+        <button type="submit" class="@ProviderUi.Button">Sign in</button>
+    </form>
+
+    <p class="tw:mt-6 tw:text-center tw:text-sm">
+        Lost your authenticator? <a asp-page="/LoginWithRecoveryCode" asp-area="Provider" class="@ProviderUi.Link">Use a recovery code</a>
+    </p>
+</div>
