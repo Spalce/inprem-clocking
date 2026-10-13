@@ -15,6 +15,12 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\InpremClockingApp\InpremClockingApp.csproj" />
+    <ProjectReference Include="..\InpremClockingApp.Tests.Support\InpremClockingApp.Tests.Support.csproj" />
   </ItemGroup>
 
 </Project>

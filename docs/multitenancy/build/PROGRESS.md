@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 0 Foundation (in progress)
-- **Next step:** Phase 0 / Step 0.2 — Site mode and hostnames (C2-2)
+- **Next step:** Phase 0 / Step 0.3 — Tenant context and memberships
 - **Branch:** `mt/phase0` (from `mt/integration` `1b59b6b`)
 
 ## Phase status
@@ -13,7 +13,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | Phase | Status | Exit checks passed | Merged into `mt/integration` |
 |---|---|---|---|
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
-| 0 Foundation | In progress (Step 0.1 done) | — | — |
+| 0 Foundation | In progress (Steps 0.1–0.2 done) | — | — |
 | 1 Provider Console | Not started | — | — |
 | 2 PayPal core | Not started | — | — |
 | 3 Website API | Not started | — | — |
@@ -44,7 +44,8 @@ Claude Code updates this file at the end of every step. Newest entries at the to
   - The CAPTCHA field and consent flags are not named in the design (the draft uses `captchaToken`, `acceptTerms`, `acceptPrivacyPolicy`, `smsOptIn`).
   - Plan limits, invoice statuses and the staging hostname are placeholders.
 - **Test project naming.** The Phase 0 file says to create `Inprem.Platform.Tests`; `TESTING.md` lists `.Unit`, `.Integration` and `.Architecture`, which G0 created. The three existing projects are used.
-- **EF Core version.** The approved app is on EF Core 8.0.0, which pulls in vulnerable packages. `Inprem.Platform.Infrastructure` has no EF Core package yet. Step 0.3, which adds `PlatformDbContext`, must choose the version deliberately: a newer 8.0.x in Infrastructure would also upgrade the app through the project reference. That fixes the advisories but changes the approved app's runtime, so run the baseline on it and record the decision.
+- **EF Core version.** The platform projects use EF Core **8.0.0**, the approved app's version, so referencing them changes nothing in the app's runtime. Upgrading EF Core (which fixes the known advisories) is still a deliberate step to take with a baseline run.
+- **Deploying step 0.2.** Apply `scripts/migrations/platform-M1a-up.idempotent.sql` **before** deploying, because the app keeps its cookie keys in `platform.DataProtectionKeys`. Users are signed out once: the cookie is renamed to `.Inprem.App` and keys move from `App_Data` to the database. `Site:AppHost`/`AdminHost` are empty (any host) until the cutover. See `scripts/migrations/README.md`.
 - **Tests tagged `ChangedBy`** record behaviour the design changes on purpose: same admin email in two organizations (D2/C3-6) and no lockout (C3-7). Both change in Phase 0 step 0.4.
 - **Playwright browsers** are a one-time install per machine: `pwsh tests/InpremClockingApp.Tests.Ui/bin/Debug/net8.0/playwright.ps1 install chromium` (CI must do the same).
 
@@ -55,6 +56,26 @@ _(date — what was tested — result)_
 ## Log
 
 _(date — phase/step — summary — tests — next)_
+
+- **2026-10-13 — Phase 0 / Step 0.2 — Site mode and hostnames (C2-2).**
+  - New in `InpremClockingApp/Hosting/`:
+    - `SiteOptions`: `Site:SiteMode` App|Admin|All, `AppHost`, `AdminHost`, `PublicWebsiteOrigins`. Validated at startup; invalid settings stop the host.
+    - `SiteRouting`: the Provider area belongs to Admin, everything else to App. Pages and controllers of an unserved site get no route (404); served ones get `HostAttribute` when a host is set.
+    - `SiteHosting`: the cookie is `.Inprem.App` (SameSite Lax) or `.Inprem.Admin` (Strict); host-only, Secure, HttpOnly. Data-protection keys go to the DB (`PersistKeysToDbContext`), with application name `Inprem.App` / `Inprem.Admin`.
+  - `Program.cs` (C2-2): file-system key storage replaced by `AddPlatformInfrastructure` + `AddSiteHosting`. `appsettings.json` (C2-11): `Site` section with `SiteMode: App`.
+  - Infrastructure: `PlatformDbContext` (schema `platform`, D3) with `DataProtectionKeys`, and migration `M1a_DataProtectionKeys` (additive). Scripts in `scripts/migrations/` (idempotent up/down + verify), rehearsed on LocalDB: up, up again, down, down again. No model drift in either context.
+  - Packages: EF Core 8.0.0 (same as the app). `System.Security.Cryptography.Xml` pinned to 8.0.4, because DataProtection 8.0.0 brought in 8.0.0 (GHSA-w3x6-4m5h-cxqf, high). The package gate caught it.
+  - Tests: new host-isolation suite (Integration, 16):
+    - App mode has no provider route.
+    - Admin mode returns 404 for every one of the App site's routes, GET and POST (enumerated from the endpoint table).
+    - All mode serves both.
+    - Host restriction works on the right, wrong and unknown host.
+    - Cookie attributes are correct per site, including on a real login response.
+    - Keys are shared between App instances through the DB, and the Admin site cannot read App data.
+    - Invalid settings stop startup.
+  - Test support: `TestDatabase` migrates both contexts; the factory takes settings and an option to keep the real keys.
+  - Tests: Architecture 7/7, Integration 16/16, Baseline 316/316 (with SiteMode=App), UI 5/5; no new advisories; no secrets.
+  - Next: Step 0.3, tenant context and memberships.
 
 - **2026-10-13 — Phase 0 / Step 0.1 — Solution structure.**
   - Added `src/Inprem.Platform.Domain`, `.Application` and `.Infrastructure` (net8.0, nullable, warnings as errors via `src/Directory.Build.props`), with marker types only. References: Application → Domain; Infrastructure → Application, Domain.

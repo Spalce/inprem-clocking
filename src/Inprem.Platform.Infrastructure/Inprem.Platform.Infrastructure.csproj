@@ -3,6 +3,20 @@
   <!-- Implementations of the Application interfaces: persistence, PayPal, Twilio, email, jobs. -->
 
   <ItemGroup>
+    <!-- 8.0.0 on purpose: the same EF Core version as the approved app, so referencing this project
+         does not change the app's runtime. Upgrading EF Core is a separate, deliberate step. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="8.0.0" />
+    <!-- DataProtection 8.0.0 pulls in System.Security.Cryptography.Xml 8.0.0 (GHSA-w3x6-4m5h-cxqf,
+         high; fixed in 8.0.3). Pinned to the patched version without touching EF Core. -->
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="8.0.4" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Inprem.Platform.Application\Inprem.Platform.Application.csproj" />
     <ProjectReference Include="..\Inprem.Platform.Domain\Inprem.Platform.Domain.csproj" />
   </ItemGroup>

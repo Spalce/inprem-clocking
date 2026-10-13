@@ -1,5 +1,7 @@
 using InpremClockingApp.Data;
 using InpremClockingApp.Helpers;
+using InpremClockingApp.Hosting;
+using Inprem.Platform.Infrastructure;
 using InpremClockingApp.Models.Identity;
 using InpremClockingApp.Services;
 using Microsoft.AspNetCore.DataProtection;
@@ -41,15 +43,17 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-// Persist Data Protection keys outside the deployed output so auth cookies survive
-// app pool recycles and redeployments instead of forcing everyone to log in again.
-builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "App_Data", "DataProtection-Keys")))
-    .SetApplicationName("InpremClockingApp");
+// Multi-tenancy platform (docs/multitenancy): PlatformDbContext (schema "platform") on the same
+// database. Data-protection keys now live there (see SiteHosting), not in App_Data.
+builder.Services.AddPlatformInfrastructure(connectionString!);
 
 builder.Services.AddDefaultIdentity<AppUser>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddRoles<AppRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
+
+// Which site this deployment serves (Site:SiteMode = App | Admin | All), host restrictions,
+// per-site cookie and data-protection settings. After AddDefaultIdentity so its cookie settings win.
+builder.AddSiteHosting();
 
 // Registered after AddDefaultIdentity so it overrides Identity's default factory - stamps the
 // TenantId claim onto every sign-in (see AppUserClaimsPrincipalFactory, multi-tenancy.md).

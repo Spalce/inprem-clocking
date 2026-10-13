@@ -1,8 +1,7 @@
+using Inprem.Platform.Infrastructure.Persistence;
 using InpremClockingApp.Data;
-using InpremClockingApp.Services;
 using InpremClockingApp.Tests.Support.Database;
 using InpremClockingApp.Tests.Support.TestData;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 namespace InpremClockingApp.Tests.Support.Hosting;
@@ -16,24 +15,22 @@ namespace InpremClockingApp.Tests.Support.Hosting;
 public class AppFixture : IAsyncLifetime
 {
     private InpremAppFactory? _factory;
+    private TestDatabase? _database;
 
-    public string ConnectionString { get; private set; } = "";
+    public string ConnectionString => Database.ConnectionString;
     public SeedCatalog Data { get; private set; } = null!;
 
     /// <summary>The app's service provider (create a scope before resolving scoped services).</summary>
     public IServiceProvider Services => Factory.Services;
+
+    private TestDatabase Database => _database ?? throw new InvalidOperationException("Fixture not initialized.");
 
     private protected InpremAppFactory Factory =>
         _factory ?? throw new InvalidOperationException("Fixture not initialized.");
 
     public async Task InitializeAsync()
     {
-        ConnectionString = await TestSqlServer.NewDatabaseConnectionStringAsync(GetType().Name).ConfigureAwait(false);
-
-        await using (var db = CreateDbContext())
-        {
-            await db.Database.MigrateAsync().ConfigureAwait(false);
-        }
+        _database = await TestDatabase.CreateAsync(GetType().Name).ConfigureAwait(false);
 
         _factory = CreateFactory(ConnectionString);
         StartServer(_factory);
@@ -55,11 +52,9 @@ public class AppFixture : IAsyncLifetime
     /// A context on the test database with no tenant resolved, for arranging and checking rows.
     /// Tenant-scoped sets return nothing unless the query uses <c>IgnoreQueryFilters()</c>.
     /// </summary>
-    public ApplicationDbContext CreateDbContext(int? tenantId = null)
-    {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlServer(ConnectionString).Options;
-        return new ApplicationDbContext(options, new FixedTenant(tenantId));
-    }
+    public ApplicationDbContext CreateDbContext(int? tenantId = null) => Database.CreateDbContext(tenantId);
+
+    public PlatformDbContext CreatePlatformDbContext() => Database.CreatePlatformDbContext();
 
     public async Task DisposeAsync()
     {
@@ -68,16 +63,9 @@ public class AppFixture : IAsyncLifetime
             await _factory.DisposeAsync().ConfigureAwait(false);
         }
 
-        if (!string.IsNullOrEmpty(ConnectionString))
+        if (_database != null)
         {
-            await using var db = CreateDbContext();
-            await db.Database.EnsureDeletedAsync().ConfigureAwait(false);
+            await _database.DisposeAsync().ConfigureAwait(false);
         }
-    }
-
-    private sealed class FixedTenant : ICurrentTenantService
-    {
-        public FixedTenant(int? tenantId) => TenantId = tenantId;
-        public int? TenantId { get; }
     }
 }
