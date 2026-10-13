@@ -20,6 +20,7 @@ public static class ProviderHosting
         services.AddSingleton(sp => ReadOptions(sp.GetRequiredService<IConfiguration>()));
         services.AddScoped<IAccountGateway, AccountGateway>();
         services.AddScoped<ProviderSecurityService>();
+        services.AddScoped<ProviderAccessCheck>();
         services.AddScoped<ProviderAccessFilter>();
 
         // Every Provider page goes through the access gate, including pages added later. These are
@@ -46,7 +47,7 @@ public static class ProviderHosting
         var site = endpoints.ServiceProvider.GetRequiredService<IOptions<SiteOptions>>().Value;
         if (!site.ServesAdmin) return endpoints;
 
-        var health = endpoints.MapHealthChecks(HealthPath);
+        var health = endpoints.MapHealthChecks(HealthPath).WithMetadata(ProviderEndpointMetadata.Instance);
         if (site.HostFor(SiteMode.Admin) is { } host) health.RequireHost(host);
         return endpoints;
     }

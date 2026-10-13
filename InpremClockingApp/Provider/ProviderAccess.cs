@@ -44,14 +44,12 @@ public sealed class ProviderAccessFilter : IAsyncPageFilter
     /// <summary>On a session started with a recovery code (Level 1): only enrolment until a new authenticator is confirmed.</summary>
     public const string ReEnrolClaimType = "provider_reenrol";
 
-    private readonly ProviderSecurityService _provider;
-    private readonly UserManager<AppUser> _users;
+    private readonly ProviderAccessCheck _access;
     private readonly SignInManager<AppUser> _signIn;
 
-    public ProviderAccessFilter(ProviderSecurityService provider, UserManager<AppUser> users, SignInManager<AppUser> signIn)
+    public ProviderAccessFilter(ProviderAccessCheck access, SignInManager<AppUser> signIn)
     {
-        _provider = provider;
-        _users = users;
+        _access = access;
         _signIn = signIn;
     }
 
@@ -64,49 +62,76 @@ public sealed class ProviderAccessFilter : IAsyncPageFilter
 
         var level = context.ActionDescriptor.HandlerTypeInfo.GetCustomAttributes(typeof(ProviderAccessAttribute), true)
             .OfType<ProviderAccessAttribute>().FirstOrDefault()?.Level ?? ProviderAccessLevel.Console;
-        if (level == ProviderAccessLevel.Anonymous)
+        var (outcome, _) = await _access.CheckAsync(context.HttpContext.User, level);
+        switch (outcome)
         {
-            await next();
-            return;
+            case ProviderAccessOutcome.Allowed:
+                await next();
+                return;
+            case ProviderAccessOutcome.Enrol:
+                context.Result = new RedirectToPageResult("/EnrolTwoFactor", new { area = "Provider" });
+                return;
+            case ProviderAccessOutcome.SignOut:
+                await _signIn.SignOutAsync();
+                break;
         }
+        context.Result = new RedirectToPageResult("/Login", new { area = "Provider" });
+    }
+}
 
-        var principal = context.HttpContext.User;
+public enum ProviderAccessOutcome
+{
+    Allowed,
+
+    /// <summary>Not a usable provider user (e.g. a tenant account): to the provider login, session kept.</summary>
+    Login,
+
+    /// <summary>Revoked, disabled or locked session, or a console request without two-factor: sign out, then login.</summary>
+    SignOut,
+
+    /// <summary>Two-factor not enrolled, or re-enrolment due after a recovery code (Level 1).</summary>
+    Enrol,
+}
+
+/// <summary>
+/// The provider access rules (D14, design 5.5), shared by the Provider pages and the jobs
+/// dashboard. The security stamp is checked on every request (not Identity's 30-minute check): a
+/// recovery, reset or disable rotates it, and every console session ends at once.
+/// </summary>
+public sealed class ProviderAccessCheck
+{
+    private readonly ProviderSecurityService _provider;
+    private readonly UserManager<AppUser> _users;
+    private readonly SignInManager<AppUser> _signIn;
+
+    public ProviderAccessCheck(ProviderSecurityService provider, UserManager<AppUser> users, SignInManager<AppUser> signIn)
+    {
+        _provider = provider;
+        _users = users;
+        _signIn = signIn;
+    }
+
+    public async Task<(ProviderAccessOutcome Outcome, Inprem.Platform.Domain.Provider.ProviderUser? User)> CheckAsync(ClaimsPrincipal principal, ProviderAccessLevel level)
+    {
+        if (level == ProviderAccessLevel.Anonymous) return (ProviderAccessOutcome.Allowed, null);
+
         var userId = principal.Identity?.IsAuthenticated == true ? principal.FindFirstValue(ClaimTypes.NameIdentifier) : null;
-        // ValidateSecurityStampAsync on every request (not Identity's 30-minute check): a recovery,
-        // reset or disable rotates the stamp, and every console session ends at once.
-        var user = userId == null ? null : await _signIn.ValidateSecurityStampAsync(principal);
-        if (user == null || await _users.IsLockedOutAsync(user))
-        {
-            // Revoked, disabled or locked: this session ends here.
-            if (userId != null) await _signIn.SignOutAsync();
-            context.Result = new RedirectToPageResult("/Login", new { area = "Provider" });
-            return;
-        }
+        if (userId == null) return (ProviderAccessOutcome.Login, null);
 
-        if (await _provider.FindUsableProviderUserAsync(user.Id) == null)
-        {
-            // A tenant account (or a disabled provider user): no console. Not signed out, so a tenant
-            // admin who opens a console address on a combined site keeps their App session.
-            context.Result = new RedirectToPageResult("/Login", new { area = "Provider" });
-            return;
-        }
+        var user = await _signIn.ValidateSecurityStampAsync(principal);
+        if (user == null || await _users.IsLockedOutAsync(user)) return (ProviderAccessOutcome.SignOut, null);
+
+        var provider = await _provider.FindUsableProviderUserAsync(user.Id);
+        if (provider == null) return (ProviderAccessOutcome.Login, null);
 
         if (level == ProviderAccessLevel.Console)
         {
-            if (!await _users.GetTwoFactorEnabledAsync(user!) || principal.HasClaim(c => c.Type == ReEnrolClaimType))
-            {
-                context.Result = new RedirectToPageResult("/EnrolTwoFactor", new { area = "Provider" });
-                return;
-            }
-
-            if (!principal.HasClaim(MfaClaimType, MfaClaimValue))
-            {
-                await _signIn.SignOutAsync();
-                context.Result = new RedirectToPageResult("/Login", new { area = "Provider" });
-                return;
-            }
+            if (!await _users.GetTwoFactorEnabledAsync(user) || principal.HasClaim(c => c.Type == ProviderAccessFilter.ReEnrolClaimType))
+                return (ProviderAccessOutcome.Enrol, provider);
+            if (!principal.HasClaim(ProviderAccessFilter.MfaClaimType, ProviderAccessFilter.MfaClaimValue))
+                return (ProviderAccessOutcome.SignOut, provider);
         }
 
-        await next();
+        return (ProviderAccessOutcome.Allowed, provider);
     }
 }

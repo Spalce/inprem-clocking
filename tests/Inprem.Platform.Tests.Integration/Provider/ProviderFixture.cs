@@ -194,9 +194,13 @@ public class ProviderFixture : IAsyncLifetime
     /// An active Provider Owner with password and two-factor, created directly (as after bootstrap,
     /// invitation and enrolment). Returns the authenticator key.
     /// </summary>
-    public async Task<string> CreateEnrolledOwnerAsync(string email)
+    public Task<string> CreateEnrolledOwnerAsync(string email) => CreateEnrolledProviderUserAsync(Services, CreatePlatformDbContext, email);
+
+    /// <summary>Same as <see cref="CreateEnrolledOwnerAsync(string)"/> for any app host and provider role.</summary>
+    public static async Task<string> CreateEnrolledProviderUserAsync(IServiceProvider services, Func<PlatformDbContext> platformDb, string email,
+        Inprem.Platform.Domain.Provider.ProviderRole role = Inprem.Platform.Domain.Provider.ProviderRole.Owner)
     {
-        using var scope = Services.CreateScope();
+        using var scope = services.CreateScope();
         var users = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
         var user = new AppUser { UserName = email, Email = email, EmailConfirmed = true };
         Assert.True((await users.CreateAsync(user, StrongPassword)).Succeeded);
@@ -204,20 +208,21 @@ public class ProviderFixture : IAsyncLifetime
         await users.SetTwoFactorEnabledAsync(user, true);
         var key = (await users.GetAuthenticatorKeyAsync(user))!;
 
-        await using var platform = CreatePlatformDbContext();
-        var owner = Inprem.Platform.Domain.Provider.ProviderUser.Invite(user.Id, Inprem.Platform.Domain.Provider.ProviderRole.Owner, DateTime.UtcNow);
-        owner.Activate();
-        platform.ProviderUsers.Add(owner);
+        await using var platform = platformDb();
+        var provider = Inprem.Platform.Domain.Provider.ProviderUser.Invite(user.Id, role, DateTime.UtcNow);
+        provider.Activate();
+        platform.ProviderUsers.Add(provider);
         await platform.SaveChangesAsync();
         return key;
     }
 
     /// <summary>Signs in on the Provider login with password and authenticator code.</summary>
-    public static async Task SignInAsync(HttpClient client, string email, string key)
+    /// <param name="prefix">"/Provider" with SiteMode All; "" on an Admin-only site.</param>
+    public static async Task SignInAsync(HttpClient client, string email, string key, string prefix = "/Provider")
     {
-        var login = await ProviderForms.PostAsync(client, "/Provider/Login", ("Email", email), ("Password", StrongPassword));
-        Assert.EndsWith("/Provider/LoginWith2fa", ProviderForms.Location(login));
-        var second = await ProviderForms.PostAsync(client, "/Provider/LoginWith2fa", ("Code", Totp.Code(key)));
-        Assert.EndsWith("/Provider", ProviderForms.Location(second));
+        var login = await ProviderForms.PostAsync(client, $"{prefix}/Login", ("Email", email), ("Password", StrongPassword));
+        Assert.EndsWith($"{prefix}/LoginWith2fa", ProviderForms.Location(login));
+        var second = await ProviderForms.PostAsync(client, $"{prefix}/LoginWith2fa", ("Code", Totp.Code(key)));
+        Assert.Equal(prefix.Length == 0 ? "/" : prefix, ProviderForms.Location(second));
     }
 }

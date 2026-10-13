@@ -31,7 +31,8 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<TenantAdminService>();
 builder.Services.AddScoped<BillingService>();
-builder.Services.AddHostedService<BillingBackgroundService>();
+// BillingBackgroundService is no longer registered (C2-2, step 0.8): background work runs as
+// Hangfire jobs on the App site (AddJobs below). Its billing sweep is replaced in Phase 2.
 
 // Multi-tenancy (see multi-tenancy.md): resolves the signed-in user's tenant from a claim on
 // their auth cookie, and is the sole source ApplicationDbContext's query filters read from.
@@ -67,6 +68,10 @@ builder.AddAccountSecurity();
 // Provider users, bootstrap and recovery (design section 5): Provider area access gate,
 // shared use cases for the server commands and the setup page, owners health check.
 builder.AddProviderSecurity();
+
+// Background jobs (D6): Hangfire storage everywhere; job server only on the App site with
+// Jobs:RunServer = true; read-only dashboard for Provider Owners on the Admin site.
+builder.AddJobs();
 
 // Registered after AddDefaultIdentity so it overrides Identity's default factory - stamps the
 // TenantId claim onto every sign-in (see AppUserClaimsPrincipalFactory, multi-tenancy.md).
@@ -172,6 +177,7 @@ app.UseEndpoints(endpoints =>
     endpoints.MapRazorPages();
     endpoints.MapControllers();
     endpoints.MapProviderHealth();
+    endpoints.MapJobsDashboard();
 });
 
 

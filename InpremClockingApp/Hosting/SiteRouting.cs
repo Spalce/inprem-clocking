@@ -29,6 +29,16 @@ public static class SiteMap
 }
 
 /// <summary>
+/// Marks an endpoint outside the Provider area that still belongs to the Provider Console (the
+/// jobs dashboard, the health check): not an organization request, so TenantContextMiddleware
+/// leaves it alone.
+/// </summary>
+public sealed class ProviderEndpointMetadata
+{
+    public static readonly ProviderEndpointMetadata Instance = new();
+}
+
+/// <summary>
 /// Razor Pages: a page of a site this deployment does not serve gets no route at all (404); a
 /// page of a served site is restricted to that site's host when one is configured (404 on any
 /// other host).

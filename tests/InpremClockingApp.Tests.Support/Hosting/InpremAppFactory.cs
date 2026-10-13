@@ -20,7 +20,7 @@ namespace InpremClockingApp.Tests.Support.Hosting;
 /// <item>both DbContexts point at the test database;</item>
 /// <item>data-protection keys are in memory unless <c>persistKeys</c> is set (then they go to the
 /// test database's platform.DataProtectionKeys, as in a real deployment);</item>
-/// <item><see cref="BillingBackgroundService"/> is not started, so no timer races the tests;</item>
+/// <item>no job server runs (<c>Jobs:RunServer</c> is false in appsettings.json) unless a test sets it;</item>
 /// <item>the platform's email sender is replaced by <see cref="CapturingEmailSender"/> (<see cref="Emails"/>);</item>
 /// <item>optional extra settings (e.g. <c>Site:SiteMode</c>) override appsettings.json.</item>
 /// </list>
@@ -86,9 +86,6 @@ internal class InpremAppFactory : WebApplicationFactory<Program>
 
             services.RemoveAll<Inprem.Platform.Application.Memberships.IEmailSender>();
             services.AddSingleton<Inprem.Platform.Application.Memberships.IEmailSender>(Emails);
-
-            var billingWorker = services.SingleOrDefault(d => d.ImplementationType == typeof(BillingBackgroundService));
-            if (billingWorker != null) services.Remove(billingWorker);
 
             _configureServices?.Invoke(services);
         });

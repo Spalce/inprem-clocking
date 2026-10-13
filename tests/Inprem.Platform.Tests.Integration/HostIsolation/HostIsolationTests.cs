@@ -73,8 +73,15 @@ public class HostIsolationTests : IAsyncLifetime
         }
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/provider-probe")).StatusCode);
         Assert.Equal(HttpStatusCode.Found, (await client.GetAsync("/")).StatusCode); // console home: sign in first
-        Assert.All(admin.Endpoints().Where(e => e.Pattern.TrimStart('/') != ProviderHosting.HealthPath.TrimStart('/')),
-            e => Assert.Equal(SiteMap.ProviderArea, e.Area));
+        // Everything else the Admin site serves is the console: a Provider page, or a console endpoint
+        // outside the area (jobs dashboard, health) marked as such.
+        var endpoints = admin.Services.GetRequiredService<Microsoft.AspNetCore.Routing.EndpointDataSource>().Endpoints
+            .OfType<Microsoft.AspNetCore.Routing.RouteEndpoint>().ToList();
+        Assert.All(endpoints, e => Assert.True(
+            string.Equals(e.RoutePattern.RequiredValues.GetValueOrDefault("area") as string, SiteMap.ProviderArea, StringComparison.Ordinal)
+            || e.Metadata.GetMetadata<ProviderEndpointMetadata>() != null,
+            $"{e.RoutePattern.RawText} is served on the Admin site but is not part of the console."));
+        Assert.Contains(endpoints, e => e.RoutePattern.RawText!.StartsWith("/jobs", StringComparison.Ordinal));
     }
 
     [Fact]

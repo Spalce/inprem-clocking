@@ -15,7 +15,9 @@ namespace InpremClockingApp.Hosting;
 /// <list type="bullet">
 /// <item>Platform operators (SuperAdmin, no organization) are left as they are.</item>
 /// <item>Provider area requests (the Provider Console, design section 5) are not organization
-/// requests: no tenant context, nobody signed out here; <c>ProviderAccessFilter</c> guards them.</item>
+/// requests: no tenant context, nobody signed out here; <c>ProviderAccessFilter</c> guards them.
+/// The same for console endpoints outside the area (<see cref="ProviderEndpointMetadata"/>: jobs
+/// dashboard, health check).</item>
 /// <item>Someone with several Active memberships who has not chosen yet is sent to
 /// "Choose organization" (GET) or refused (other methods).</item>
 /// </list>
@@ -46,7 +48,8 @@ public sealed class TenantContextMiddleware
     {
         var user = context.User;
         if (user.Identity?.IsAuthenticated != true ||
-            string.Equals(context.GetRouteValue("area") as string, SiteMap.ProviderArea, StringComparison.OrdinalIgnoreCase))
+            string.Equals(context.GetRouteValue("area") as string, SiteMap.ProviderArea, StringComparison.OrdinalIgnoreCase) ||
+            context.GetEndpoint()?.Metadata.GetMetadata<ProviderEndpointMetadata>() != null)
         {
             await _next(context);
             return;

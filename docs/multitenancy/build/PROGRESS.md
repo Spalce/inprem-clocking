@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 0 Foundation (in progress)
-- **Next step:** Phase 0 / Step 0.8 — Background jobs
+- **Next step:** Phase 0 / Step 0.10 — Migrations M1 (platform tables shell) and deployment rehearsal (0.9 moved to Phase 7)
 - **Branch:** `mt/phase0` (from `mt/integration` `1b59b6b`)
 
 ## Phase status
@@ -13,7 +13,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | Phase | Status | Exit checks passed | Merged into `mt/integration` |
 |---|---|---|---|
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
-| 0 Foundation | In progress (Steps 0.1–0.7 done) | — | — |
+| 0 Foundation | In progress (Steps 0.1–0.8 done) | — | — |
 | 1 Provider Console | Not started | — | — |
 | 2 PayPal core | Not started | — | — |
 | 3 Website API | Not started | — | — |
@@ -65,6 +65,9 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **Level 4 completes by command after its delay (step 0.7).** `provider recover --complete --id <id>` is run by the operator once the 24 hours have passed. The background jobs of step 0.8 could do it automatically; that is an open choice.
 - **Provider emails go through the approved app's mailbox (step 0.7).** Bootstrap and recovery emails use `IEmailSender` → `ApprovedAppEmailSender` → `EmailService`, the hardcoded SMTP account still waiting on the owner's confirmation. "SMS where configured" (design 5.4) comes with Twilio in Phase 5.
 - **Bootstrap after an unused, expired first invitation (step 0.7).** A new bootstrap code invites the same person again; the used code is refused for good (runbook section 2).
+- **The old billing sweep no longer runs (step 0.8).** Removing `BillingBackgroundService` (C2-2, as the step asks) means no automatic renewal, past-due or suspension of organizations until Phase 2. `BillingService` and the Platform pages (C4) are unchanged.
+- **Jobs are off by default (step 0.8).** `Jobs:RunServer` is `false` in `appsettings.json`; the App site's deployment sets it to `true`. There are no jobs yet.
+- **Hangfire install script follows the package (step 0.8).** `scripts/migrations/hangfire-up.idempotent.sql` comes from Hangfire.SqlServer 1.8.14's installer. Upgrading the package means regenerating and reviewing it.
 - **Tests tagged `ChangedBy`** record behaviour the design changes on purpose: same admin email in two organizations (D2/C3-6) and no lockout (C3-7). Both change in Phase 0 step 0.4.
 - **Playwright browsers** are a one-time install per machine: `pwsh tests/InpremClockingApp.Tests.Ui/bin/Debug/net8.0/playwright.ps1 install chromium` (CI must do the same).
 
@@ -75,6 +78,21 @@ _(date — what was tested — result)_
 ## Log
 
 _(date — phase/step — summary — tests — next)_
+
+- **2026-10-13 — Phase 0 / Step 0.8 — Background jobs (D6, C2-2).**
+  - Hangfire 1.8.14 with SQL Server storage in schema `hangfire` (`Hosting/JobsHosting.cs`). The packages add no new advisories and no new SQL client (they use EF Core's `Microsoft.Data.SqlClient`).
+  - **Storage:** registered on every site. The app never creates the tables (`PrepareSchemaIfNecessary = false`); they come from the reviewed `hangfire-up/down/verify` scripts, rehearsed on LocalDB.
+  - **Job server:** starts only when `Jobs:RunServer = true` and the site serves the App, decided at startup. `Jobs:RunServer = true` on an Admin-only site stops startup with a clear error.
+  - **Dashboard:** read-only, at `/jobs` (Admin site) or `/Provider/jobs` (`SiteMode=All`), on the Admin host only. It is for active Provider Owners signed in with two-factor, using the same checks as the console (`ProviderAccessCheck`, extracted from the step 0.7 filter).
+  - **`BillingBackgroundService` no longer registered** (`Program.cs`); the test host's removal of it is gone too.
+  - **Fixed along the way:** `TenantContextMiddleware` signed provider users out on console endpoints outside the Provider area (the dashboard). Such endpoints now carry `ProviderEndpointMetadata` and are left alone. The host-isolation test now requires every Admin-site endpoint to be a Provider page or carry that marker.
+  - **Tests (Integration +6):**
+    - an App site with `RunServer` starts a server that runs an enqueued job;
+    - an Admin site starts none, and refuses `RunServer`;
+    - the default is no server, and the billing worker is gone;
+    - the dashboard: 401 anonymous, refused for a Support user, 200 read-only for an Owner (a delete is refused and the job stays), the console session kept;
+    - not served on the App site.
+  - **Results:** Unit 79, Architecture 11, Baseline 320, Integration 66, UI 5. No new advisories.
 
 - **2026-10-13 — Phase 0 / Step 0.7 — Provider users, bootstrap and recovery (design section 5).**
   - **Domain:** `ProviderUser` (Owner / Billing / Support; Invited / Active / Disabled), `Invitation` (token hash, expiry, consumed / revoked), `RecoveryRecord` (Levels 1–4, approvals, Level 4 delay) and `AuditEntry` (append-only).
