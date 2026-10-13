@@ -153,6 +153,36 @@ public class AccountRulesTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task Account_Dashboard_Admin_Count_Includes_Members_Who_Joined_By_Invitation()
+    {
+        // Measured before and after, because other tests in this class add accounts too.
+        using var beta = _app.CreateClient();
+        await SignIn.AsAsync(beta, _app.Data.Beta.Admin!.Email, _app.Data.Password);
+        var before = int.Parse(await AdminCountAsync(beta));
+
+        // An Alpha account, invited to Beta, accepts.
+        var (userId, _) = await CreateAccountAsync(_app.Data.Alpha.Id);
+        using (var scope = _app.Services.CreateScope())
+        {
+            var memberships = scope.ServiceProvider.GetRequiredService<IMembershipService>();
+            await memberships.AddMemberAsync(userId, _app.Data.Alpha.Id, MembershipRole.Admin);
+            await memberships.InviteAsync(userId, _app.Data.Beta.Id, MembershipRole.Admin, _app.Data.Beta.Owner!.UserId);
+            Assert.Equal(before, int.Parse(await AdminCountAsync(beta))); // an invitation alone does not count
+            var invitation = (await memberships.ListInvitationsAsync(userId)).Single();
+            Assert.True(await memberships.AcceptAsync(userId, invitation.MembershipId));
+        }
+
+        Assert.Equal(before + 1, int.Parse(await AdminCountAsync(beta)));
+    }
+
+    private static async Task<string> AdminCountAsync(HttpClient client)
+    {
+        var page = new HtmlParser().ParseDocument(await (await client.GetAsync("/BackOffice")).Content.ReadAsStringAsync());
+        var card = page.QuerySelectorAll("h2").First(h => h.TextContent.Trim() == "Admins").Closest("div[class*='border-t-4']")!;
+        return card.QuerySelector("p span")!.TextContent.Trim();
+    }
+
+    [Fact]
     public async Task Account_Password_Reset_Uses_The_Single_Account()
     {
         var (userId, email) = await CreateAccountAsync(_app.Data.Beta.Id);

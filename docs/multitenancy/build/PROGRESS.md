@@ -44,7 +44,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **Membership cache (step 0.3).** Validation is cached for 5 minutes. Every code path that changes a membership (revoke, role change, acceptance) must call `IMembershipService.Invalidate`, or the change is seen only when the entry expires (tested).
 - **Invitation emails use the approved app's `EmailService` (step 0.4).** They go through `IEmailSender` → `ApprovedAppEmailSender` → `EmailService`, the same mailbox as password resets. That mailbox's credential is hardcoded (see the follow-up above), and moving the settings to configuration fixes both. Tests always replace the sender with a capturing one. **Incident:** during development (2026-10-13), before the capture was in place, one baseline test run triggered an invitation through the real `EmailService` to an invented `@shared.test` address. That address cannot receive mail, but the app very likely connected to the live SMTP server with the hardcoded credential. Ask the mailbox owner to check for it; another reason to rotate.
 - **Accounts working in another organization than `AppUser.TenantId` (step 0.4).** After accepting an invitation, a person's account still says their first organization. The AppUser query filter (tenant == current) then hides their own account in the other organization, e.g. Identity's Manage pages ("unable to load user"). Step 0.5 revisits the AppUser filter (fail closed); handle membership-based visibility there.
-- **BackOffice "Admins" count (C1)** still counts `AppUser.TenantId` accounts only, while the Admins page (via `AuthService`, C2-6) lists Active members. Cross-organization members appear in the list but not in the count; fixing the count means changing `BackOffice.cshtml.cs` (C1).
+- **BackOffice "Admins" count: fixed** (2026-10-13, developer-approved change to the frozen `Pages/BackOffice.cshtml.cs`). It now counts the same accounts the Admins page lists (`AuthService.GetAll`), so members who joined by invitation are included.
 - **Invited memberships do not expire.** An Invitation entity with expiry and hashed tokens arrives in step 0.7; tie member invitations to it then, if wanted.
 - **Anti-forgery on new pages.** The approved app ignores anti-forgery tokens globally (until C3-10), but the new "Choose organization" page enforces them (tested).
 - **Report baseline R1–R3 are proposed, not agreed.** `05-report-baseline.sql` uses staff hours per organization per month, volunteer hours per organization per month, and dashboard figures. Change them there if the project owner wants others.
@@ -65,6 +65,11 @@ _(date — what was tested — result)_
 ## Log
 
 _(date — phase/step — summary — tests — next)_
+
+- **2026-10-13 — Phase 0 / Step 0.4 follow-up — Dashboard admin count.**
+  - `Pages/BackOffice.cshtml.cs` (C1, change approved by the developer): the Admins card counts `AuthService.GetAll()` (organization members) instead of `UserManager.Users` (accounts with this TenantId). 7 lines changed; line endings preserved.
+  - New integration test: an invited member counts only after accepting. It fails on the old page and passes on the new one (both checked).
+  - Tests: Unit 40, Architecture 7, Baseline 319 (dashboard figures unchanged for the seed), Integration 36, UI 5.
 
 - **2026-10-13 — Phase 0 / Step 0.4 — Platform-unique email and login simplification.**
   - Migration **M3** (ApplicationDbContext, C2-1): `EmailIndex` becomes unique for non-null emails. A guard stops with error 50003 if emails are shared. Its scripts were rehearsed: refused with a duplicate and nothing changed; clean after the fix; idempotent; reversible. The per-tenant username indexes stay until the contract step.

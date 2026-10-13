@@ -15,14 +15,14 @@ namespace InpremClockingApp.Pages
     public class BackOfficeModel : PageModel
     {
         private readonly ApplicationDbContext _db;
-        private readonly UserManager<AppUser> _user;
+        private readonly AuthService _auth;
         private readonly ITenantClock _tenantClock;
         private readonly ICurrentTenantProfile _tenantProfile;
 
-        public BackOfficeModel(ApplicationDbContext db, UserManager<AppUser> user, ITenantClock tenantClock, ICurrentTenantProfile tenantProfile)
+        public BackOfficeModel(ApplicationDbContext db, AuthService auth, ITenantClock tenantClock, ICurrentTenantProfile tenantProfile)
         {
             _db = db;
-            _user = user;
+            _auth = auth;
             _tenantClock = tenantClock;
             _tenantProfile = tenantProfile;
         }
@@ -49,7 +49,10 @@ namespace InpremClockingApp.Pages
             var staffs = await _db.Staffs.ToListAsync().ConfigureAwait(true);
             var volunteers = await _db.Volunteers.ToListAsync().ConfigureAwait(true);
             var staffClocking = await _db.ClockingsStaff.ToListAsync().ConfigureAwait(true);
-            var users = await _user.Users.ToListAsync().ConfigureAwait(true);
+            // Multi-tenancy Phase 0 (step 0.4 follow-up, approved change to this page): the Admin
+            // count is the organization's members - the same accounts the Admins page lists - so it
+            // includes admins who joined by invitation from another organization.
+            var users = (await _auth.GetAll().ConfigureAwait(true)).ToList();
 
             if (staffs != null!)
             {
