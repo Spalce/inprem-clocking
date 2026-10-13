@@ -1,0 +1,149 @@
+# CI for the multi-tenancy work (docs/multitenancy/build/01-g0-preparation.md, Step 3).
+# Builds, runs every test suite against a throwaway SQL Server, publishes results and coverage,
+# scans for secrets and checks for vulnerable packages. No deployment steps.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: ["mt/**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      checks: write
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          # Throwaway container that lives only for this job; not a credential.
+          MSSQL_SA_PASSWORD: Ci-${{ github.run_id }}-${{ github.run_attempt }}!Aa
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' -b"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      INPREM_TEST_DB: external
+      INPREM_TEST_SQL: Server=localhost,1433;User Id=sa;Password=Ci-${{ github.run_id }}-${{ github.run_attempt }}!Aa;TrustServerCertificate=true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore InpremClockingApp.sln
+
+      # Warnings are errors in every project under tests/ (tests/Directory.Build.props).
+      - name: Build
+        run: dotnet build InpremClockingApp.sln --configuration Release --no-restore
+
+      - name: Install Playwright browser
+        run: pwsh tests/InpremClockingApp.Tests.Ui/bin/Release/net8.0/playwright.ps1 install --with-deps chromium
+
+      # Every suite except the browser tests (the UI project skips them without a filter).
+      - name: Test
+        run: >-
+          dotnet test InpremClockingApp.sln --configuration Release --no-build
+          --logger "trx;LogFilePrefix=tests"
+          --collect "XPlat Code Coverage"
+          --results-directory TestResults
+
+      - name: Test (browser)
+        run: >-
+          dotnet test tests/InpremClockingApp.Tests.Ui --configuration Release --no-build
+          --filter Category=Ui
+          --logger "trx;LogFilePrefix=ui"
+          --collect "XPlat Code Coverage"
+          --results-directory TestResults
+
+      - name: Publish test results
+        if: ${{ !cancelled() }}
+        uses: dorny/test-reporter@v1
+        with:
+          name: Test results
+          path: TestResults/*.trx
+          reporter: dotnet-trx
+          fail-on-error: false
+
+      - name: Coverage report
+        if: ${{ !cancelled() }}
+        uses: danielpalme/ReportGenerator-GitHub-Action@5
+        with:
+          reports: TestResults/**/coverage.cobertura.xml
+          targetdir: CoverageReport
+          reporttypes: HtmlInline;Cobertura;MarkdownSummaryGithub
+
+      - name: Coverage summary
+        if: ${{ !cancelled() }}
+        run: cat CoverageReport/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload test results and coverage
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            TestResults
+            CoverageReport
+
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Whole history, default rules plus .gitleaks.toml; known findings are in .gitleaksignore.
+      - name: Gitleaks
+        run: >-
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.21.2
+          git /repo --config /repo/.gitleaks.toml --gitleaks-ignore-path /repo/.gitleaksignore
+          --redact --verbose --no-banner
+
+  vulnerable-packages:
+    name: Vulnerable packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore InpremClockingApp.sln
+
+      # Fails on any high/critical advisory not listed in scripts/ci/known-vulnerable-packages.txt.
+      - name: Check
+        run: python3 scripts/ci/check_vulnerable_packages.py InpremClockingApp.sln

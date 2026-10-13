@@ -1,0 +1,784 @@
+openapi: 3.0.3
+info:
+  title: InpremClockin Website API
+  version: 1.0.0-draft
+  description: |
+    **DRAFT — may change.** Written in G0 from Multi-Tenancy Design v0.5, section 7 (7.2, 7.3, 7.5, 7.7),
+    before any code exists. Phase 3 generates the real document from code (published at
+    `/api/public/docs` on staging) and a contract test keeps the two in step.
+
+    The marketing website uses this API for public registration and subscription management. It never
+    sees passwords, card details or PayPal credentials.
+
+    **Authorization** (section 7.2):
+    - Public endpoints need no credential, return no personal data and are rate-limited.
+    - `signupToken`: returned by `POST /signups`; valid 2 hours; only that signup and its checkouts.
+    - `billingAccessToken`: exchanged from a one-time emailed code; valid 30 minutes; billing for one organization only.
+    - `X-Api-Key` (optional): identifies the website's own server for higher rate limits; never a substitute for the tokens.
+
+    Tokens are opaque random values sent as `Authorization: Bearer <token>`, stored only as hashes,
+    and never placed in URLs (except the one-time email code, which is exchanged at once).
+
+    **Rules** (section 7.7): CORS only for the website origins; return and cancel URLs must start with
+    an allow-listed website origin; `429` with `Retry-After` when a limit is exceeded; CAPTCHA on
+    signup and billing-access requests; `Idempotency-Key` on signup and checkout creation (same key and
+    body returns the same response for 24 hours, same key with a different body returns `422`);
+    every error is `application/problem+json` with a stable `code`.
+
+    **Never trust the PayPal return redirect alone.** A subscription is Active only when this API says
+    so (section 7.5). After PayPal sends the buyer back, call `/confirm`, then poll
+    `GET /checkout-sessions/{id}` every 2 s for 30 s, then every 10 s up to 2 minutes.
+
+    **Open questions for this draft**
+    - Section 7.3 lists 17 endpoints; the G0 prompt says 18. The diagram in 7.6 also shows
+      `POST /account/checkout-sessions`, which the table and the Phase 3 prompt replace with
+      `POST /checkout-sessions` + `billingAccessToken`. This draft follows the table (17).
+    - The design does not name the CAPTCHA field or the consent flags. This draft uses
+      `captchaToken` in the body (Cloudflare Turnstile, decision D30) and `acceptTerms`,
+      `acceptPrivacyPolicy`, `smsOptIn`.
+    - Plan limits are shown as `maxStaff`, `maxVolunteers`, `maxAdmins` until the plan catalogue (PO-5) is set.
+    - Invoice statuses are placeholders until Phase 4 confirms PayPal Invoicing's status names.
+    - The staging hostname is a placeholder until the cutover (09-domain-cutover.md).
+  contact:
+    name: InpremClockin
+servers:
+  - url: https://app.inpremclockin.org/api/public/v1
+    description: Production (App site)
+  - url: https://staging-app.inpremclockin.org/api/public/v1
+    description: Staging with the PayPal sandbox (hostname to be confirmed at cutover)
+tags:
+  - name: Public
+    description: No credential; no personal data.
+  - name: Signup
+    description: Journeys J1 (trial) and J2 (subscribe now).
+  - name: Checkout
+    description: One checkout flow for new, convert, resubscribe and change_plan (J2-J6).
+  - name: Billing access
+    description: Existing owners on the website (J3, J4).
+  - name: Account
+    description: Billing for one organization, with a billingAccessToken.
+security: []
+
+paths:
+  /plans:
+    get:
+      tags: [Public]
+      operationId: listPlans
+      summary: Plans and prices
+      description: Plans, prices per billing cycle, currency, features, limits and trial length. Cacheable for 5 minutes.
+      responses:
+        "200":
+          description: The plans currently on sale.
+          headers:
+            Cache-Control:
+              schema: { type: string, example: "public, max-age=300" }
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Plan" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /timezones:
+    get:
+      tags: [Public]
+      operationId: listTimeZones
+      summary: Supported time zones
+      description: IANA time zone ids accepted by POST /signups.
+      responses:
+        "200":
+          description: IANA time zone ids the app supports, with a display name.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/TimeZone" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /slugs/{slug}/availability:
+    get:
+      tags: [Public]
+      operationId: getSlugAvailability
+      summary: Is an organization slug free?
+      description: Checks the slug the signup form proposes. Rate-limited.
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Slug" }
+      responses:
+        "200":
+          description: Availability, with a free suggestion when taken.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SlugAvailability" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /signups:
+    post:
+      tags: [Signup]
+      operationId: createSignup
+      summary: Register a new organization
+      description: |
+        Creates the organization (PendingVerification), its owner (no password yet), the Owner
+        membership and the subscription (Trialing for `trial`, PendingActivation for `subscribe`).
+        The response holds only ids, status and the next action (privacy rule). The owner gets a
+        verification email; they set their password in the app.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/ApiKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SignupRequest" }
+      responses:
+        "201":
+          description: Signup created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SignupCreated" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/IdempotencyConflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /signups/{signupId}:
+    get:
+      tags: [Signup]
+      operationId: getSignup
+      summary: Signup status
+      description: Whether the owner has verified their email, and the subscription status.
+      security:
+        - signupToken: []
+      parameters:
+        - $ref: "#/components/parameters/SignupId"
+      responses:
+        "200":
+          description: Current status of the signup.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SignupStatus" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /signups/{signupId}/resend-verification:
+    post:
+      tags: [Signup]
+      operationId: resendVerification
+      summary: Resend the verification email
+      description: At most 3 per hour per signup.
+      security:
+        - signupToken: []
+      parameters:
+        - $ref: "#/components/parameters/SignupId"
+      responses:
+        "202":
+          description: A new verification email is on its way.
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /checkout-sessions:
+    post:
+      tags: [Checkout]
+      operationId: createCheckoutSession
+      summary: Start a PayPal checkout
+      description: |
+        Our server looks up the PayPal plan from its own catalogue (the website only sends our
+        `planPriceId`), creates the checkout session and a PayPal subscription whose `custom_id` is
+        the session reference, and returns PayPal's approve link. Redirect the buyer to `approvalUrl`.
+        Use `purpose` = `new` after a signup, `convert` for a trial, `resubscribe` after cancellation,
+        expiry or suspension, and `change_plan` for a plan change (PayPal subscription revision).
+      security:
+        - signupToken: []
+        - billingAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CheckoutRequest" }
+      responses:
+        "201":
+          description: Checkout created; send the buyer to approvalUrl.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CheckoutCreated" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/IdempotencyConflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "502": { $ref: "#/components/responses/PaymentProviderUnavailable" }
+
+  /checkout-sessions/{checkoutSessionId}:
+    get:
+      tags: [Checkout]
+      operationId: getCheckoutSession
+      summary: Checkout status (poll this)
+      description: Poll every 2 s for 30 s, then every 10 s up to 2 minutes, while the status is Approved.
+      security:
+        - signupToken: []
+        - billingAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/CheckoutSessionId"
+      responses:
+        "200":
+          description: Current status. Stop polling on Active, Cancelled, Expired or Failed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CheckoutStatus" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /checkout-sessions/{checkoutSessionId}/confirm:
+    post:
+      tags: [Checkout]
+      operationId: confirmCheckoutSession
+      summary: Confirm after PayPal returns the buyer
+      description: |
+        The server fetches the subscription from PayPal and verifies custom_id, plan, amount and
+        currency, that the subscription is not linked to another organization, and that the session
+        has not expired. Returns the resulting status. Safe to repeat.
+      security:
+        - signupToken: []
+        - billingAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/CheckoutSessionId"
+      responses:
+        "200":
+          description: Status after checking with PayPal.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CheckoutStatus" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "502": { $ref: "#/components/responses/PaymentProviderUnavailable" }
+
+  /checkout-sessions/{checkoutSessionId}/cancel:
+    post:
+      tags: [Checkout]
+      operationId: cancelCheckoutSession
+      summary: Buyer came back through the cancel URL
+      description: Marks the checkout Cancelled. The organization stays as it was (J5).
+      security:
+        - signupToken: []
+        - billingAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/CheckoutSessionId"
+      responses:
+        "200":
+          description: Checkout cancelled (or already final; the final status is returned).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CheckoutStatus" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /billing-access/requests:
+    post:
+      tags: [Billing access]
+      operationId: requestBillingAccess
+      summary: Email a one-time billing link to an owner
+      description: |
+        Always `202` with the same body and timing, whether or not the email exists, so the API
+        cannot be used to discover customers. If the email belongs to an organization Owner, a
+        one-time link (15 minutes) to the website's billing page is emailed.
+      parameters:
+        - $ref: "#/components/parameters/ApiKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BillingAccessRequest" }
+      responses:
+        "202":
+          description: Accepted. The same answer for known and unknown emails.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Accepted" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /billing-access/sessions:
+    post:
+      tags: [Billing access]
+      operationId: createBillingAccessSession
+      summary: Exchange the emailed code for a billingAccessToken
+      description: The code is single use.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BillingAccessSessionRequest" }
+      responses:
+        "201":
+          description: Token for 30 minutes, for this organization's billing only.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BillingAccessSession" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /account/subscription:
+    get:
+      tags: [Account]
+      operationId: getAccountSubscription
+      summary: The organization's subscription
+      description: For the website's "Manage subscription" page.
+      security:
+        - billingAccessToken: []
+      responses:
+        "200":
+          description: Plan, status, current period end, cancel-at-period-end flag and outstanding balance.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountSubscription" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /account/invoices:
+    get:
+      tags: [Account]
+      operationId: listAccountInvoices
+      summary: The organization's invoices
+      description: Newest first.
+      security:
+        - billingAccessToken: []
+      responses:
+        "200":
+          description: Invoices with amounts, status and PayPal payment links.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Invoice" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /account/subscription/cancel:
+    post:
+      tags: [Account]
+      operationId: cancelAccountSubscription
+      summary: Cancel at the end of the paid period
+      description: Cancels the PayPal subscription at period end; the organization keeps full access until then.
+      security:
+        - billingAccessToken: []
+      responses:
+        "200":
+          description: Cancellation scheduled; access continues until accessEndsAt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CancellationScheduled" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "502": { $ref: "#/components/responses/PaymentProviderUnavailable" }
+
+  /account/subscription/keep:
+    post:
+      tags: [Account]
+      operationId: keepAccountSubscription
+      summary: Withdraw a pending cancellation
+      description: Only while PayPal still allows it; otherwise `409` with code `cannot_keep` (use checkout with purpose `resubscribe`).
+      security:
+        - billingAccessToken: []
+      responses:
+        "200":
+          description: Cancellation withdrawn.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountSubscription" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "502": { $ref: "#/components/responses/PaymentProviderUnavailable" }
+
+  /health:
+    get:
+      tags: [Public]
+      operationId: getHealth
+      summary: Liveness
+      description: Liveness only; no dependency checks.
+      responses:
+        "200":
+          description: The API is up.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, enum: [ok] }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+components:
+  securitySchemes:
+    signupToken:
+      type: http
+      scheme: bearer
+      description: Returned by POST /signups. 2 hours; only that signup and the checkouts it created.
+    billingAccessToken:
+      type: http
+      scheme: bearer
+      description: From POST /billing-access/sessions. 30 minutes; billing for one organization only.
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: Optional. Identifies the website's own server for higher rate limits.
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Unique per user action (e.g. a UUID). Same key and body within 24 hours returns the original response; same key, different body returns 422.
+      schema: { type: string, minLength: 8, maxLength: 100 }
+    ApiKey:
+      name: X-Api-Key
+      in: header
+      required: false
+      schema: { type: string }
+    SignupId:
+      name: signupId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    CheckoutSessionId:
+      name: checkoutSessionId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  headers:
+    RetryAfter:
+      description: Seconds to wait before retrying.
+      schema: { type: integer, minimum: 1 }
+
+  responses:
+    ValidationFailed:
+      description: "Invalid request. Codes: validation_failed, captcha_failed, return_url_not_allowed, plan_not_available, invalid_code."
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          example:
+            type: https://app.inpremclockin.org/problems/validation_failed
+            title: One or more fields are invalid.
+            status: 400
+            code: validation_failed
+            errors:
+              slug: ["Use 3-50 lowercase letters, digits and hyphens."]
+    Unauthorized:
+      description: "Missing, invalid or expired token, or a token for another signup or organization. Codes: token_missing, token_invalid, token_expired."
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    NotFound:
+      description: "Not found, or not visible to this token. Code: not_found."
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    Conflict:
+      description: "The request conflicts with the current state. Codes: slug_taken, email_in_use, checkout_expired, checkout_final, subscription_not_cancellable, cannot_keep, resend_limit_reached, already_verified."
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    IdempotencyConflict:
+      description: "Idempotency-Key reused with a different body. Code: idempotency_key_reused."
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    TooManyRequests:
+      description: "Rate limit exceeded. Code: rate_limited."
+      headers:
+        Retry-After: { $ref: "#/components/headers/RetryAfter" }
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    PaymentProviderUnavailable:
+      description: "PayPal could not be reached; safe to retry with the same Idempotency-Key. Code: payment_provider_unavailable."
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+
+  schemas:
+    Problem:
+      type: object
+      description: RFC 7807 ProblemDetails with a stable machine-readable code.
+      required: [type, title, status, code]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        code:
+          type: string
+          enum:
+            - validation_failed
+            - captcha_failed
+            - return_url_not_allowed
+            - plan_not_available
+            - invalid_code
+            - token_missing
+            - token_invalid
+            - token_expired
+            - not_found
+            - slug_taken
+            - email_in_use
+            - checkout_expired
+            - checkout_final
+            - subscription_not_cancellable
+            - cannot_keep
+            - resend_limit_reached
+            - already_verified
+            - idempotency_key_reused
+            - rate_limited
+            - payment_provider_unavailable
+        errors:
+          type: object
+          description: Field-level messages, keyed by JSON property path.
+          additionalProperties:
+            type: array
+            items: { type: string }
+        traceId: { type: string, description: "Correlation id for support." }
+
+    Money:
+      type: object
+      required: [amount, currency]
+      properties:
+        amount: { type: string, pattern: '^\d+\.\d{2}$', example: "29.00", description: "Decimal as a string." }
+        currency: { type: string, enum: [USD], description: "Decision D25." }
+
+    Slug:
+      type: string
+      pattern: '^[a-z0-9](?:[a-z0-9-]{1,48}[a-z0-9])$'
+      example: alpha-community-center
+
+    Plan:
+      type: object
+      required: [planId, name, trialDays, features, limits, prices]
+      properties:
+        planId: { type: string, format: uuid }
+        name: { type: string, example: Standard }
+        description: { type: string }
+        trialDays: { type: integer, minimum: 0, example: 30, description: "Decision D21 (30 days, configurable per plan)." }
+        features:
+          type: array
+          items: { type: string }
+        limits:
+          type: object
+          properties:
+            maxStaff: { type: integer, nullable: true, description: "null = unlimited" }
+            maxVolunteers: { type: integer, nullable: true }
+            maxAdmins: { type: integer, nullable: true }
+        prices:
+          type: array
+          items: { $ref: "#/components/schemas/PlanPrice" }
+
+    PlanPrice:
+      type: object
+      required: [planPriceId, billingCycle, price]
+      properties:
+        planPriceId: { type: string, format: uuid }
+        billingCycle: { type: string, enum: [Monthly, Yearly] }
+        price: { $ref: "#/components/schemas/Money" }
+
+    PlanSummary:
+      type: object
+      required: [planId, planPriceId, name, billingCycle, price]
+      properties:
+        planId: { type: string, format: uuid }
+        planPriceId: { type: string, format: uuid }
+        name: { type: string }
+        billingCycle: { type: string, enum: [Monthly, Yearly] }
+        price: { $ref: "#/components/schemas/Money" }
+
+    TimeZone:
+      type: object
+      required: [id, displayName]
+      properties:
+        id: { type: string, example: America/New_York, description: "IANA time zone id." }
+        displayName: { type: string, example: "(UTC-05:00) Eastern Time (US & Canada)" }
+
+    SlugAvailability:
+      type: object
+      required: [slug, available]
+      properties:
+        slug: { $ref: "#/components/schemas/Slug" }
+        available: { type: boolean }
+        suggestion:
+          type: string
+          nullable: true
+          pattern: '^[a-z0-9](?:[a-z0-9-]{1,48}[a-z0-9])$'
+          description: A free alternative when the slug is taken.
+
+    SignupRequest:
+      type: object
+      required: [organizationName, slug, timeZone, owner, consent, planPriceId, mode, captchaToken]
+      properties:
+        organizationName: { type: string, minLength: 2, maxLength: 200 }
+        slug: { $ref: "#/components/schemas/Slug" }
+        timeZone: { type: string, example: America/New_York, description: "One of GET /timezones." }
+        owner:
+          type: object
+          required: [firstName, lastName, email]
+          properties:
+            firstName: { type: string, maxLength: 100 }
+            lastName: { type: string, maxLength: 100 }
+            email: { type: string, format: email, maxLength: 256 }
+            mobile: { type: string, nullable: true, pattern: '^\+[1-9]\d{6,14}$', description: "Optional, E.164." }
+        consent:
+          type: object
+          required: [acceptTerms, acceptPrivacyPolicy]
+          properties:
+            acceptTerms: { type: boolean, enum: [true] }
+            acceptPrivacyPolicy: { type: boolean, enum: [true] }
+            smsOptIn: { type: boolean, default: false, description: "Only meaningful when mobile is given." }
+        planPriceId: { type: string, format: uuid }
+        mode:
+          type: string
+          enum: [trial, subscribe]
+          description: trial = J1 (no payment); subscribe = J2 (continue with POST /checkout-sessions).
+        captchaToken: { type: string, description: "CAPTCHA response token, verified on the server." }
+
+    SignupCreated:
+      type: object
+      required: [signupId, signupToken, signupTokenExpiresAt, status, nextAction]
+      properties:
+        signupId: { type: string, format: uuid }
+        signupToken: { type: string, description: "Opaque; send as Bearer. Shown once." }
+        signupTokenExpiresAt: { type: string, format: date-time }
+        status: { $ref: "#/components/schemas/SignupStatusValue" }
+        nextAction:
+          type: string
+          enum: [verify_email, checkout]
+
+    SignupStatusValue:
+      type: string
+      enum: [PendingVerification, Verified, Active]
+
+    SignupStatus:
+      type: object
+      required: [signupId, status, subscriptionStatus]
+      properties:
+        signupId: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/SignupStatusValue" }
+        subscriptionStatus: { $ref: "#/components/schemas/SubscriptionStatusValue" }
+
+    CheckoutRequest:
+      type: object
+      required: [planPriceId, purpose, returnUrl, cancelUrl]
+      properties:
+        planPriceId: { type: string, format: uuid }
+        purpose:
+          type: string
+          enum: [new, convert, resubscribe, change_plan]
+        returnUrl: { type: string, format: uri, description: "Must start with an allow-listed website origin." }
+        cancelUrl: { type: string, format: uri, description: "Must start with an allow-listed website origin." }
+
+    CheckoutCreated:
+      type: object
+      required: [checkoutSessionId, approvalUrl, expiresAt]
+      properties:
+        checkoutSessionId: { type: string, format: uuid }
+        approvalUrl: { type: string, format: uri, description: "PayPal's approve link." }
+        expiresAt: { type: string, format: date-time }
+
+    CheckoutStatusValue:
+      type: string
+      description: |
+        Section 7.5. Created and AwaitingApproval: buyer has not approved yet. Approved: buyer
+        returned, PayPal not yet ACTIVE (keep polling). Active, Cancelled, Expired, Failed: final.
+      enum: [Created, AwaitingApproval, Approved, Active, Cancelled, Expired, Failed]
+
+    CheckoutStatus:
+      type: object
+      required: [checkoutSessionId, status, subscriptionStatus, plan, message]
+      properties:
+        checkoutSessionId: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/CheckoutStatusValue" }
+        subscriptionStatus: { $ref: "#/components/schemas/SubscriptionStatusValue" }
+        plan: { $ref: "#/components/schemas/PlanSummary" }
+        nextBillingDate: { type: string, format: date, nullable: true }
+        message: { type: string, description: "Text the website may show as-is." }
+
+    SubscriptionStatusValue:
+      type: string
+      description: Section 8 (organization subscription states).
+      enum: [Trialing, PendingActivation, Active, PastDue, Suspended, Expired, Canceled, Closed]
+
+    BillingAccessRequest:
+      type: object
+      required: [email, captchaToken]
+      properties:
+        email: { type: string, format: email }
+        captchaToken: { type: string }
+
+    Accepted:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          example: If this email belongs to an organization owner, we have sent a link to manage the subscription.
+
+    BillingAccessSessionRequest:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, description: "The one-time code from the emailed link (15 minutes, single use)." }
+
+    BillingAccessSession:
+      type: object
+      required: [billingAccessToken, expiresAt, organizationName]
+      properties:
+        billingAccessToken: { type: string, description: "Opaque; send as Bearer." }
+        expiresAt: { type: string, format: date-time }
+        organizationName: { type: string }
+
+    AccountSubscription:
+      type: object
+      required: [status, plan, cancelAtPeriodEnd, outstandingBalance]
+      properties:
+        status: { $ref: "#/components/schemas/SubscriptionStatusValue" }
+        plan: { $ref: "#/components/schemas/PlanSummary" }
+        billingMode: { type: string, enum: [PayPal, Invoiced, Free] }
+        trialEndsAt: { type: string, format: date-time, nullable: true }
+        currentPeriodEnd: { type: string, format: date-time, nullable: true }
+        cancelAtPeriodEnd: { type: boolean }
+        outstandingBalance: { $ref: "#/components/schemas/Money" }
+
+    CancellationScheduled:
+      type: object
+      required: [status, cancelAtPeriodEnd, accessEndsAt]
+      properties:
+        status: { $ref: "#/components/schemas/SubscriptionStatusValue" }
+        cancelAtPeriodEnd: { type: boolean, enum: [true] }
+        accessEndsAt: { type: string, format: date-time }
+
+    Invoice:
+      type: object
+      required: [invoiceId, number, status, total, issuedAt]
+      properties:
+        invoiceId: { type: string, format: uuid }
+        number: { type: string, example: INV-2026-000123 }
+        status: { type: string, enum: [Draft, Sent, Paid, PartiallyPaid, Overdue, Cancelled, Refunded, Void] }
+        total: { $ref: "#/components/schemas/Money" }
+        amountDue: { $ref: "#/components/schemas/Money" }
+        issuedAt: { type: string, format: date-time }
+        dueDate: { type: string, format: date, nullable: true }
+        periodStart: { type: string, format: date, nullable: true }
+        periodEnd: { type: string, format: date, nullable: true }
+        paymentUrl: { type: string, format: uri, nullable: true, description: "PayPal payment link when payable." }

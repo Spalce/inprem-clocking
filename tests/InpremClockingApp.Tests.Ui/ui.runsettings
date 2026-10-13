@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Browser tests are opt-in: plain "dotnet test" skips them; "dotnet test with filter Category=Ui" runs them
+     (the project only applies this file when no filter is given). -->
+<RunSettings>
+  <RunConfiguration>
+    <TestCaseFilter>Category!=Ui</TestCaseFilter>
+  </RunConfiguration>
+</RunSettings>
