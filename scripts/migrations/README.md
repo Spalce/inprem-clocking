@@ -17,6 +17,23 @@ Whoever deploys runs them, in order, before the new build goes live. Back up the
 | 5 | `20261013185539_M1b_ProviderSecurity` (Phase 0, step 0.7) | `PlatformDbContext` | `platform-M1b-up.idempotent.sql` | `platform-M1b-down.idempotent.sql` | `platform-M1b-verify.sql` | Additive (part of design M1, "platform tables"; runs after M2 in the platform history). Tables `ProviderUsers`, `ProviderInvitations`, `RecoveryRecords`, `AuditEntries`, `UsedCodes`, `SecurityAttempts`; foreign keys from provider users and invitations to `dbo.AspNetUsers` (no cascade). Trigger `TR_AuditEntries_AppendOnly`: any UPDATE or DELETE of an audit entry fails (error 50010). Codes and link tokens are stored only as SHA-256 hashes. **Must be applied before the step 0.7 build is deployed** (the Provider pages and the `provider` commands use these tables). Down drops the tables, and the audit log with them: export it first if it matters. |
 | 6 | Hangfire 1.8.14 job storage (Phase 0, step 0.8) | Hangfire's own schema versioning (`[hangfire].[Schema]`), not EF | `hangfire-up.idempotent.sql` | `hangfire-down.idempotent.sql` | `hangfire-verify.sql` | Additive: schema `hangfire`, 11 tables (schema version 9). Generated from Hangfire.SqlServer's own installer; the app never creates or upgrades these tables (`PrepareSchemaIfNecessary = false`, D12). **Must be applied before the step 0.8 build runs a job server** (`Jobs:RunServer = true`) or anyone opens the jobs dashboard. Regenerate and review it whenever the Hangfire.SqlServer package version changes. Down deletes every job and its history. |
 
+## All of Phase 0 at once (the bundles)
+
+For a deployment, use the guarded bundles instead of the six scripts one by one:
+
+```powershell
+sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/phase0-up.sql     # ends with "Phase 0 schema complete."
+sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/phase0-down.sql   # rollback R2; ends with "Phase 0 rolled back"
+```
+
+- **Generated:** `build-phase0-bundle.ps1` builds them from the six reviewed scripts below, in table order. Never edit the bundles; edit a script and rebuild. CI fails if the committed bundles are out of date.
+- **Guards:**
+  - SQLCMD mode is required (SSMS: Query > SQLCMD Mode), and the bundle stops at the first error.
+  - It refuses a database that isn't at the approved app's last migration ("wrong database?"), or that has migrations it doesn't know.
+  - At the end it checks the expected state.
+- **Rehearsal:** the whole sequence was rehearsed with timings: `docs/multitenancy/rehearsal-phase0.md`, `scripts/rehearsal/rehearse-phase0.ps1`.
+- **Deployment procedure:** `docs/multitenancy/deployment-phase0.md`.
+
 ## Running
 
 ```powershell

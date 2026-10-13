@@ -1,6 +1,7 @@
 # CI for the multi-tenancy work (docs/multitenancy/build/01-g0-preparation.md, Step 3).
 # Builds, runs every test suite against a throwaway SQL Server, publishes results and coverage,
-# scans for secrets and checks for vulnerable packages. No deployment steps.
+# scans for secrets, checks for vulnerable packages, and produces the one build artifact that both
+# sites are deployed from (Phase 0 step 0.10). No deployment steps.
 name: CI
 
 on:
@@ -147,3 +148,50 @@ jobs:
       # Fails on any high/critical advisory not listed in scripts/ci/known-vulnerable-packages.txt.
       - name: Check
         run: python3 scripts/ci/check_vulnerable_packages.py InpremClockingApp.sln
+
+  package:
+    name: Build artifact (no deployment)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      # The committed migration bundles must be exactly what the builder makes from the reviewed scripts.
+      - name: Migration bundles up to date
+        shell: pwsh
+        run: |
+          ./scripts/migrations/build-phase0-bundle.ps1
+          git diff --exit-code -- scripts/migrations/phase0-up.sql scripts/migrations/phase0-down.sql
+
+      # One build for both sites (D8).
+      - name: Publish
+        run: dotnet publish InpremClockingApp/InpremClockingApp.csproj --configuration Release --output out/app
+
+      # Self-check of the deployment script: both site packages can be made from this artifact.
+      - name: Prepare App and Admin packages (check only)
+        shell: pwsh
+        run: |
+          ./scripts/deploy/prepare-site.ps1 -Artifact out/app -SiteMode App -OutDir out/sites
+          ./scripts/deploy/prepare-site.ps1 -Artifact out/app -SiteMode Admin -OutDir out/sites
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: inprem-build-${{ github.sha }}
+          retention-days: 30
+          path: |
+            out/app
+            scripts/deploy
+            scripts/migrations
+            scripts/rehearsal
