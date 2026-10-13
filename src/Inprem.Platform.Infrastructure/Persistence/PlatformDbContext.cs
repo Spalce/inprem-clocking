@@ -1,3 +1,4 @@
+using Inprem.Platform.Domain.Memberships;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
@@ -21,15 +22,51 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
     /// <summary>ASP.NET Core data-protection keys, shared by every instance of a site.</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys { get; set; } = null!;
 
+    public DbSet<TenantMembership> TenantMemberships { get; set; } = null!;
+
+    /// <summary>Read-only view of the approved app's dbo.Tenants (owned by ApplicationDbContext's migrations).</summary>
+    public DbSet<TenantRow> Tenants { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<TenantMembership>(membership =>
+        {
+            membership.ToTable("TenantMemberships");
+            membership.HasKey(m => m.Id);
+            membership.Property(m => m.Id).ValueGeneratedNever();
+            // Same length as AspNetUsers.Id; the foreign keys to dbo tables are added in the migration's SQL.
+            membership.Property(m => m.UserId).HasMaxLength(450).IsRequired();
+            membership.Property(m => m.InvitedByUserId).HasMaxLength(450);
+            membership.Property(m => m.Role).HasConversion<string>().HasMaxLength(20);
+            membership.Property(m => m.Status).HasConversion<string>().HasMaxLength(20);
+            membership.Property(m => m.CreatedUtc).HasColumnType("datetime2");
+            membership.Ignore(m => m.IsActive);
+            // One membership per person per organization; Revoked rows stay as history.
+            membership.HasIndex(m => new { m.UserId, m.TenantId }).IsUnique();
+            membership.HasIndex(m => m.TenantId);
+        });
+
+        modelBuilder.Entity<TenantRow>(tenant =>
+        {
+            tenant.ToTable("Tenants", "dbo", t => t.ExcludeFromMigrations());
+            tenant.HasKey(t => t.Id);
+            tenant.Property(t => t.Name).HasMaxLength(200);
+        });
     }
 
     /// <summary>Options shared by the app and the design-time factory.</summary>
     public static void Configure(DbContextOptionsBuilder options, string connectionString) =>
         options.UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", Schema));
+}
+
+/// <summary>The columns of dbo.Tenants the platform reads.</summary>
+public sealed class TenantRow
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
 }
 
 /// <summary>

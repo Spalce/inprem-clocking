@@ -1,3 +1,5 @@
+using Inprem.Platform.Application.Tenancy;
+using Microsoft.EntityFrameworkCore;
 using InpremClockingApp.Data;
 using InpremClockingApp.Models;
 
@@ -21,19 +23,25 @@ public interface ICurrentTenantProfile
 public class CurrentTenantProfile : ICurrentTenantProfile
 {
     private readonly ApplicationDbContext _db;
+    private readonly ITenantContext _tenantContext;
     private Tenant? _tenant;
     private bool _loaded;
 
-    public CurrentTenantProfile(ApplicationDbContext db)
+    public CurrentTenantProfile(ApplicationDbContext db, ITenantContext tenantContext)
     {
         _db = db;
+        _tenantContext = tenantContext;
     }
 
+    // C2-9 (multi-tenancy Phase 0 step 0.3): looked up by the validated ITenantContext's id.
     private Tenant? Resolve()
     {
         if (!_loaded)
         {
-            _tenant = _db.Tenants.FirstOrDefault();
+            var tenantId = _tenantContext.TenantId;
+            _tenant = tenantId.HasValue
+                ? _db.Tenants.IgnoreQueryFilters().FirstOrDefault(t => t.Id == tenantId.Value)
+                : null;
             _loaded = true;
         }
 

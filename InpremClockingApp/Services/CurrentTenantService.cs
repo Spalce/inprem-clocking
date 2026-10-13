@@ -1,5 +1,4 @@
-using InpremClockingApp.Helpers;
-using Microsoft.AspNetCore.Http;
+using Inprem.Platform.Application.Tenancy;
 
 namespace InpremClockingApp.Services;
 
@@ -12,24 +11,19 @@ public interface ICurrentTenantService
     int? TenantId { get; }
 }
 
+// C2-8 (multi-tenancy Phase 0 step 0.3): reads the tenant from the validated ITenantContext,
+// which TenantContextMiddleware fills only after re-checking the signed-in membership on this
+// request - no longer straight from the cookie's tenant_id claim. Null before sign-in (login
+// lookups must see every tenant's users - see the AppUser query filter in ApplicationDbContext),
+// outside requests (IdentitySeeder at startup), and for platform operators.
 public class CurrentTenantService : ICurrentTenantService
 {
-    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ITenantContext _tenantContext;
 
-    public CurrentTenantService(IHttpContextAccessor httpContextAccessor)
+    public CurrentTenantService(ITenantContext tenantContext)
     {
-        _httpContextAccessor = httpContextAccessor;
+        _tenantContext = tenantContext;
     }
 
-    // Null before sign-in (login lookups must see every tenant's users - see the AppUser
-    // query filter in ApplicationDbContext) and for a signed-in user with no tenant claim
-    // (reserved for a future tenant-less SuperAdmin role).
-    public int? TenantId
-    {
-        get
-        {
-            var claimValue = _httpContextAccessor.HttpContext?.User?.FindFirst(TenantClaimTypes.TenantId)?.Value;
-            return int.TryParse(claimValue, out var tenantId) ? tenantId : null;
-        }
-    }
+    public int? TenantId => _tenantContext.TenantId;
 }

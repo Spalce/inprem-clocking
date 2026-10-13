@@ -55,6 +55,10 @@ builder.Services.AddDefaultIdentity<AppUser>(options => options.SignIn.RequireCo
 // per-site cookie and data-protection settings. After AddDefaultIdentity so its cookie settings win.
 builder.AddSiteHosting();
 
+// Tenant context and memberships (platform.TenantMemberships): the organization a request works in
+// comes from the signed-in membership, re-checked on every request by TenantContextMiddleware.
+builder.AddTenancy();
+
 // Registered after AddDefaultIdentity so it overrides Identity's default factory - stamps the
 // TenantId claim onto every sign-in (see AppUserClaimsPrincipalFactory, multi-tenancy.md).
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<AppUser>, AppUserClaimsPrincipalFactory>();
@@ -145,6 +149,7 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.UseAuthentication();
+app.UseTenantContext();
 app.UseAuthorization();
 
 //app.MapRazorPages();

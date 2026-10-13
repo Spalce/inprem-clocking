@@ -1,3 +1,6 @@
+using Inprem.Platform.Application.Tenancy;
+using Inprem.Platform.Application.Time;
+using Microsoft.EntityFrameworkCore;
 using InpremClockingApp.Data;
 
 namespace InpremClockingApp.Services;
@@ -41,11 +44,13 @@ public class TenantClock : ITenantClock
     private const string FallbackTimeZoneId = "America/New_York";
 
     private readonly ApplicationDbContext _db;
+    private readonly ITenantContext _tenantContext;
     private TimeZoneInfo? _timeZone;
 
-    public TenantClock(ApplicationDbContext db)
+    public TenantClock(ApplicationDbContext db, ITenantContext tenantContext)
     {
         _db = db;
+        _tenantContext = tenantContext;
     }
 
     // Resolved lazily (not in the constructor) and cached for the lifetime of this scoped
@@ -56,10 +61,14 @@ public class TenantClock : ITenantClock
 
     private TimeZoneInfo ResolveTimeZone()
     {
-        // Uses the Tenant query filter from ApplicationDbContext, so this naturally resolves to
-        // exactly the signed-in user's own tenant with no explicit Id needed.
-        var timeZoneId = _db.Tenants.Select(t => t.TimeZoneId).FirstOrDefault() ?? FallbackTimeZoneId;
-        return TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+        // C2-9 (multi-tenancy Phase 0 step 0.3): the tenant comes from the validated
+        // ITenantContext by id, rather than relying on the Tenant query filter. TimeZoneResolver
+        // also accepts the stored IANA id on Windows hosts without ICU (converted to the Windows id).
+        var tenantId = _tenantContext.TenantId;
+        var timeZoneId = tenantId.HasValue
+            ? _db.Tenants.IgnoreQueryFilters().Where(t => t.Id == tenantId.Value).Select(t => t.TimeZoneId).FirstOrDefault()
+            : null;
+        return TimeZoneResolver.Resolve(timeZoneId, FallbackTimeZoneId);
     }
 
     public DateTime ToLocal(DateTime utc)

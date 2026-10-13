@@ -1,3 +1,5 @@
+using Inprem.Platform.Domain.Memberships;
+using Inprem.Platform.Infrastructure.Persistence;
 using InpremClockingApp.Data;
 using InpremClockingApp.Helpers;
 using InpremClockingApp.Models;
@@ -15,6 +17,7 @@ namespace InpremClockingApp.Tests.Support.TestData;
 /// three staff, three volunteers, and a completed session for every person on four days,
 /// one of which is that zone's spring daylight-saving change.</item>
 /// <item><b>Gamma</b>: the organization row only.</item>
+/// <item>Every admin has an Active membership of their organization (owner: Owner; admin: Admin).</item>
 /// </list>
 /// The house organization created by the migrations is looked up, not created.
 /// Rows are written with explicit TenantIds, outside any request (no tenant is resolved, so the
@@ -53,18 +56,19 @@ public static class TestDataSeeder
     {
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var platform = scope.ServiceProvider.GetRequiredService<PlatformDbContext>();
         var users = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
 
         var password = $"T{Guid.NewGuid():N}!a";
 
         var house = await db.Tenants.IgnoreQueryFilters().OrderBy(t => t.Id).FirstAsync();
 
-        var alpha = await SeedTenantAsync(db, users, password, "Alpha", "America/New_York", "alpha",
+        var alpha = await SeedTenantAsync(db, platform, users, password, "Alpha", "America/New_York", "alpha",
             staffNames: new[] { ("Avery", "Stone"), ("Blake", "Rivers"), ("Casey", "Fields") },
             volunteerNames: new[] { ("Dana", "Brooks"), ("Emery", "Woods"), ("Finley", "Hart") },
             AlphaDays);
 
-        var beta = await SeedTenantAsync(db, users, password, "Beta", "Europe/London", "beta",
+        var beta = await SeedTenantAsync(db, platform, users, password, "Beta", "Europe/London", "beta",
             staffNames: new[] { ("Gale", "Marsh"), ("Harper", "Lane"), ("Indy", "Moss") },
             volunteerNames: new[] { ("Jules", "Ford"), ("Kai", "Banks"), ("Logan", "Reed") },
             BetaDays);
@@ -85,6 +89,7 @@ public static class TestDataSeeder
 
     private static async Task<TenantSeed> SeedTenantAsync(
         ApplicationDbContext db,
+        PlatformDbContext platform,
         UserManager<AppUser> users,
         string password,
         string name,
@@ -108,6 +113,11 @@ public static class TestDataSeeder
 
         var owner = await CreateAdminAsync(users, tenant.Id, $"owner@{domain}.test", "Olive", name, password);
         var admin = await CreateAdminAsync(users, tenant.Id, $"admin@{domain}.test", "Adrian", name, password);
+
+        // Memberships as migration M2 / step 0.3 create them: the owner is Owner, the other admin Admin.
+        platform.TenantMemberships.Add(TenantMembership.CreateActive(owner.UserId, tenant.Id, MembershipRole.Owner, createdUtc));
+        platform.TenantMemberships.Add(TenantMembership.CreateActive(admin.UserId, tenant.Id, MembershipRole.Admin, createdUtc));
+        await platform.SaveChangesAsync();
 
         var staff = staffNames.Select((n, i) => new Staff
         {

@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 0 Foundation (in progress)
-- **Next step:** Phase 0 / Step 0.3 — Tenant context and memberships
+- **Next step:** Phase 0 / Step 0.4 — Platform-unique email and login simplification
 - **Branch:** `mt/phase0` (from `mt/integration` `1b59b6b`)
 
 ## Phase status
@@ -13,7 +13,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | Phase | Status | Exit checks passed | Merged into `mt/integration` |
 |---|---|---|---|
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
-| 0 Foundation | In progress (Steps 0.1–0.2 done) | — | — |
+| 0 Foundation | In progress (Steps 0.1–0.3 done) | — | — |
 | 1 Provider Console | Not started | — | — |
 | 2 PayPal core | Not started | — | — |
 | 3 Website API | Not started | — | — |
@@ -37,7 +37,12 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **Vulnerable packages in the approved app.** 9 high/critical transitive advisories, from the 8.0.0 EF Core / Identity packages and from `Microsoft.VisualStudio.Web.CodeGeneration.Design`. They are listed in `scripts/ci/known-vulnerable-packages.txt`, so the CI gate only fails on new ones. Upgrade them in Phase 0 (the app's csproj is not on the C2 list, so the developer needs to agree the change). P0-7 requires 0.
 - **CI is green on GitHub.** Run 38326059916 on `ee29210` (pushed 2026-10-13): build and test, secret scan and vulnerable packages all passed. The repository is public (the GitHub API answers without a login); D33 recommends making it private before billing code is merged.
 - **G0-2 was run on the test deployment, not production** (developer, 2026-10-13). That backup was the new app's test data, since corrected (odd sessions and time storage included). The new app will not go live on test data. **If the new app is to take over the old (reference) app's real data, inspect that backup first** with the same scripts (use `04p`/`05p` if it has no `TenantId`). If the new app starts fresh, nothing more is needed.
-- **Question for Phase 0 (design vs data).** Migration M2 marks "the earliest admin of each organization" as Owner. `AspNetUsers` has no creation date and its Id is a GUID, so "earliest" cannot be derived. The project owner names each organization's Owner (04 result 6 lists the admins).
+- **Owner backfill (decided in step 0.3).** Migration M2 makes the only admin of an organization its Owner. Organizations with several admins get Admins only, because "the earliest admin" cannot be derived (no creation date on `AspNetUsers`). `platform-M2-verify.sql` lists them, and their Owner is named later (Provider Console, Phase 1, or by hand).
+- **"Tenant not Closed" (step 0.3).** There is no Closed state yet; Phase 2 adds subscription and tenant statuses. `Tenant.IsActive` ("Suspended" on the old Platform pages) does not block sign-in today and was left that way. Revisit in Phase 2.
+- **Legacy accounts get a membership at first sign-in (step 0.3).** This applies to an account with `AppUser.TenantId` and no membership row at all, e.g. one made by the Admins page, Register, the old Platform pages or `SeedAdmin`; it gets an Active Admin membership. Revoked memberships are never recreated. Step 0.4 makes `CreateAdmin` create memberships itself; remove the fallback once every creation path does.
+- **Accounts without any organization are signed out (step 0.3, behaviour change).** This covers accounts that are not SuperAdmin and have no Active membership. Today's data has none; before, such an account could open the kiosk pages.
+- **Membership cache (step 0.3).** Validation is cached for 5 minutes. Every code path that changes a membership (revoke, role change, acceptance) must call `IMembershipService.Invalidate`, or the change is seen only when the entry expires (tested).
+- **Anti-forgery on new pages.** The approved app ignores anti-forgery tokens globally (until C3-10), but the new "Choose organization" page enforces them (tested).
 - **Report baseline R1–R3 are proposed, not agreed.** `05-report-baseline.sql` uses staff hours per organization per month, volunteer hours per organization per month, and dashboard figures. Change them there if the project owner wants others.
 - **Website API draft: open questions** (listed in the YAML's `info.description`):
   - Section 7.3 has 17 endpoints; the G0 prompt says 18. The 7.6 diagram's `POST /account/checkout-sessions` conflicts with the table. The draft follows the table.
@@ -56,6 +61,29 @@ _(date — what was tested — result)_
 ## Log
 
 _(date — phase/step — summary — tests — next)_
+
+- **2026-10-13 — Phase 0 / Step 0.3 — Tenant context and memberships.**
+  - **Domain:** `TenantMembership` (Owner|Admin; Invited|Active|Revoked) with its rules.
+  - **Application:**
+    - `ITenantContext` / `TenantContext` (set once per request) and `PlatformClaimTypes`.
+    - `IMembershipStore` and `IClock` (interfaces).
+    - `MembershipService`: per-request validation cached 5 minutes with `Invalidate`; sign-in selection with the legacy-account fallback.
+    - `TimeZoneResolver` (IANA → Windows fallback).
+  - **Infrastructure:**
+    - `PlatformDbContext` gains `TenantMemberships` and a read-only `dbo.Tenants` view (excluded from migrations).
+    - `MembershipStore` and `SystemClock`.
+    - Migration **M2** creates the table and FKs to `AspNetUsers`/`Tenants`, then backfills. Its up/down/verify scripts were rehearsed with accounts: idempotent, reversible.
+  - **Web:**
+    - `TenantContextMiddleware`: validates `membership_id` + `tenant_id` every request, signs out otherwise, and sends people with several memberships to the chooser.
+    - `TenancyHosting`: carries a chosen organization through security-stamp refresh.
+    - C2-7: claims factory takes `tenant_id`/`membership_id` from the membership.
+    - C2-8: `CurrentTenantService` reads `ITenantContext`.
+    - C2-9: `TenantClock` and `CurrentTenantProfile` look up the tenant by id, with the time-zone fallback.
+    - C3-5: `Areas/Account/Pages/ChooseOrganization` (new area; no DbContext; anti-forgery enforced).
+    - `Program.cs` (C2-2): `AddTenancy`, `UseTenantContext`.
+  - **Test seed:** memberships for every seeded admin (Owner/Admin).
+  - **Tests:** Unit 31 (Domain 100% lines/branches, Application ~90% lines/97% branches), Architecture 7, Baseline 316 (single-membership admins unchanged), Integration 28. The 12 new membership tests cover the chooser, a foreign membership, a forged POST, revocation with and without cache invalidation, a revoked account, a legacy account, an operator, an account without an organization, and the M2 backfill, re-runnability and FKs. UI 5. No new advisories; no secrets in source.
+  - Next: Step 0.4, platform-unique email and login simplification.
 
 - **2026-10-13 — Phase 0 / Step 0.2 — Site mode and hostnames (C2-2).**
   - New in `InpremClockingApp/Hosting/`:

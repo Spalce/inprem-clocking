@@ -11,15 +11,23 @@ Whoever deploys runs them, in order, before the new build goes live. Back up the
 | Order | Migration | Context | Up | Down | Verify | Notes |
 |---|---|---|---|---|---|---|
 | 1 | `20261013080438_M1a_DataProtectionKeys` (Phase 0, step 0.2) | `PlatformDbContext` | `platform-M1a-up.idempotent.sql` | `platform-M1a-down.idempotent.sql` | `platform-M1a-verify.sql` | Additive: schema `platform`, its own `__EFMigrationsHistory`, table `DataProtectionKeys`. **Must be applied before the step 0.2 build is deployed**: the app reads and writes its cookie keys there. |
+| 2 | `20261013083152_M2_TenantMemberships` (Phase 0, step 0.3) | `PlatformDbContext` | `platform-M2-up.idempotent.sql` | `platform-M2-down.idempotent.sql` | `platform-M2-verify.sql` | Additive. Creates `platform.TenantMemberships`, with foreign keys to `dbo.AspNetUsers` (cascade) and `dbo.Tenants`. **Backfills** one Active membership per account that has an organization; the only admin of an organization becomes Owner, and organizations with several admins get Admins only (verify lists them, so someone can name the Owner). **Must be applied before the step 0.3 build is deployed**: without a membership, an admin is signed out. Down drops the table, and memberships with it. |
 
 ## Running
 
 ```powershell
-sqlcmd -S <server> -d <database> -E -b -i scripts/migrations/platform-M1a-up.idempotent.sql
-sqlcmd -S <server> -d <database> -E -b -i scripts/migrations/platform-M1a-verify.sql   # expect 1|1|<rows>
+sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/platform-M1a-up.idempotent.sql
+sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/platform-M1a-verify.sql   # expect 1|1|<rows>
+sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/platform-M2-up.idempotent.sql
+sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/platform-M2-verify.sql   # expect 1|<n>|0|<orgs without owner>
 ```
 
-The scripts are safe to run twice. Down reverses up. Rehearsed on 2026-10-13 against a throwaway LocalDB database: verify gave before `0|0`, after up `1|1|0`, after a second up `1|1|0`, after down `0|0`, after a second down `0|0`.
+Always pass `-I` (`QUOTED_IDENTIFIER ON`). `sqlcmd` turns it off by default, and statements touching `dbo.AspNetUsers` fail without it, because that table has filtered indexes.
+
+The scripts are safe to run twice. Down reverses up. All rehearsals ran on 2026-10-13 against throwaway LocalDB databases.
+
+- **M1a:** verify gave before `0|0`, after up `1|1|0`, after a second up `1|1|0`, after down `0|0`, after a second down `0|0`.
+- **M2:** the database had the app's migrations, two organizations (one admin; two admins) and one operator account without an organization. Verify gave before `0`; after up `1|3|0|1`, listing the organization with 2 admins; after a second up the same; after down `0`; after up again `1|3|0|1`.
 
 ## What the step 0.2 deployment changes for users
 

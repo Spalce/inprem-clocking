@@ -3,6 +3,11 @@
   <!-- Use cases and the interfaces for outside services. Depends on Domain only (enforced by the architecture tests). -->
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Inprem.Platform.Domain\Inprem.Platform.Domain.csproj" />
   </ItemGroup>
 
