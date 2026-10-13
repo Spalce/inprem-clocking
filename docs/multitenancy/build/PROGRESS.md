@@ -5,14 +5,14 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** G0 (all steps and exit checks done)
-- **Next step:** Developer: answer the time-storage question (`inspection-results.md`), review `mt/g0` and merge it into `mt/integration`. Then Phase 0.
+- **Next step:** Developer merges `mt/g0` into `mt/integration`; then Phase 0 / Step 0.1 — Solution structure (`02-phase0-foundation.md`, branch `mt/phase0`)
 - **Branch:** `mt/g0`
 
 ## Phase status
 
 | Phase | Status | Exit checks passed | Merged into `mt/integration` |
 |---|---|---|---|
-| G0 Preparation | Done | G0-2, G0-4, CI, OpenAPI valid, no existing app file changed | — |
+| G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | — (developer merges) |
 | 0 Foundation | Not started | — | — |
 | 1 Provider Console | Not started | — | — |
 | 2 PayPal core | Not started | — | — |
@@ -36,12 +36,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **Known secret in the approved app.** `InpremClockingApp/Services/EmailService.cs` has a hardcoded SMTP credential (since commit `10e1e22`). It is listed in `.gitleaksignore` so CI can block new secrets. Before P0-5 it must be rotated, moved to configuration and the ignore line removed. Ownership must be confirmed with the original author before rotating. Gitleaks' default rules miss it; the custom rule `csharp-network-credential` in `.gitleaks.toml` finds it.
 - **Vulnerable packages in the approved app.** 9 high/critical transitive advisories, from the 8.0.0 EF Core / Identity packages and from `Microsoft.VisualStudio.Web.CodeGeneration.Design`. They are listed in `scripts/ci/known-vulnerable-packages.txt`, so the CI gate only fails on new ones. Upgrade them in Phase 0 (the app's csproj is not on the C2 list, so the developer needs to agree the change). P0-7 requires 0.
 - **CI is green on GitHub.** Run 38326059916 on `ee29210` (pushed 2026-10-13): build and test, secret scan and vulnerable packages all passed. The repository is public (the GitHub API answers without a login); D33 recommends making it private before billing code is merged.
-- **Production data (G0-2, 2026-10-05 backup).** The production database is this app at migration 5 of 15 (`AddUniqueEmailIndexes`); the 10 existing multi-tenancy migrations have never been applied to it. Its size is 3 admins, 25 staff, 26 volunteers and 93 sessions.
-  - No shared emails and no duplicate sessions, so M2, M3 and M4 will apply cleanly.
-  - 3 odd sessions from 26–29 Sep. One of them shows F-01/F-02 has already happened in production.
-  - **Open question: are stored times UTC or local?** UTC is likely; the developer should confirm (see `inspection-results.md`).
-  - **Whether the new app will go live on this data is undecided** (developer, 2026-10-13).
-  - Hosting permissions for row-level security are unknown.
+- **G0-2 was run on the test deployment, not production** (developer, 2026-10-13). That backup was the new app's test data, since corrected (odd sessions and time storage included). The new app will not go live on test data. **If the new app is to take over the old (reference) app's real data, inspect that backup first** with the same scripts (use `04p`/`05p` if it has no `TenantId`). If the new app starts fresh, nothing more is needed.
 - **Question for Phase 0 (design vs data).** Migration M2 marks "the earliest admin of each organization" as Owner. `AspNetUsers` has no creation date and its Id is a GUID, so "earliest" cannot be derived. The project owner names each organization's Owner (04 result 6 lists the admins).
 - **Report baseline R1–R3 are proposed, not agreed.** `05-report-baseline.sql` uses staff hours per organization per month, volunteer hours per organization per month, and dashboard figures. Change them there if the project owner wants others.
 - **Website API draft: open questions** (listed in the YAML's `info.description`):
@@ -59,7 +54,9 @@ _(date — what was tested — result)_
 
 _(date — phase/step — summary — tests — next)_
 
-- **2026-10-13 — G0-2 — Inspection of the production backup.**
+- **2026-10-13 — G0 complete; ready for the developer to review and merge `mt/g0` into `mt/integration`.** The developer clarified that the inspected backup was the test deployment (corrected since; not going live), so `inspection-results.md` was relabelled.
+
+- **2026-10-13 — G0-2 — Inspection of the supplied backup (later identified as the test deployment).**
   - Restored `db_aa61e6_inpremdb3_10_5_2026_8.bak` (SQL Server 2022) in a throwaway local SQL Server 2022 container, ran 01–03, then deleted the container.
   - Added `04p`/`05p` pre-tenancy variants, because production has no `TenantId` yet. Their refusal tests are in the suite.
   - Results, counts only, are in `docs/multitenancy/inspection-results.md`. No personal data was displayed or recorded.

@@ -1,12 +1,14 @@
 # Database inspection results (G0-2)
 
-**Status: done on 2026-10-13.** One question for the developer is open (time storage, at the end).
+**Status: done on 2026-10-13, on the new app's test deployment, not production.** The developer later confirmed that the backup supplied was the test deployment's database: test data only, and since corrected, including the odd sessions and the time-storage question below. **The new app will not go live on this test data.** The findings below are therefore kept only as a record of how the scripts behaved. They say nothing about real data.
+
+The real data lives in the old (reference) app. If the new app is ever to take over that data, inspect a backup of it first with the same scripts (`scripts/inspection/README.md`). If the new app starts with a fresh database, no further inspection is needed before Phase 0.
 
 Counts and totals only. No names, emails or ids of people are recorded here.
 
 ## Backup
 
-- **File:** `db-backups/db_aa61e6_inpremdb3_10_5_2026_8.bak` (git-ignored). The developer describes it as the production database of the old app, the reference app.
+- **File:** `db-backups/db_aa61e6_inpremdb3_10_5_2026_8.bak` (git-ignored). This is the new app's **test deployment** database, which the developer first thought was production.
 - **Contents:** database `db_aa61e6_inpremdb3` on host server `sql9001`, backed up 2026-10-05 08:35. Hosted on SQL Server 2022 (16.0), compatibility level 160.
 - **Restored as:** `InpremInspection`, in a throwaway local SQL Server 2022 container that was deleted afterwards. LocalDB on this machine is SQL Server 2019, which cannot restore a 2022 backup.
 
@@ -23,13 +25,13 @@ Counts and totals only. No names, emails or ids of people are recorded here.
 
 ## 02 — Migration history
 
-**The production database is the same app at an earlier version.**
+**The test deployment's database was this app at an earlier version.**
 
 - **Applied:** 5 of the 15 migrations on `fix/login-admin-only`, the last being `20260928094128_AddUniqueEmailIndexes`. `InitialCreate` was recorded by EF Core 6.0.13; the other four by 8.0.0.
 - **Not applied:** the 10 migrations from `20260929052932_MultiTenancy_Phase0_AddTenantAndNullableTenantId` to `20261003091001_AddVolunteerContactPersonDetails`. That means no `Tenants` table, no `TenantId` columns, no billing tables, and the old `Setting` table is still there.
 - **Not on the branch:** none.
 
-So if this app goes live on the old data, the deployment first applies those 10 existing migrations (which create the "Inprem Holistic Community Resource Center" organization and file every row under it), then Phase 0's new ones.
+Any database at this stage gets those 10 existing migrations applied first (which create the "Inprem Holistic Community Resource Center" organization and file every row under it), then Phase 0's new ones.
 
 ## 03 — Row counts
 
@@ -71,7 +73,7 @@ So if this app goes live on the old data, the deployment first applies those 10 
 
 1. **A staff session clocked out about 2½ days after clocking in.** Its working hours are stored as 23:59:59, the most the column can hold; this is the clamp in `ClockOut`.
 2. **A volunteer session whose clock-out is earlier than its clock-in** (08:41 in, 04:42 out, same day), stored as 0 hours. It looks like an AM/PM slip, or a mix of local and UTC times.
-3. **A volunteer session with ClockDate 0001-01-01**, stored as 23:59:59. It has the same clock-in as session 1, so it's probably a copy made by the Move button (findings F-01/F-02) that lost its date. **F-01/F-02 has already happened in production.**
+3. **A volunteer session with ClockDate 0001-01-01**, stored as 23:59:59. It has the same clock-in as session 1, so it's probably a copy made by the Move button (findings F-01/F-02) that lost its date. F-01/F-02 had happened on the test deployment.
 
 **What this means for Phase 0:**
 
@@ -106,7 +108,7 @@ These totals are the "before" figures. After the 10 existing migrations, `05-rep
 
 The data runs from 2026-09-01 to 2026-10-01. For 92 of the 93 sessions, ClockDate agrees with the clock-in date read either way, UTC or local.
 
-## Open question: are the stored times UTC or Columbus local time?
+## Time storage (resolved by the developer on the test deployment)
 
 This app stores times in UTC and converts at the edges. `scripts/convert-existing-timestamps-to-utc.sql` is the one-time conversion for older rows. From the data alone it's impossible to tell whether production's rows are already in UTC:
 
@@ -115,4 +117,4 @@ This app stores times in UTC and converts at the edges. `scripts/convert-existin
 - **Read as local**, it is roughly noon to 20:00–21:00.
 - `db-backups/inprem-data.sql`, the September import, has the same stored hours, so the import did not shift anything.
 
-**The developer should confirm:** in the old app, do these September sessions show clock-ins around 8–9 am (UTC storage, nothing to convert) or around noon (local storage)? If noon, the stored times are local, and the UTC conversion must run before (or as part of) moving this data onto the new app. Otherwise every time would show 4–5 hours off.
+**Resolved:** the developer corrected the test deployment's data, including this. The original question was: in the old app, do these September sessions show clock-ins around 8–9 am (UTC storage, nothing to convert) or around noon (local storage)? If noon, the stored times are local, and the UTC conversion must run before (or as part of) moving this data onto the new app. Otherwise every time would show 4–5 hours off.
