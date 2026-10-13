@@ -4,15 +4,15 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 
 ## Current position
 
-- **Phase:** G0 (in progress)
-- **Next step:** G0 / Step 5 — Draft website API description (Step 4's real run waits for a fresh hosted-database backup)
+- **Phase:** G0 (all steps done; exit check G0-2 waiting for the developer's inspection run)
+- **Next step:** Developer: run the inspection on a fresh backup (G0-2), review `mt/g0` and merge it into `mt/integration`. Then Phase 0.
 - **Branch:** `mt/g0`
 
 ## Phase status
 
 | Phase | Status | Exit checks passed | Merged into `mt/integration` |
 |---|---|---|---|
-| G0 Preparation | In progress (Steps 1–4 done; G0-2 run pending) | G0-4 | — |
+| G0 Preparation | Steps 1–5 done; G0-2 waiting for the inspection run | G0-4, CI, OpenAPI valid, no existing app file changed | — |
 | 0 Foundation | Not started | — | — |
 | 1 Provider Console | Not started | — | — |
 | 2 PayPal core | Not started | — | — |
@@ -39,6 +39,10 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **G0-2 needs the developer.** Take a fresh backup from the hosting control panel, restore it locally and run `scripts/inspection/` (README there), then fill in `docs/multitenancy/inspection-results.md`. The existing `db-backups/…_20260929.bak` predates the TenantId migrations.
 - **Question for Phase 0 (design vs data).** Migration M2 marks "the earliest admin of each organization" as Owner. `AspNetUsers` has no creation date and its Id is a GUID, so "earliest" cannot be derived. The project owner names each organization's Owner (04 result 6 lists the admins).
 - **Report baseline R1–R3 are proposed, not agreed.** `05-report-baseline.sql` uses staff hours per organization per month, volunteer hours per organization per month, and dashboard figures. Change them there if the project owner wants others.
+- **Website API draft: open questions** (listed in the YAML's `info.description`):
+  - Section 7.3 has 17 endpoints; the G0 prompt says 18. The 7.6 diagram's `POST /account/checkout-sessions` conflicts with the table. The draft follows the table.
+  - The CAPTCHA field and consent flags are not named in the design (the draft uses `captchaToken`, `acceptTerms`, `acceptPrivacyPolicy`, `smsOptIn`).
+  - Plan limits, invoice statuses and the staging hostname are placeholders.
 - **Tests tagged `ChangedBy`** record behaviour the design changes on purpose: same admin email in two organizations (D2/C3-6) and no lockout (C3-7). Both change in Phase 0 step 0.4.
 - **Playwright browsers** are a one-time install per machine: `pwsh tests/InpremClockingApp.Tests.Ui/bin/Debug/net8.0/playwright.ps1 install chromium` (CI must do the same).
 
@@ -49,6 +53,21 @@ _(date — what was tested — result)_
 ## Log
 
 _(date — phase/step — summary — tests — next)_
+
+- **2026-10-13 — G0 / Step 5 — Draft website API description.**
+  - `docs/multitenancy/api/public-v1.draft.yaml` (OpenAPI 3.0.3), marked DRAFT, written from design section 7. It covers:
+    - all 17 endpoints of 7.3;
+    - `signupToken` and `billingAccessToken` (bearer) and optional `X-Api-Key`;
+    - the `Idempotency-Key` header;
+    - ProblemDetails with 20 stable error codes, and 429 with `Retry-After`;
+    - checkout statuses (7.5) and subscription statuses (8).
+  - Validated with Spectral 6.14.2 (`spectral:oas`, no warnings) and Redocly 1.25.11 (valid; 1 warning, no licence chosen). Both caught real YAML errors, which were fixed. `docs/multitenancy/api/README.md` explains how to re-run them.
+  - G0 exit checks:
+    - G0-4: done.
+    - CI on every PR: done.
+    - OpenAPI validates: done.
+    - App diff: only the new `AssemblyInfo.Tests.cs`.
+    - G0-2: waiting for the developer's run on a fresh backup.
 
 - **2026-10-13 — G0 / Step 4 — Database inspection scripts.**
   - Added `scripts/inspection/01-05*.sql` and a README.
