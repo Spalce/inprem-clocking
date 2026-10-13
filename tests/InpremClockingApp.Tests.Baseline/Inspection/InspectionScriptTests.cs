@@ -25,6 +25,8 @@ public class InspectionScriptTests
     [InlineData("03-row-counts.sql")]
     [InlineData("04-data-quality.sql")]
     [InlineData("05-report-baseline.sql")]
+    [InlineData("04p-data-quality-pre-tenancy.sql")]
+    [InlineData("05p-report-baseline-pre-tenancy.sql")]
     public async Task Inspection_Script_Refuses_Without_Local_Copy_Confirmation(string script)
     {
         var error = await Assert.ThrowsAsync<SqlException>(() => RunAsync(_app.ConnectionString, script, confirmLocalCopy: "NO"));

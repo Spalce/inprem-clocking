@@ -13,6 +13,12 @@ They only read. Each one also refuses to start unless you pass `-v ConfirmLocalC
 | `03-row-counts.sql` | Row count of every table | Yes |
 | `04-data-quality.sql` | Result 1: a summary of counts only. Results 2–6: detail with ids and emails | **Result 1 only.** Summarize the detail; never paste emails |
 | `05-report-baseline.sql` | Report totals R1–R3 (staff hours per org per month, volunteer hours per org per month, dashboard figures) | Yes (counts and totals only) |
+| `04p-data-quality-pre-tenancy.sql` | Like 04, for a database **before** the multi-tenancy migrations (no `TenantId`). Adds checks on session times and hours | **Result 1 only** |
+| `05p-report-baseline-pre-tenancy.sql` | Like 05 for a pre-tenancy database, plus T/T2: whether stored times look like UTC or local time | Yes |
+
+Use 02 first: if `TenantId` does not exist yet (last migration `20260928094128_AddUniqueEmailIndexes` or earlier), run `04p`/`05p` instead of `04`/`05`. The production backup of 2026-10-05 is such a database; see `docs/multitenancy/inspection-results.md`.
+
+**A SQL Server 2022 backup cannot be restored on LocalDB 2019.** Restore it in a throwaway SQL Server 2022 container instead (`mcr.microsoft.com/mssql/server:2022-latest`, `docker cp` the `.bak` in, then `RESTORE DATABASE ... WITH MOVE`), and delete the container afterwards.
 
 The scripts are also run by the automated suite against the seeded test database (`tests/InpremClockingApp.Tests.Baseline/Inspection`), so they stay correct as the schema changes.
 
