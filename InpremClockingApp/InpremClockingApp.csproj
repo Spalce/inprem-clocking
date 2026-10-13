@@ -22,4 +22,9 @@
     <PackageReference Include="QuestPDF" Version="2026.8.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\src\Inprem.Platform.Application\Inprem.Platform.Application.csproj" />
+    <ProjectReference Include="..\src\Inprem.Platform.Infrastructure\Inprem.Platform.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -4,16 +4,16 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 
 ## Current position
 
-- **Phase:** G0 (all steps and exit checks done)
-- **Next step:** Phase 0 / Step 0.1 — Solution structure (`02-phase0-foundation.md`, branch `mt/phase0` from `mt/integration`)
-- **Branch:** `mt/integration` (G0 merged)
+- **Phase:** 0 Foundation (in progress)
+- **Next step:** Phase 0 / Step 0.2 — Site mode and hostnames (C2-2)
+- **Branch:** `mt/phase0` (from `mt/integration` `1b59b6b`)
 
 ## Phase status
 
 | Phase | Status | Exit checks passed | Merged into `mt/integration` |
 |---|---|---|---|
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
-| 0 Foundation | Not started | — | — |
+| 0 Foundation | In progress (Step 0.1 done) | — | — |
 | 1 Provider Console | Not started | — | — |
 | 2 PayPal core | Not started | — | — |
 | 3 Website API | Not started | — | — |
@@ -43,6 +43,8 @@ Claude Code updates this file at the end of every step. Newest entries at the to
   - Section 7.3 has 17 endpoints; the G0 prompt says 18. The 7.6 diagram's `POST /account/checkout-sessions` conflicts with the table. The draft follows the table.
   - The CAPTCHA field and consent flags are not named in the design (the draft uses `captchaToken`, `acceptTerms`, `acceptPrivacyPolicy`, `smsOptIn`).
   - Plan limits, invoice statuses and the staging hostname are placeholders.
+- **Test project naming.** The Phase 0 file says to create `Inprem.Platform.Tests`; `TESTING.md` lists `.Unit`, `.Integration` and `.Architecture`, which G0 created. The three existing projects are used.
+- **EF Core version.** The approved app is on EF Core 8.0.0, which pulls in vulnerable packages. `Inprem.Platform.Infrastructure` has no EF Core package yet. Step 0.3, which adds `PlatformDbContext`, must choose the version deliberately: a newer 8.0.x in Infrastructure would also upgrade the app through the project reference. That fixes the advisories but changes the approved app's runtime, so run the baseline on it and record the decision.
 - **Tests tagged `ChangedBy`** record behaviour the design changes on purpose: same admin email in two organizations (D2/C3-6) and no lockout (C3-7). Both change in Phase 0 step 0.4.
 - **Playwright browsers** are a one-time install per machine: `pwsh tests/InpremClockingApp.Tests.Ui/bin/Debug/net8.0/playwright.ps1 install chromium` (CI must do the same).
 
@@ -53,6 +55,19 @@ _(date — what was tested — result)_
 ## Log
 
 _(date — phase/step — summary — tests — next)_
+
+- **2026-10-13 — Phase 0 / Step 0.1 — Solution structure.**
+  - Added `src/Inprem.Platform.Domain`, `.Application` and `.Infrastructure` (net8.0, nullable, warnings as errors via `src/Directory.Build.props`), with marker types only. References: Application → Domain; Infrastructure → Application, Domain.
+  - `InpremClockingApp.csproj`, an unlisted existing file approved by the developer, now references Application and Infrastructure. The app's 167 resolved packages are identical before and after.
+  - Architecture tests (NetArchTest + reflection, 7):
+    - Domain has no EF Core, ASP.NET Core or outer-layer dependency.
+    - Application has no Infrastructure, web, EF Core or ASP.NET Core dependency.
+    - Infrastructure does not depend on the web project.
+    - Project references point inwards.
+    - No page model or controller uses a DbContext, except 13 approved-app types listed by name. A further test fails if any of those stops using one, so the list only shrinks deliberately.
+  - Each rule was shown to fail on a deliberate violation (a new page with a DbContext; EF Core in Domain), then reverted. Circular references, the other way to break the rules, are rejected by the build.
+  - Tests: Architecture 7/7, Baseline 316/316, UI 5/5; package gate shows no new advisories.
+  - Next: Step 0.2, site mode and hostnames.
 
 - **2026-10-13 — G0 complete; `mt/g0` merged into `mt/integration` (`ee940f8`)** at the developer's request, after review: clean Release build, Baseline 316/316, UI 5/5, no new vulnerable packages, no new secrets. The developer clarified that the inspected backup was the test deployment (corrected since; not going live), so `inspection-results.md` was relabelled.
 

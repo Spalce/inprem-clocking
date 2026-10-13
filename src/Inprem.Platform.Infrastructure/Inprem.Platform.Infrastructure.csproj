@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Implementations of the Application interfaces: persistence, PayPal, Twilio, email, jobs. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Inprem.Platform.Application\Inprem.Platform.Application.csproj" />
+    <ProjectReference Include="..\Inprem.Platform.Domain\Inprem.Platform.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

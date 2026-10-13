@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Use cases and the interfaces for outside services. Depends on Domain only (enforced by the architecture tests). -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Inprem.Platform.Domain\Inprem.Platform.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

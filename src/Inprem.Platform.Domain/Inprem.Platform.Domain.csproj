@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Business rules only. No framework code: no EF Core, no ASP.NET Core (enforced by the architecture tests). -->
+
+</Project>
