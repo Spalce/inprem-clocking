@@ -5,14 +5,14 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** G0 (in progress)
-- **Next step:** G0 / Step 4 — Database inspection scripts (CI still needs a first run on GitHub: push `mt/g0`)
+- **Next step:** G0 / Step 5 — Draft website API description (Step 4's real run waits for a fresh hosted-database backup)
 - **Branch:** `mt/g0`
 
 ## Phase status
 
 | Phase | Status | Exit checks passed | Merged into `mt/integration` |
 |---|---|---|---|
-| G0 Preparation | In progress (Steps 1–3 done) | — | — |
+| G0 Preparation | In progress (Steps 1–4 done; G0-2 run pending) | G0-4 | — |
 | 0 Foundation | Not started | — | — |
 | 1 Provider Console | Not started | — | — |
 | 2 PayPal core | Not started | — | — |
@@ -26,7 +26,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Open follow-ups and shortcuts
 
 - **G0 exit check wording:** `git diff 1061ea8 -- InpremClockingApp/` is not empty; it contains one new file, `InpremClockingApp/Properties/AssemblyInfo.Tests.cs` (`InternalsVisibleTo` for the test projects, approved by the developer 2026-10-12). Read the check as "no existing application file changed".
-- **Model drift check:** the installed `dotnet-ef` global tool is 10.0.8 and does not recognise `migrations has-pending-model-changes`. Phase 0 needs a working drift check: install a matching `dotnet-ef` 8.x as a local tool, or add a test that compares the model to the migrations snapshot.
+- **Model drift check:** works with `dotnet-ef` 8 and reports no drift on `1061ea8` (2026-10-13). `InpremClockingApp/.config/dotnet-tools.json` pins `dotnet-ef` **7.0.2**, which has no `has-pending-model-changes`; update the pin to 8.0.31 in Phase 0 (one-line change to an existing file, needs agreement). Until then, see `scripts/inspection/README.md`. `CLAUDE.md`'s note that the model has moved on from the migrations is out of date.
 - **Test database modes:** `localdb` (Windows default) and `container` (`INPREM_TEST_DB=container`, Docker Desktop with Linux containers) both pass the Step 1 suite (container mode verified 2026-10-12; image `mcr.microsoft.com/mssql/server:2022-latest`; Testcontainers removes the container after the run). `external` mode is for CI's service container (Step 3).
 - **Test-host differences from a normal run** (all in `InpremAppFactory`): environment `Testing` (no user-secrets or per-environment appsettings), `SeedAdmin`/`SeedSuperAdmin` blanked, in-memory data-protection keys, `BillingBackgroundService` not started.
 - **House organization in every new database:** migration `MultiTenancy_Phase1a_BackfillTenantData` inserts "Inprem Holistic Community Resource Center" as tenant 1. The seed catalog exposes it as `House`; Alpha, Beta and Gamma are tenants 2–4.
@@ -35,7 +35,10 @@ Claude Code updates this file at the end of every step. Newest entries at the to
   - **The developer decides when to fix F-01 to F-07 and F-09.** Each fix is a deliberate behaviour change and updates its test with a reason.
 - **Known secret in the approved app.** `InpremClockingApp/Services/EmailService.cs` has a hardcoded SMTP credential (since commit `10e1e22`). It is listed in `.gitleaksignore` so CI can block new secrets. Before P0-5 it must be rotated, moved to configuration and the ignore line removed. Ownership must be confirmed with the original author before rotating. Gitleaks' default rules miss it; the custom rule `csharp-network-credential` in `.gitleaks.toml` finds it.
 - **Vulnerable packages in the approved app.** 9 high/critical transitive advisories, from the 8.0.0 EF Core / Identity packages and from `Microsoft.VisualStudio.Web.CodeGeneration.Design`. They are listed in `scripts/ci/known-vulnerable-packages.txt`, so the CI gate only fails on new ones. Upgrade them in Phase 0 (the app's csproj is not on the C2 list, so the developer needs to agree the change). P0-7 requires 0.
-- **CI has not run on GitHub yet.** The workflow passed `actionlint`, and its build-and-test job passed in a local Linux mirror (SDK 8 container + SQL Server container: Baseline 303/303, UI 5/5, coverage produced). G0-4's "in CI" half needs `mt/g0` pushed.
+- **CI is green on GitHub.** Run 38326059916 on `ee29210` (pushed 2026-10-13): build and test, secret scan and vulnerable packages all passed. The repository is public (the GitHub API answers without a login); D33 recommends making it private before billing code is merged.
+- **G0-2 needs the developer.** Take a fresh backup from the hosting control panel, restore it locally and run `scripts/inspection/` (README there), then fill in `docs/multitenancy/inspection-results.md`. The existing `db-backups/…_20260929.bak` predates the TenantId migrations.
+- **Question for Phase 0 (design vs data).** Migration M2 marks "the earliest admin of each organization" as Owner. `AspNetUsers` has no creation date and its Id is a GUID, so "earliest" cannot be derived. The project owner names each organization's Owner (04 result 6 lists the admins).
+- **Report baseline R1–R3 are proposed, not agreed.** `05-report-baseline.sql` uses staff hours per organization per month, volunteer hours per organization per month, and dashboard figures. Change them there if the project owner wants others.
 - **Tests tagged `ChangedBy`** record behaviour the design changes on purpose: same admin email in two organizations (D2/C3-6) and no lockout (C3-7). Both change in Phase 0 step 0.4.
 - **Playwright browsers** are a one-time install per machine: `pwsh tests/InpremClockingApp.Tests.Ui/bin/Debug/net8.0/playwright.ps1 install chromium` (CI must do the same).
 
@@ -46,6 +49,16 @@ _(date — what was tested — result)_
 ## Log
 
 _(date — phase/step — summary — tests — next)_
+
+- **2026-10-13 — G0 / Step 4 — Database inspection scripts.**
+  - Added `scripts/inspection/01-05*.sql` and a README.
+    - All five scripts are read-only, and each refuses to run unless `-v ConfirmLocalCopy=YES` is passed.
+    - 04 starts with a counts-only summary; its detail results stay local.
+    - The README covers how to restore a backup, run the scripts with sqlcmd, record results and check model drift.
+  - Tests: 11 new `Inspection` tests run the scripts against the seeded database (refusal, migrations 15/15, row counts, a clean seed, R1–R3 totals). A planted-problems test checks each problem type is reported. Also run with real sqlcmd on a migrated LocalDB database.
+  - `docs/multitenancy/inspection-results.md` is a template until the real run.
+  - CI on GitHub: all three jobs green (run 38326059916).
+  - Next: Step 5, draft website API description.
 
 - **2026-10-12 — G0 / Step 3 — CI pipeline.**
   - `.github/workflows/ci.yml` runs on PRs and pushes to `mt/**`. Three jobs, no deployment:
