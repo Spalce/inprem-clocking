@@ -76,6 +76,13 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 
 ## Manual / sandbox test records
 
+- **2026-10-13 — Local database prepared for the Phase 0 manual test** (by Claude Code, at the developer's request).
+  - `DB_A65635_inpremdb` on `localhost`: backed up (verified), then `phase0-up.sql` applied.
+  - The first run stopped safely at the M3 guard (error 50003): the developer's own email had admin accounts in organizations 10 and 12. With the developer's approval, they were merged into one account, Owner of both organizations. The re-run completed, and all six verify scripts gave the expected values.
+  - Clocking data and hour totals are unchanged; the only differences are the merged account and its role row.
+  - user-secrets set: `Site:SiteMode = All`, `Jobs:RunServer = true`.
+  - Checklist: `docs/multitenancy/manual-test-phase0.md` (results pending).
+
 _(date — what was tested — result)_
 
 ## Log
