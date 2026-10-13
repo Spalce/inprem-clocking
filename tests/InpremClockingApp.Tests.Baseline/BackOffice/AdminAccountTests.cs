@@ -67,29 +67,69 @@ public class AdminAccountTests : IClassFixture<AppFixture>
         Assert.Contains("Username 'admin@alpha.test' is already taken.", (await sameOrgDuplicate.ReadDocumentAsync()).Body!.CleanText());
     }
 
+    // Changed in Phase 0 step 0.4 (decision D2, C3-6). Until then this test recorded that Alpha and
+    // Beta could each have an admin account with the same email, told apart at login by password.
+    // Now an email is one account platform-wide: adding an existing email invites that account.
     [Fact]
-    [Trait(Traits.ChangedBy, "D2 / C3-6 (Phase 0 step 0.4)")]
-    public async Task Admin_Same_Email_In_Two_Organizations_Signs_In_By_Password()
+    public async Task Admin_Existing_Email_From_Another_Organization_Is_Invited_Not_Duplicated()
     {
-        // Today an admin email is unique per organization only: Alpha can add an admin with the
-        // same email as one of Beta's, and the login page tells them apart by password.
         var email = $"shared-{Guid.NewGuid():N}"[..20] + "@shared.test";
-        var alphaPassword = $"A{Guid.NewGuid():N}!x";
-        var betaPassword = $"B{Guid.NewGuid():N}!y";
-
         using (var alpha = await _app.AdminOfAsync(_app.Data.Alpha))
-        using (var r = await alpha.PostFormAsync("/User", Form(email, alphaPassword)))
-            Assert.Equal(HttpStatusCode.Redirect, r.StatusCode);
-        using (var beta = await _app.AdminOfAsync(_app.Data.Beta))
-        using (var r = await beta.PostFormAsync("/User", Form(email, betaPassword)))
+        using (var r = await alpha.PostFormAsync("/User", Form(email)))
             Assert.Equal(HttpStatusCode.Redirect, r.StatusCode);
 
-        using var asAlpha = _app.CreateClient();
-        await SignIn.AsAsync(asAlpha, email, alphaPassword);
-        Assert.Contains("staff1@alpha.test", (await asAlpha.GetPageAsync("/Staff")).Body!.CleanText());
+        // Beta adds the same email, with a different password.
+        using var beta = await _app.AdminOfAsync(_app.Data.Beta);
+        using var invite = await beta.PostFormAsync("/User", Form(email, $"B{Guid.NewGuid():N}!y"));
 
-        using var asBeta = _app.CreateClient();
-        await SignIn.AsAsync(asBeta, email, betaPassword);
-        Assert.Contains("staff1@beta.test", (await asBeta.GetPageAsync("/Staff")).Body!.CleanText());
+        Assert.Equal(HttpStatusCode.Redirect, invite.StatusCode);
+        var message = (await beta.GetPageAsync("/User")).Body!.CleanText();
+        Assert.Contains($"{email} already has an account, so no new account was created. We have sent them an invitation to join this organization;", message);
+        string userId;
+        using (var scope = _app.Services.CreateScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+            var accounts = await users.Users.IgnoreQueryFilters().Where(u => u.Email == email).ToListAsync();
+            userId = Assert.Single(accounts).Id;
+        }
+        var invitation = Assert.Single(_app.Emails.To(email));
+        Assert.Contains("/Account/Invitations", invitation.HtmlBody);
+        Assert.Contains("Beta", invitation.HtmlBody);
+
+        // The person keeps their own password and works in Alpha until they accept.
+        using var person = _app.CreateClient();
+        await SignIn.AsAsync(person, email, _app.Data.Password);
+        Assert.Contains("staff1@alpha.test", (await person.GetPageAsync("/Staff")).Body!.CleanText());
+
+        // Accepting: two organizations now, so they choose; then they work in Beta.
+        var page = await person.GetPageAsync("/Account/Invitations");
+        var accept = page.QuerySelectorAll("form").First(f => (f.GetAttribute("action") ?? "").Contains("handler=Accept", StringComparison.OrdinalIgnoreCase));
+        var fields = accept.QuerySelectorAll("input[type=hidden]").ToDictionary(i => i.GetAttribute("name")!, i => i.GetAttribute("value") ?? "");
+        using var accepted = await person.PostFormAsync(accept.GetAttribute("action")!, fields);
+        Assert.Equal(HttpStatusCode.Redirect, accepted.StatusCode);
+
+        using var next = await person.GetAsync("/Staff");
+        Assert.StartsWith("/Account/ChooseOrganization", next.Headers.Location!.OriginalString);
+        var chooser = await person.GetPageAsync(next.Headers.Location.OriginalString);
+        var betaForm = chooser.QuerySelectorAll("[data-testid=organizations] form").First(f => f.TextContent.Contains("Beta"));
+        var choose = betaForm.QuerySelectorAll("input[type=hidden]").ToDictionary(i => i.GetAttribute("name")!, i => i.GetAttribute("value") ?? "");
+        using var chosen = await person.PostFormAsync("/Account/ChooseOrganization", choose);
+        Assert.Contains("staff1@beta.test", (await person.GetPageAsync("/Staff")).Body!.CleanText());
+
+        // And Beta's Admins page now lists them.
+        Assert.Contains(email, (await beta.GetPageAsync("/User")).Body!.CleanText());
+        Assert.False(string.IsNullOrEmpty(userId));
+    }
+
+    [Fact]
+    public async Task Admin_Existing_Email_Already_In_This_Organization_Is_Refused_As_Before()
+    {
+        using var alpha = await _app.AdminOfAsync(_app.Data.Alpha);
+
+        using var response = await alpha.PostFormAsync("/User", Form(_app.Data.Alpha.Owner!.Email));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains($"Username '{_app.Data.Alpha.Owner.Email}' is already taken.", (await response.ReadDocumentAsync()).Body!.CleanText());
+        Assert.Empty(_app.Emails.To(_app.Data.Alpha.Owner.Email));
     }
 }

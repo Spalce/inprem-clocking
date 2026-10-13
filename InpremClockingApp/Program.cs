@@ -59,18 +59,19 @@ builder.AddSiteHosting();
 // comes from the signed-in membership, re-checked on every request by TenantContextMiddleware.
 builder.AddTenancy();
 
+// Account security: lockout (C3-7) and the platform's email sender.
+builder.AddAccountSecurity();
+
 // Registered after AddDefaultIdentity so it overrides Identity's default factory - stamps the
 // TenantId claim onto every sign-in (see AppUserClaimsPrincipalFactory, multi-tenancy.md).
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<AppUser>, AppUserClaimsPrincipalFactory>();
 
-// Replaces Identity's default IUserValidator<AppUser>, whose username-uniqueness check is
-// global across every tenant - see TenantAwareUserValidator for why that's wrong for a SaaS
-// platform where two different organizations may share an admin's email, and what else (Login,
-// ForgotPassword, ResetPassword) had to change alongside it to make that safe. RemoveAll first
+// Replaces Identity's default IUserValidator<AppUser> (C2-10): an email belongs to one account
+// platform-wide; one person, any number of memberships (see PlatformUserValidator). RemoveAll first
 // since AddDefaultIdentity above already registered the default one, and UserManager runs every
 // registered IUserValidator<T>, not just the last one added.
 builder.Services.RemoveAll<IUserValidator<AppUser>>();
-builder.Services.AddScoped<IUserValidator<AppUser>, TenantAwareUserValidator>();
+builder.Services.AddScoped<IUserValidator<AppUser>, PlatformUserValidator>();
 
 builder.Services.AddAuthorization(options =>
 {

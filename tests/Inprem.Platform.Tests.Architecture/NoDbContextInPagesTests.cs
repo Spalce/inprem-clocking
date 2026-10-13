@@ -16,9 +16,7 @@ public class NoDbContextInPagesTests
 {
     private static readonly HashSet<string> ApprovedAppTypesUsingDbContext = new()
     {
-        "InpremClockingApp.Areas.Identity.Pages.Account.ForgotPasswordModel",
-        "InpremClockingApp.Areas.Identity.Pages.Account.LoginModel",
-        "InpremClockingApp.Areas.Identity.Pages.Account.ResetPasswordModel",
+        // Login, ForgotPassword and ResetPassword left this list in Phase 0 step 0.4 (standard Identity calls).
         "InpremClockingApp.Controllers.ControlsController",
         "InpremClockingApp.Controllers.PeopleController",
         "InpremClockingApp.Controllers.ReportsController",

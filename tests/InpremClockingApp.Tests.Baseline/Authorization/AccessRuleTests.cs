@@ -1,6 +1,7 @@
 using System.Net;
 using InpremClockingApp.Tests.Baseline.Helpers;
 using InpremClockingApp.Tests.Support.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace InpremClockingApp.Tests.Baseline.Authorization;
@@ -160,18 +161,47 @@ public class AccessRuleTests : IClassFixture<AppFixture>
         Assert.Equal("/StaffReport", await SignIn.AsAsync(withReturn, _app.Data.Alpha.Owner!.Email, _app.Data.Password, "/StaffReport"));
     }
 
+    // Changed in Phase 0 step 0.4 (C3-7). Until then this test recorded that failed sign-ins never
+    // locked an account. Now 5 failures lock it for 15 minutes.
     [Fact]
-    [Trait(Traits.ChangedBy, "C3-7 (Phase 0 step 0.4: lockout)")]
-    public async Task Login_Failures_Do_Not_Lock_The_Account()
+    public async Task Login_Five_Failures_Lock_The_Account()
     {
         using var client = _app.CreateClient();
-        for (var i = 0; i < 6; i++)
+        for (var i = 0; i < 4; i++)
         {
             using var failed = await SignIn.PostLoginAsync(client, _app.Data.Beta.Owner!.Email, "Wrong-Passw0rd!");
             Assert.Equal(HttpStatusCode.OK, failed.StatusCode);
         }
 
-        Assert.Equal("/VolunteerAttendance", await SignIn.AsAsync(client, _app.Data.Beta.Owner!.Email, _app.Data.Password));
+        // The 5th failure locks the account and goes straight to the lockout page...
+        using var fifth = await SignIn.PostLoginAsync(client, _app.Data.Beta.Owner!.Email, "Wrong-Passw0rd!");
+        Assert.Equal((HttpStatusCode.Redirect, "/Identity/Account/Lockout"), (fifth.StatusCode, fifth.Headers.Location!.OriginalString));
+
+        // ...and even the right password is refused while it lasts.
+        using var locked = await SignIn.PostLoginAsync(client, _app.Data.Beta.Owner!.Email, _app.Data.Password);
+        Assert.Equal((HttpStatusCode.Redirect, "/Identity/Account/Lockout"), (locked.StatusCode, locked.Headers.Location!.OriginalString));
+        using (var scope = _app.Services.CreateScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<InpremClockingApp.Models.Identity.AppUser>>();
+            var user = await users.FindByEmailAsync(_app.Data.Beta.Owner.Email);
+            Assert.InRange(user!.LockoutEnd!.Value, DateTimeOffset.UtcNow.AddMinutes(14), DateTimeOffset.UtcNow.AddMinutes(16));
+        }
+    }
+
+    [Fact]
+    public async Task Login_Fewer_Than_Five_Failures_Then_Success_Resets_The_Count()
+    {
+        using var client = _app.CreateClient();
+        for (var i = 0; i < 4; i++)
+        {
+            using var failed = await SignIn.PostLoginAsync(client, _app.Data.Alpha.Owner!.Email, "Wrong-Passw0rd!");
+            Assert.Equal(HttpStatusCode.OK, failed.StatusCode);
+        }
+
+        Assert.Equal("/VolunteerAttendance", await SignIn.AsAsync(client, _app.Data.Alpha.Owner!.Email, _app.Data.Password));
+        using var scope = _app.Services.CreateScope();
+        var users = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<InpremClockingApp.Models.Identity.AppUser>>();
+        Assert.Equal(0, (await users.FindByEmailAsync(_app.Data.Alpha.Owner.Email))!.AccessFailedCount);
     }
 
     [Fact]

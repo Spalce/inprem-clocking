@@ -22,6 +22,7 @@ namespace InpremClockingApp.Tests.Support.Hosting;
 /// <item>data-protection keys are in memory unless <c>persistKeys</c> is set (then they go to the
 /// test database's platform.DataProtectionKeys, as in a real deployment);</item>
 /// <item><see cref="BillingBackgroundService"/> is not started, so no timer races the tests;</item>
+/// <item>the platform's email sender is replaced by <see cref="CapturingEmailSender"/> (<see cref="Emails"/>);</item>
 /// <item>optional extra settings (e.g. <c>Site:SiteMode</c>) override appsettings.json.</item>
 /// </list>
 /// </summary>
@@ -33,6 +34,9 @@ internal class InpremAppFactory : WebApplicationFactory<Program>
     private readonly IReadOnlyDictionary<string, string?> _settings;
     private readonly bool _persistKeys;
     private readonly Action<IServiceCollection>? _configureServices;
+
+    /// <summary>Every email the app sent through the platform's IEmailSender.</summary>
+    public CapturingEmailSender Emails { get; } = new();
 
     public InpremAppFactory(
         string connectionString,
@@ -80,6 +84,9 @@ internal class InpremAppFactory : WebApplicationFactory<Program>
             {
                 services.AddDataProtection().UseEphemeralDataProtectionProvider();
             }
+
+            services.RemoveAll<Inprem.Platform.Application.Memberships.IEmailSender>();
+            services.AddSingleton<Inprem.Platform.Application.Memberships.IEmailSender>(Emails);
 
             var billingWorker = services.SingleOrDefault(d => d.ImplementationType == typeof(BillingBackgroundService));
             if (billingWorker != null) services.Remove(billingWorker);

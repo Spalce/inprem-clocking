@@ -81,4 +81,28 @@ public class TenantMembershipTests
 
         Assert.Equal(MembershipRole.Owner, membership.Role);
     }
+
+    [Fact]
+    public void Reinvite_Renews_A_Revoked_Membership_But_Not_An_Active_One()
+    {
+        var membership = TenantMembership.CreateActive("user", 1, MembershipRole.Admin, Now);
+        Assert.Throws<InvalidOperationException>(() => membership.Reinvite("owner"));
+
+        membership.Revoke();
+        membership.Reinvite("owner-2");
+
+        Assert.Equal((MembershipStatus.Invited, "owner-2"), (membership.Status, membership.InvitedByUserId));
+        Assert.Throws<ArgumentException>(() => membership.Reinvite(""));
+    }
+
+    [Fact]
+    public void Only_An_Invitation_Can_Be_Declined()
+    {
+        var invitation = TenantMembership.CreateInvited("user", 1, MembershipRole.Admin, "owner", Now);
+        invitation.Decline();
+        Assert.Equal(MembershipStatus.Revoked, invitation.Status);
+
+        Assert.Throws<InvalidOperationException>(() => invitation.Decline());
+        Assert.Throws<InvalidOperationException>(() => TenantMembership.CreateActive("user", 1, MembershipRole.Admin, Now).Decline());
+    }
 }

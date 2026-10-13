@@ -58,7 +58,10 @@ public class User : PageModel
             return Page();
         }
 
-        var result = await _service.CreateAdmin(Input.Email, Input.FirstName, Input.LastName, Input.Password).ConfigureAwait(true);
+        // C3-6 (multi-tenancy Phase 0 step 0.4): an email that already has an account is invited
+        // to this organization instead of getting a second account, with its own message.
+        var added = await _service.AddAdminAsync(Input.Email, Input.FirstName, Input.LastName, Input.Password).ConfigureAwait(true);
+        var result = added.Identity;
         if (!result.Succeeded)
         {
             foreach (var error in result.Errors)
@@ -68,7 +71,9 @@ public class User : PageModel
             return Page();
         }
 
-        TempData["Message"] = $"Admin account created for {Input.Email}.";
+        TempData["Message"] = added.Outcome == AdminAddOutcome.Invited
+            ? $"{Input.Email} already has an account, so no new account was created. We have sent them an invitation to join this organization; they keep their own password and accept the invitation after signing in."
+            : $"Admin account created for {Input.Email}.";
         return RedirectToPage("./User");
     }
 

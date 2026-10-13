@@ -1,0 +1,48 @@
+@page "/Account/Invitations"
+@model InvitationsModel
+
+@{
+    ViewData["Title"] = "Invitations";
+
+    var btnPrimary = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
+    var btnWhite = "tw:inline-flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-slate-300 tw:bg-white tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-slate-700 tw:hover:bg-slate-50";
+}
+
+<div class="tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:p-8 tw:shadow-sm">
+    <h1 class="tw:mb-4 tw:text-center tw:text-lg tw:font-semibold tw:text-slate-900">Invitations</h1>
+
+    @if (Model.Message != null)
+    {
+        <div class="tw:mb-4 tw:rounded-md tw:bg-emerald-50 tw:px-3 tw:py-2 tw:text-sm tw:text-emerald-700" data-testid="message">@Model.Message</div>
+    }
+
+    @if (Model.Invitations.Count == 0)
+    {
+        <p class="tw:text-center tw:text-sm tw:text-slate-600" data-testid="none">You have no pending invitations.</p>
+    }
+    else
+    {
+        <ul class="tw:space-y-4" data-testid="invitations">
+            @foreach (var invitation in Model.Invitations)
+            {
+                <li class="tw:rounded-md tw:border tw:border-slate-200 tw:p-4">
+                    <p class="tw:mb-3 tw:text-sm tw:text-slate-700">
+                        <strong class="tw:text-slate-900">@invitation.TenantName</strong> invited you to be an administrator.
+                    </p>
+                    <div class="tw:flex tw:gap-2">
+                        <form method="post" asp-page-handler="Accept">
+                            <input type="hidden" name="membershipId" value="@invitation.MembershipId" />
+                            <button type="submit" class="@btnPrimary">Accept</button>
+                        </form>
+                        <form method="post" asp-page-handler="Decline">
+                            <input type="hidden" name="membershipId" value="@invitation.MembershipId" />
+                            <button type="submit" class="@btnWhite">Decline</button>
+                        </form>
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+
+    <p class="tw:mt-6 tw:text-center tw:text-sm"><a href="/VolunteerAttendance" class="tw:text-blue-600 tw:hover:underline">Continue</a></p>
+</div>

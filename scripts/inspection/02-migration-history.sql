@@ -1,4 +1,6 @@
--- 02 - EF Core migration history vs the migrations on branch fix/login-admin-only (1061ea8).
+-- 02 - EF Core migration history (ApplicationDbContext, dbo) vs the migrations in this branch.
+-- The approved app (fix/login-admin-only, 1061ea8) had the first 15; Phase 0 adds M3.
+-- Platform migrations (PlatformDbContext) are in platform.__EFMigrationsHistory: see scripts/migrations.
 -- READ-ONLY. Run against a RESTORED LOCAL COPY only (see README.md).
 -- Expected: result 2 and 3 are empty, result 4 shows LastApplied = LastExpected.
 :on error exit
@@ -26,7 +28,8 @@ INSERT INTO @Expected (MigrationId) VALUES
     (N'20261001133327_AddInvoicePeriodUniqueIndex'),
     (N'20261001135332_TenantScopedAdminUsernames'),
     (N'20261002182520_RemoveLogoutSettingsFeature'),
-    (N'20261003091001_AddVolunteerContactPersonDetails');
+    (N'20261003091001_AddVolunteerContactPersonDetails'),
+    (N'20261013161410_M3_PlatformUniqueEmail');
 
 -- 1. Applied migrations, in order.
 SELECT MigrationId, ProductVersion FROM __EFMigrationsHistory ORDER BY MigrationId;

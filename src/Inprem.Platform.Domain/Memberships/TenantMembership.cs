@@ -72,6 +72,25 @@ public sealed class TenantMembership
 
     public void Revoke() => Status = MembershipStatus.Revoked;
 
+    /// <summary>
+    /// Invites someone again whose membership was revoked (or declined). An Active membership
+    /// cannot be turned back into an invitation.
+    /// </summary>
+    public void Reinvite(string invitedByUserId)
+    {
+        if (string.IsNullOrWhiteSpace(invitedByUserId)) throw new ArgumentException("An invitation needs the inviting user.", nameof(invitedByUserId));
+        if (Status == MembershipStatus.Active) throw new InvalidOperationException("The person is already a member.");
+        Status = MembershipStatus.Invited;
+        InvitedByUserId = invitedByUserId;
+    }
+
+    /// <summary>Declining an invitation leaves the row as history (Revoked), never deletes it.</summary>
+    public void Decline()
+    {
+        if (Status != MembershipStatus.Invited) throw new InvalidOperationException("Only an invitation can be declined.");
+        Status = MembershipStatus.Revoked;
+    }
+
     public void ChangeRole(MembershipRole role)
     {
         if (Status == MembershipStatus.Revoked) throw new InvalidOperationException("A revoked membership cannot change role.");

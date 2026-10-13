@@ -67,6 +67,14 @@ namespace InpremClockingApp.Data
             // all three MUST be kept in sync with this index; do not reintroduce tenant-scoped
             // username uniqueness without them.
             builder.Entity<AppUser>().HasIndex(u => u.NormalizedUserName).IsUnique(false);
+
+            // C2-1 (multi-tenancy Phase 0 step 0.4, migration M3): an email belongs to one account
+            // platform-wide (decision D2: one account per person, any number of memberships in
+            // platform.TenantMemberships). This makes the per-tenant username indexes below - and the
+            // pick-by-password login they once required - unnecessary; they stay until the contract
+            // migration so that rolling back step 0.4 remains possible. Reconfigures Identity's own
+            // "EmailIndex" (previously non-unique).
+            builder.Entity<AppUser>().HasIndex(u => u.NormalizedEmail).IsUnique().HasFilter("[NormalizedEmail] IS NOT NULL");
             builder.Entity<AppUser>()
                 .HasIndex(new[] { nameof(AppUser.TenantId), nameof(AppUser.NormalizedUserName) }, "TenantNormalizedUserNameIndex")
                 .IsUnique()

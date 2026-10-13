@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 0 Foundation (in progress)
-- **Next step:** Phase 0 / Step 0.4 — Platform-unique email and login simplification
+- **Next step:** Phase 0 / Step 0.5 — Isolation hardening (C2-1)
 - **Branch:** `mt/phase0` (from `mt/integration` `1b59b6b`)
 
 ## Phase status
@@ -13,7 +13,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | Phase | Status | Exit checks passed | Merged into `mt/integration` |
 |---|---|---|---|
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
-| 0 Foundation | In progress (Steps 0.1–0.3 done) | — | — |
+| 0 Foundation | In progress (Steps 0.1–0.4 done) | — | — |
 | 1 Provider Console | Not started | — | — |
 | 2 PayPal core | Not started | — | — |
 | 3 Website API | Not started | — | — |
@@ -42,6 +42,10 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **Legacy accounts get a membership at first sign-in (step 0.3).** This applies to an account with `AppUser.TenantId` and no membership row at all, e.g. one made by the Admins page, Register, the old Platform pages or `SeedAdmin`; it gets an Active Admin membership. Revoked memberships are never recreated. Step 0.4 makes `CreateAdmin` create memberships itself; remove the fallback once every creation path does.
 - **Accounts without any organization are signed out (step 0.3, behaviour change).** This covers accounts that are not SuperAdmin and have no Active membership. Today's data has none; before, such an account could open the kiosk pages.
 - **Membership cache (step 0.3).** Validation is cached for 5 minutes. Every code path that changes a membership (revoke, role change, acceptance) must call `IMembershipService.Invalidate`, or the change is seen only when the entry expires (tested).
+- **Invitation emails use the approved app's `EmailService` (step 0.4).** They go through `IEmailSender` → `ApprovedAppEmailSender` → `EmailService`, the same mailbox as password resets. That mailbox's credential is hardcoded (see the follow-up above), and moving the settings to configuration fixes both. Tests always replace the sender with a capturing one. **Incident:** during development (2026-10-13), before the capture was in place, one baseline test run triggered an invitation through the real `EmailService` to an invented `@shared.test` address. That address cannot receive mail, but the app very likely connected to the live SMTP server with the hardcoded credential. Ask the mailbox owner to check for it; another reason to rotate.
+- **Accounts working in another organization than `AppUser.TenantId` (step 0.4).** After accepting an invitation, a person's account still says their first organization. The AppUser query filter (tenant == current) then hides their own account in the other organization, e.g. Identity's Manage pages ("unable to load user"). Step 0.5 revisits the AppUser filter (fail closed); handle membership-based visibility there.
+- **BackOffice "Admins" count (C1)** still counts `AppUser.TenantId` accounts only, while the Admins page (via `AuthService`, C2-6) lists Active members. Cross-organization members appear in the list but not in the count; fixing the count means changing `BackOffice.cshtml.cs` (C1).
+- **Invited memberships do not expire.** An Invitation entity with expiry and hashed tokens arrives in step 0.7; tie member invitations to it then, if wanted.
 - **Anti-forgery on new pages.** The approved app ignores anti-forgery tokens globally (until C3-10), but the new "Choose organization" page enforces them (tested).
 - **Report baseline R1–R3 are proposed, not agreed.** `05-report-baseline.sql` uses staff hours per organization per month, volunteer hours per organization per month, and dashboard figures. Change them there if the project owner wants others.
 - **Website API draft: open questions** (listed in the YAML's `info.description`):
@@ -61,6 +65,24 @@ _(date — what was tested — result)_
 ## Log
 
 _(date — phase/step — summary — tests — next)_
+
+- **2026-10-13 — Phase 0 / Step 0.4 — Platform-unique email and login simplification.**
+  - Migration **M3** (ApplicationDbContext, C2-1): `EmailIndex` becomes unique for non-null emails. A guard stops with error 50003 if emails are shared. Its scripts were rehearsed: refused with a duplicate and nothing changed; clean after the fix; idempotent; reversible. The per-tenant username indexes stay until the contract step.
+  - C2-10: `TenantAwareUserValidator` replaced by `PlatformUserValidator` (user name and email unique platform-wide, past the query filter).
+  - C2-3/C2-4: Login, ForgotPassword and ResetPassword use standard `SignInManager`/`UserManager` calls. The pick-by-password and one-link-per-account logic is gone; markup and messages are unchanged. All three left the architecture test's DbContext list.
+  - C3-7: lockout after 5 failures for 15 minutes (`AccountHosting`).
+  - C2-6/C3-6:
+    - `AuthService.AddAdminAsync`: a new email gets an account plus an Active membership; an existing email gets an Invited membership (renewed if it was revoked) plus an invitation email. An existing member gets the same "already taken" error as before.
+    - `Pages/User.cshtml.cs`: new confirmation message only (C3-6).
+    - The Admins page lists Active members.
+    - New `Areas/Account/Pages/Invitations` (accept/decline; reachable without an active membership).
+  - Domain/Application: `Reinvite`, `Decline`; `InviteAsync`, `AcceptAsync`, `DeclineAsync`, `ListInvitationsAsync`, `AddMemberAsync`, `ListMembersAsync`; `IEmailSender`.
+  - Tests:
+    - Two `ChangedBy` baseline tests rewritten as the code comments explain: the same email in two organizations became an invitation; no lockout became a lockout after 5 failures. A same-organization duplicate test was added.
+    - Inspection tests updated for 16 app migrations, and a shared email can no longer be planted.
+    - Unit 40, Integration 35 (7 new: platform-wide duplicate, changed email, decline, re-invite revoked, invitation-only account, standard reset).
+    - Results: Baseline 319, Architecture 7, UI 5, all passing. No new advisories. The local secret scan was cut short (low memory); CI runs it on push.
+  - Next: Step 0.5, isolation hardening.
 
 - **2026-10-13 — Phase 0 / Step 0.3 — Tenant context and memberships.**
   - **Domain:** `TenantMembership` (Owner|Admin; Invited|Active|Revoked) with its rules.

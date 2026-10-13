@@ -132,6 +132,87 @@ public class MembershipServiceTests
     }
 
     [Fact]
+    public async Task AddMember_Creates_An_Active_Membership()
+    {
+        await _service.AddMemberAsync("new", 3, MembershipRole.Admin);
+
+        var membership = Assert.Single(_store.Memberships);
+        Assert.Equal(("new", 3, MembershipStatus.Active), (membership.UserId, membership.TenantId, membership.Status));
+    }
+
+    [Fact]
+    public async Task Invite_Creates_A_Pending_Invitation()
+    {
+        Assert.Equal(InviteOutcome.Invited, await _service.InviteAsync("u1", 2, MembershipRole.Admin, "owner"));
+
+        var invitation = Assert.Single(await _service.ListInvitationsAsync("u1"));
+        Assert.Equal(2, invitation.TenantId);
+        Assert.Empty(await _service.ListActiveAsync("u1"));
+    }
+
+    [Fact]
+    public async Task Invite_Leaves_Members_And_Pending_Invitations_Alone()
+    {
+        Add("member", 2);
+        await _service.InviteAsync("invited", 2, MembershipRole.Admin, "owner");
+
+        Assert.Equal(InviteOutcome.AlreadyMember, await _service.InviteAsync("member", 2, MembershipRole.Admin, "owner"));
+        Assert.Equal(InviteOutcome.AlreadyInvited, await _service.InviteAsync("invited", 2, MembershipRole.Admin, "owner"));
+        Assert.Equal(2, _store.Memberships.Count);
+    }
+
+    [Fact]
+    public async Task Invite_Renews_A_Revoked_Membership_And_Clears_Its_Cache_Entry()
+    {
+        var revoked = Add("u1", 2, MembershipStatus.Revoked);
+
+        Assert.Equal(InviteOutcome.Invited, await _service.InviteAsync("u1", 2, MembershipRole.Owner, "owner"));
+
+        Assert.Equal((MembershipStatus.Invited, MembershipRole.Owner, "owner"), (revoked.Status, revoked.Role, revoked.InvitedByUserId));
+        Assert.Equal(1, _store.SaveCalls);
+    }
+
+    [Fact]
+    public async Task Accept_Activates_Only_The_Users_Own_Pending_Invitation()
+    {
+        await _service.InviteAsync("u1", 2, MembershipRole.Admin, "owner");
+        var invitation = _store.Memberships.Single();
+
+        Assert.False(await _service.AcceptAsync("intruder", invitation.Id));
+        Assert.False(await _service.AcceptAsync("u1", Guid.NewGuid()));
+        Assert.True(await _service.AcceptAsync("u1", invitation.Id));
+        Assert.False(await _service.AcceptAsync("u1", invitation.Id)); // no longer pending
+
+        Assert.Equal(2, Assert.Single(await _service.ListActiveAsync("u1")).TenantId);
+    }
+
+    [Fact]
+    public async Task Decline_Revokes_The_Invitation()
+    {
+        await _service.InviteAsync("u1", 2, MembershipRole.Admin, "owner");
+        var invitation = _store.Memberships.Single();
+
+        Assert.True(await _service.DeclineAsync("u1", invitation.Id));
+
+        Assert.Equal(MembershipStatus.Revoked, invitation.Status);
+        Assert.Empty(await _service.ListInvitationsAsync("u1"));
+        Assert.False(await _service.DeclineAsync("u1", invitation.Id));
+    }
+
+    [Fact]
+    public async Task ListMembers_Returns_Every_Status()
+    {
+        Add("active", 4);
+        Add("revoked", 4, MembershipStatus.Revoked);
+        Add("elsewhere", 5);
+
+        var members = await _service.ListMembersAsync(4);
+
+        Assert.Equal(new[] { ("active", MembershipStatus.Active), ("revoked", MembershipStatus.Revoked) },
+            members.Select(m => (m.UserId, m.Status)).OrderBy(m => m.UserId));
+    }
+
+    [Fact]
     public void TenantContext_Is_Set_Once_Per_Request()
     {
         var context = new TenantContext();
@@ -191,6 +272,27 @@ public class MembershipServiceTests
         {
             AddCalls++;
             Memberships.Add(membership);
+            return Task.CompletedTask;
+        }
+
+        public int SaveCalls { get; private set; }
+
+        public Task<TenantMembership?> FindAsync(string userId, int tenantId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Memberships.FirstOrDefault(m => m.UserId == userId && m.TenantId == tenantId));
+
+        public Task<TenantMembership?> FindByIdAsync(Guid membershipId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Memberships.FirstOrDefault(m => m.Id == membershipId));
+
+        public Task<IReadOnlyList<ActiveMembershipInfo>> ListInvitedAsync(string userId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<ActiveMembershipInfo>>(Memberships.Where(m => m.UserId == userId && m.Status == MembershipStatus.Invited)
+                .OrderBy(m => m.TenantId).Select(Info).ToList());
+
+        public Task<IReadOnlyList<MemberStatus>> ListMembersAsync(int tenantId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<MemberStatus>>(Memberships.Where(m => m.TenantId == tenantId).Select(m => new MemberStatus(m.UserId, m.Status)).ToList());
+
+        public Task SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            SaveCalls++;
             return Task.CompletedTask;
         }
     }

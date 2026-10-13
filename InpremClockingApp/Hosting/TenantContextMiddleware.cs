@@ -26,6 +26,8 @@ public sealed class TenantContextMiddleware
     private static readonly PathString[] Exempt =
     {
         new(ChooseOrganizationPath),
+        // Someone whose only pending membership is an invitation must be able to accept it.
+        new("/Account/Invitations"),
         new("/Identity/Account/Logout"),
     };
 

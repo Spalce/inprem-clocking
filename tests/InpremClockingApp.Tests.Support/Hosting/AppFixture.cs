@@ -20,6 +20,9 @@ public class AppFixture : IAsyncLifetime
     public string ConnectionString => Database.ConnectionString;
     public SeedCatalog Data { get; private set; } = null!;
 
+    /// <summary>Emails the app sent (nothing is really sent in tests).</summary>
+    public CapturingEmailSender Emails => Factory.Emails;
+
     /// <summary>The app's service provider (create a scope before resolving scoped services).</summary>
     public IServiceProvider Services => Factory.Services;
 

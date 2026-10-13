@@ -49,11 +49,12 @@ public class InspectionScriptTests
     {
         var results = await RunAsync(_app.ConnectionString, "02-migration-history.sql");
 
-        Assert.Equal(15, results[0].Count);
+        // The approved app's 15 migrations plus Phase 0's M3.
+        Assert.Equal(16, results[0].Count);
         Assert.Empty(results[1]);
         Assert.Empty(results[2]);
         var summary = Assert.Single(results[3]);
-        Assert.Equal("20261003091001_AddVolunteerContactPersonDetails", summary["LastApplied"]);
+        Assert.Equal("20261013161410_M3_PlatformUniqueEmail", summary["LastApplied"]);
         Assert.Equal(summary["LastExpected"], summary["LastApplied"]);
     }
 
@@ -69,7 +70,8 @@ public class InspectionScriptTests
         Assert.Equal(6, counts["dbo.Volunteers"]);
         Assert.Equal(24, counts["dbo.ClockingsStaff"]);
         Assert.Equal(24, counts["dbo.Clockings"]);
-        Assert.Equal(15, counts["dbo.__EFMigrationsHistory"]);
+        Assert.Equal(16, counts["dbo.__EFMigrationsHistory"]);
+        Assert.Equal(4, counts["platform.TenantMemberships"]);
     }
 
     [Fact]
@@ -130,11 +132,9 @@ public class InspectionAnomalyTests : IClassFixture<AppFixture>
     [Fact]
     public async Task Inspection_04_Reports_Each_Planted_Problem()
     {
-        var shared = _app.Data.Beta.Admin!.Email;
         await using (var db = _app.CreateDbContext())
         {
-            // Same email as a Beta admin, in Alpha; and an account with no organization or role.
-            db.Users.Add(new AppUser { UserName = shared, NormalizedUserName = shared.ToUpperInvariant(), Email = shared, NormalizedEmail = shared.ToUpperInvariant(), TenantId = _app.Data.Alpha.Id });
+            // An account with no organization or role.
             db.Users.Add(new AppUser { UserName = "orphan@nowhere.test", NormalizedUserName = "ORPHAN@NOWHERE.TEST", Email = "orphan@nowhere.test", NormalizedEmail = "ORPHAN@NOWHERE.TEST" });
             // A staff session filed under Alpha for a Beta staff member, and a moved session with no date.
             db.ClockingsStaff.Add(new ClockingStaff { TenantId = _app.Data.Alpha.Id, StafId = _app.Data.Beta.Staff[0].Id, ClockDate = new DateTime(2026, 4, 1) });
@@ -145,17 +145,29 @@ public class InspectionAnomalyTests : IClassFixture<AppFixture>
         var results = await RunAsync(_app.ConnectionString, "04-data-quality.sql");
         var summary = Summary(results[0]);
 
-        Assert.Equal(1, summary["Emails used by more than one account (NormalizedEmail)"]);
         Assert.Equal(1, summary["Accounts with no organization that are not SuperAdmin"]);
         Assert.Equal(1, summary["Staff sessions whose staff member is in another organization"]);
         Assert.Equal(0, summary["Volunteer sessions whose volunteer is in another organization"]);
         Assert.Equal(1, summary["Sessions with ClockDate 0001-01-01 (moved by the Move buttons, finding F-01/F-02)"]);
-        Assert.Equal(2, summary["Accounts without the Admin or SuperAdmin role"]);
-        // Detail results name the rows.
-        Assert.Equal(2, results[1].Count(r => (string?)r["NormalizedEmail"] == shared.ToUpperInvariant()));
+        Assert.Equal(1, summary["Accounts without the Admin or SuperAdmin role"]);
         Assert.Equal("ORPHAN@NOWHERE.TEST", Assert.Single(results[2])["NormalizedEmail"]);
         var crossed = Assert.Single(results[3]);
         Assert.Equal(("staff", _app.Data.Alpha.Id, _app.Data.Beta.Id),
             ((string)crossed["Kind"]!, Convert.ToInt32(crossed["SessionTenantId"]), Convert.ToInt32(crossed["PersonTenantId"])));
+    }
+
+    [Fact]
+    public async Task Inspection_04_Shared_Emails_Can_No_Longer_Be_Planted()
+    {
+        // Since migration M3 (Phase 0 step 0.4) the database itself refuses a second account with
+        // the same email, so check 1 can only find problems in databases from before M3.
+        var shared = _app.Data.Beta.Admin!.Email;
+        await using var db = _app.CreateDbContext();
+        db.Users.Add(new AppUser { UserName = shared, NormalizedUserName = shared.ToUpperInvariant(), Email = shared, NormalizedEmail = shared.ToUpperInvariant(), TenantId = _app.Data.Alpha.Id });
+
+        var error = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+
+        Assert.Contains("EmailIndex", error.InnerException!.Message);
+        Assert.Equal(0, Summary((await RunAsync(_app.ConnectionString, "04-data-quality.sql"))[0])["Emails used by more than one account (NormalizedEmail)"]);
     }
 }

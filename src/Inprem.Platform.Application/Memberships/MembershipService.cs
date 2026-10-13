@@ -25,6 +25,39 @@ public interface IMembershipService
     Task<IReadOnlyList<ActiveMembershipInfo>> GetForSignInAsync(string userId, int? accountTenantId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<ActiveMembershipInfo>> ListActiveAsync(string userId, CancellationToken cancellationToken = default);
+
+    /// <summary>Makes a newly created account an Active member (an admin added on the Admins page).</summary>
+    Task AddMemberAsync(string userId, int tenantId, MembershipRole role, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Invites an existing account to the organization (C3-6). An Active member is not invited
+    /// again; a pending invitation is left as it is; a revoked or declined one is renewed.
+    /// </summary>
+    Task<InviteOutcome> InviteAsync(string userId, int tenantId, MembershipRole role, string invitedByUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>The user's pending invitations (Status Invited), with organization names.</summary>
+    Task<IReadOnlyList<ActiveMembershipInfo>> ListInvitationsAsync(string userId, CancellationToken cancellationToken = default);
+
+    /// <summary>Every membership of the organization, as account id and status (for the Admins page).</summary>
+    Task<IReadOnlyList<MemberStatus>> ListMembersAsync(int tenantId, CancellationToken cancellationToken = default);
+
+    /// <summary>Accepts one of the user's own pending invitations. False when it is not theirs or not pending.</summary>
+    Task<bool> AcceptAsync(string userId, Guid membershipId, CancellationToken cancellationToken = default);
+
+    /// <summary>Declines one of the user's own pending invitations. False when it is not theirs or not pending.</summary>
+    Task<bool> DeclineAsync(string userId, Guid membershipId, CancellationToken cancellationToken = default);
+}
+
+public enum InviteOutcome
+{
+    /// <summary>A new invitation was created, or a revoked membership was invited again.</summary>
+    Invited,
+
+    /// <summary>An invitation was already pending; nothing changed.</summary>
+    AlreadyInvited,
+
+    /// <summary>The person is already an Active member; nothing changed.</summary>
+    AlreadyMember,
 }
 
 public sealed class MembershipService : IMembershipService
@@ -80,4 +113,54 @@ public sealed class MembershipService : IMembershipService
 
     public Task<IReadOnlyList<ActiveMembershipInfo>> ListActiveAsync(string userId, CancellationToken cancellationToken = default) =>
         _store.ListActiveAsync(userId, cancellationToken);
+
+    public Task AddMemberAsync(string userId, int tenantId, MembershipRole role, CancellationToken cancellationToken = default) =>
+        _store.AddAsync(TenantMembership.CreateActive(userId, tenantId, role, _clock.UtcNow), cancellationToken);
+
+    public async Task<InviteOutcome> InviteAsync(string userId, int tenantId, MembershipRole role, string invitedByUserId, CancellationToken cancellationToken = default)
+    {
+        var existing = await _store.FindAsync(userId, tenantId, cancellationToken).ConfigureAwait(false);
+        switch (existing?.Status)
+        {
+            case null:
+                await _store.AddAsync(TenantMembership.CreateInvited(userId, tenantId, role, invitedByUserId, _clock.UtcNow), cancellationToken).ConfigureAwait(false);
+                return InviteOutcome.Invited;
+            case MembershipStatus.Active:
+                return InviteOutcome.AlreadyMember;
+            case MembershipStatus.Invited:
+                return InviteOutcome.AlreadyInvited;
+            default:
+                existing.Reinvite(invitedByUserId);
+                existing.ChangeRole(role);
+                await _store.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                Invalidate(existing.Id);
+                return InviteOutcome.Invited;
+        }
+    }
+
+    public Task<IReadOnlyList<ActiveMembershipInfo>> ListInvitationsAsync(string userId, CancellationToken cancellationToken = default) =>
+        _store.ListInvitedAsync(userId, cancellationToken);
+
+    public Task<IReadOnlyList<MemberStatus>> ListMembersAsync(int tenantId, CancellationToken cancellationToken = default) =>
+        _store.ListMembersAsync(tenantId, cancellationToken);
+
+    public Task<bool> AcceptAsync(string userId, Guid membershipId, CancellationToken cancellationToken = default) =>
+        ChangeInvitationAsync(userId, membershipId, m => m.Activate(), cancellationToken);
+
+    public Task<bool> DeclineAsync(string userId, Guid membershipId, CancellationToken cancellationToken = default) =>
+        ChangeInvitationAsync(userId, membershipId, m => m.Decline(), cancellationToken);
+
+    private async Task<bool> ChangeInvitationAsync(string userId, Guid membershipId, Action<TenantMembership> change, CancellationToken cancellationToken)
+    {
+        var membership = await _store.FindByIdAsync(membershipId, cancellationToken).ConfigureAwait(false);
+        if (membership == null || membership.UserId != userId || membership.Status != MembershipStatus.Invited)
+        {
+            return false;
+        }
+
+        change(membership);
+        await _store.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        Invalidate(membership.Id);
+        return true;
+    }
 }
