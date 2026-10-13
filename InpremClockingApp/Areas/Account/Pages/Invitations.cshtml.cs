@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.EntityFrameworkCore;
 
 namespace InpremClockingApp.Areas.Account.Pages;
 
@@ -45,9 +44,7 @@ public class InvitationsModel : PageModel
             return RedirectToPage();
         }
 
-        // The account may belong to another organization than the current request's, so look it
-        // up past the AppUser query filter.
-        var user = await _signInManager.UserManager.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == UserId);
+        var user = await _signInManager.UserManager.FindByIdAsync(UserId);
         if (user != null)
         {
             await _signInManager.RefreshSignInAsync(user);

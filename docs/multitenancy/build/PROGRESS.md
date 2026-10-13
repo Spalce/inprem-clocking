@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 0 Foundation (in progress)
-- **Next step:** Phase 0 / Step 0.5 — Isolation hardening (C2-1)
+- **Next step:** Phase 0 / Step 0.6 — Remove hardcoded credentials (C2-5)
 - **Branch:** `mt/phase0` (from `mt/integration` `1b59b6b`)
 
 ## Phase status
@@ -13,7 +13,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | Phase | Status | Exit checks passed | Merged into `mt/integration` |
 |---|---|---|---|
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
-| 0 Foundation | In progress (Steps 0.1–0.4 done) | — | — |
+| 0 Foundation | In progress (Steps 0.1–0.5 done) | — | — |
 | 1 Provider Console | Not started | — | — |
 | 2 PayPal core | Not started | — | — |
 | 3 Website API | Not started | — | — |
@@ -43,7 +43,10 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **Accounts without any organization are signed out (step 0.3, behaviour change).** This covers accounts that are not SuperAdmin and have no Active membership. Today's data has none; before, such an account could open the kiosk pages.
 - **Membership cache (step 0.3).** Validation is cached for 5 minutes. Every code path that changes a membership (revoke, role change, acceptance) must call `IMembershipService.Invalidate`, or the change is seen only when the entry expires (tested).
 - **Invitation emails use the approved app's `EmailService` (step 0.4).** They go through `IEmailSender` → `ApprovedAppEmailSender` → `EmailService`, the same mailbox as password resets. That mailbox's credential is hardcoded (see the follow-up above), and moving the settings to configuration fixes both. Tests always replace the sender with a capturing one. **Incident:** during development (2026-10-13), before the capture was in place, one baseline test run triggered an invitation through the real `EmailService` to an invented `@shared.test` address. That address cannot receive mail, but the app very likely connected to the live SMTP server with the hardcoded credential. Ask the mailbox owner to check for it; another reason to rotate.
-- **Accounts working in another organization than `AppUser.TenantId` (step 0.4).** After accepting an invitation, a person's account still says their first organization. The AppUser query filter (tenant == current) then hides their own account in the other organization, e.g. Identity's Manage pages ("unable to load user"). Step 0.5 revisits the AppUser filter (fail closed); handle membership-based visibility there.
+- **Accounts working in another organization than `AppUser.TenantId`: fixed in step 0.5.** The AppUser filter is membership-based, so a member sees their own account wherever they are a member (tested with the Manage page).
+- **Isolation suite vs "403/404" (step 0.5).** The route-by-route suite asserts that nothing of the other organization is revealed or changed, for all 94 routes. Approved (C1) handlers answer a foreign id with their usual not-found response (redirect, 200 with an empty result or message, or 500 when the interceptor refuses), not always 403/404. Making them 404 would mean changing C1 pages.
+- **Refused cross-organization saves return 500 (step 0.5).** `TenantIsolationException` ends the request; F-08 attempts now fail this way. A friendlier 403/404 needs a global exception filter (`Program.cs`) and can come later; nothing of the other organization leaks either way.
+- **Platform-operator pages (C4) and the fail-closed filter.** With no organization, `UserManager.Users` lists nobody. `TenantAdminService.GetAdminsForTenantAsync` (C4, replaced in Phase 1) now reads users explicitly unfiltered. The C4 pages are otherwise unchanged.
 - **BackOffice "Admins" count: fixed** (2026-10-13, developer-approved change to the frozen `Pages/BackOffice.cshtml.cs`). It now counts the same accounts the Admins page lists (`AuthService.GetAll`), so members who joined by invitation are included.
 - **Invited memberships do not expire.** An Invitation entity with expiry and hashed tokens arrives in step 0.7; tie member invitations to it then, if wanted.
 - **Anti-forgery on new pages.** The approved app ignores anti-forgery tokens globally (until C3-10), but the new "Choose organization" page enforces them (tested).
@@ -65,6 +68,30 @@ _(date — what was tested — result)_
 ## Log
 
 _(date — phase/step — summary — tests — next)_
+
+- **2026-10-13 — Phase 0 / Step 0.5 — Isolation hardening (C2-1).**
+  - **Fail-closed user filter.** No organization: no account visible. With one: its Active members, plus accounts of it without any membership row. It reads a read-only `platform.TenantMemberships` view mapped in `ApplicationDbContext`, excluded from migrations.
+  - **Lookups by id, name and email** go through the new `Data/AppUserStore`, the one audited unfiltered path (registered in `AccountHosting`). The scattered user `IgnoreQueryFilters` in the Invitations page and `AuthService` are gone. `AuthService` lists `UserManager.Users` (= members).
+  - **`Data/TenantSaveChangesInterceptor`** (one shared instance, registered in `OnConfiguring`) replaces the context's own stamping:
+    - stamps Added rows, including EF's temporary key placeholders;
+    - refuses Added rows for another organization;
+    - for Modified/Deleted rows, reads the stored TenantId with plain SQL by primary key and refuses another organization's row;
+    - never allows TenantId to change;
+    - protects Tenant rows;
+    - stamps new accounts.
+    - Without an organization, only the no-change rule applies.
+  - **Migration M4:**
+    - alternate keys `(TenantId, StaffId)` / `(TenantId, VolunteerId)` and composite session foreign keys; cascade kept; fluent configuration only;
+    - a guard (error 50004) stops it if any session crosses organizations;
+    - scripts rehearsed: refused when crossed, then clean, idempotent; the DB rejects crossed inserts; reversible.
+  - **F-08 fixed:** baseline test flipped (500, Beta unchanged); `baseline-findings.md` updated.
+  - **Tests:**
+    - New route-isolation suite: 94 routes and 646 requests with Beta ids (route, query, JSON and form bodies, every POST handler); no Beta data revealed, Beta fingerprint unchanged, every route exercised.
+    - Proven to catch a cross-organization delete when the interceptor's check is disabled.
+    - New coverage reflection tests (3) and save/filter rule tests (11).
+    - Inspection tests updated (17 app migrations; crossed sessions can no longer be planted).
+    - Results: Unit 40, Architecture 10, Baseline 320, Integration 48, UI 5. No new advisories. The local gitleaks run was stopped (slow); a credential-pattern check of the changed areas was clean, and CI scans on push.
+  - Next: Step 0.6, remove hardcoded credentials.
 
 - **2026-10-13 — Phase 0 / Step 0.4 follow-up — Dashboard admin count.**
   - `Pages/BackOffice.cshtml.cs` (C1, change approved by the developer): the Admins card counts `AuthService.GetAll()` (organization members) instead of `UserManager.Users` (accounts with this TenantId). 7 lines changed; line endings preserved.

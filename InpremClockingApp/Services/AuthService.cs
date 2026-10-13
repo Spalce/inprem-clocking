@@ -50,25 +50,11 @@ public class AuthService
         _http = http;
     }
 
-    // C2-6 (multi-tenancy Phase 0 step 0.4): the organization's admins are its Active members
-    // (platform.TenantMemberships), wherever their account was first created - plus any account of
-    // this organization that has no membership row yet (created by an older path; it gets one at
-    // its first sign-in). Before memberships this was simply every account with this TenantId.
-    private async Task<IQueryable<AppUser>> MembersQueryAsync()
-    {
-        var tenantId = _currentTenant.TenantId;
-        if (!tenantId.HasValue)
-        {
-            return _userManager.Users;
-        }
-
-        var members = await _memberships.ListMembersAsync(tenantId.Value).ConfigureAwait(false);
-        var active = members.Where(m => m.Status == MembershipStatus.Active).Select(m => m.UserId).ToList();
-        var withAnyMembership = members.Select(m => m.UserId).ToList();
-
-        return _userManager.Users.IgnoreQueryFilters()
-            .Where(u => active.Contains(u.Id) || (u.TenantId == tenantId && !withAnyMembership.Contains(u.Id)));
-    }
+    // C2-6 (multi-tenancy Phase 0 steps 0.4-0.5): the organization's admins are its members -
+    // exactly the accounts the fail-closed AppUser query filter lets this organization see (an
+    // Active membership, or an account of this organization with no membership row yet).
+    // Without an organization the list is empty.
+    private Task<IQueryable<AppUser>> MembersQueryAsync() => Task.FromResult(_userManager.Users);
 
     public async Task<IEnumerable<AppUser>> GetAll()
     {
@@ -114,9 +100,7 @@ public class AuthService
     public async Task<AdminAddResult> AddAdminAsync(string email, string firstName, string lastName, string password)
     {
         var tenantId = _currentTenant.TenantId;
-        var normalizedEmail = _userManager.NormalizeEmail(email);
-        var existing = await _userManager.Users.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail).ConfigureAwait(false);
+        var existing = await _userManager.FindByEmailAsync(email).ConfigureAwait(false);
 
         if (existing == null || !tenantId.HasValue)
         {

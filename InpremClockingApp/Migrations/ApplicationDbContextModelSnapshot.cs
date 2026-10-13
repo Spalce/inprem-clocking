@@ -22,6 +22,43 @@ namespace InpremClockingApp.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Inprem.Platform.Domain.Memberships.TenantMembership", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("InvitedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TenantMemberships", "platform", t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
+                });
+
             modelBuilder.Entity("InpremClockingApp.Models.Billing.Invoice", b =>
                 {
                     b.Property<int>("Id")
@@ -189,8 +226,6 @@ namespace InpremClockingApp.Migrations
 
                     b.HasKey("ClockingId");
 
-                    b.HasIndex("VoluntId");
-
                     b.HasIndex("TenantId", "VoluntId", "ClockDate")
                         .IsUnique();
 
@@ -236,8 +271,6 @@ namespace InpremClockingApp.Migrations
                         .HasColumnType("time");
 
                     b.HasKey("ClockingStaffId");
-
-                    b.HasIndex("StafId");
 
                     b.HasIndex("TenantId", "StafId", "ClockDate")
                         .IsUnique();
@@ -690,7 +723,8 @@ namespace InpremClockingApp.Migrations
 
                     b.HasOne("InpremClockingApp.Models.Volunteer", "Volunteer")
                         .WithMany("Clockings")
-                        .HasForeignKey("VoluntId")
+                        .HasForeignKey("TenantId", "VoluntId")
+                        .HasPrincipalKey("TenantId", "VolunteerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -699,16 +733,17 @@ namespace InpremClockingApp.Migrations
 
             modelBuilder.Entity("InpremClockingApp.Models.ClockingStaff", b =>
                 {
-                    b.HasOne("InpremClockingApp.Models.Staff", "Staff")
-                        .WithMany("ClockingsStaff")
-                        .HasForeignKey("StafId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("InpremClockingApp.Models.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("InpremClockingApp.Models.Staff", "Staff")
+                        .WithMany("ClockingsStaff")
+                        .HasForeignKey("TenantId", "StafId")
+                        .HasPrincipalKey("TenantId", "StaffId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Staff");

@@ -19,6 +19,10 @@ public static class AccountHosting
         });
 
         builder.Services.AddScoped<PlatformEmailSender, ApprovedAppEmailSender>();
+
+        // Step 0.5: account lookups by id/name/email see past the fail-closed AppUser filter
+        // (AppUserStore); replaces the store AddEntityFrameworkStores registered.
+        builder.Services.AddScoped<IUserStore<Models.Identity.AppUser>, Data.AppUserStore>();
         return builder;
     }
 }

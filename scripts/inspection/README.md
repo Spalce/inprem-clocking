@@ -9,7 +9,7 @@ They only read. Each one also refuses to start unless you pass `-v ConfirmLocalC
 | Script | What it shows | Safe to paste into `inspection-results.md`? |
 |---|---|---|
 | `01-environment.sql` | SQL Server version, database, compatibility level, recovery model, size, `db_owner`, `ALTER ANY SECURITY POLICY` permission | Yes |
-| `02-migration-history.sql` | Applied app migrations vs this branch's: the approved app's 15, plus Phase 0's `M3_PlatformUniqueEmail`. A database that has not had the Phase 0 deployment shows M3 as missing; that is expected. | Yes |
+| `02-migration-history.sql` | Applied app migrations vs this branch's: the approved app's 15, plus Phase 0's `M3_PlatformUniqueEmail` and `M4_CompositeTenantKeys`. A database that has not had the Phase 0 deployment shows those as missing; that is expected. | Yes |
 | `03-row-counts.sql` | Row count of every table | Yes |
 | `04-data-quality.sql` | Result 1: a summary of counts only. Results 2–6: detail with ids and emails | **Result 1 only.** Summarize the detail; never paste emails |
 | `05-report-baseline.sql` | Report totals R1–R3 (staff hours per org per month, volunteer hours per org per month, dashboard figures) | Yes (counts and totals only) |

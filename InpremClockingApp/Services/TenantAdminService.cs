@@ -62,13 +62,12 @@ public class TenantAdminService
     }
 
     // Any AppUser with this TenantId is necessarily an Admin of it - SuperAdmin accounts always
-    // have a null TenantId (see AppUser.cs), and nothing else in the app assigns one. The
-    // AppUser query filter itself doesn't need IgnoreQueryFilters() here: it only restricts a
-    // tenant-scoped caller to their own tenant, and passes through unfiltered when the caller
-    // (a SuperAdmin) has no TenantId at all - see ApplicationDbContext.OnModelCreating.
+    // have a null TenantId (see AppUser.cs), and nothing else in the app assigns one. Since
+    // multi-tenancy Phase 0 step 0.5 the AppUser query filter fails closed for a caller without an
+    // organization (this platform-operator page), so the lookup is explicitly unfiltered.
     public async Task<List<AppUser>> GetAdminsForTenantAsync(int tenantId)
     {
-        return await _db.Users
+        return await _db.Users.IgnoreQueryFilters()
             .Where(u => u.TenantId == tenantId)
             .OrderBy(u => u.Email)
             .ToListAsync().ConfigureAwait(false);

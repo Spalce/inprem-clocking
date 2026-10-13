@@ -1,3 +1,4 @@
+using Inprem.Platform.Domain.Memberships;
 using InpremClockingApp.Models;
 using InpremClockingApp.Models.Billing;
 using InpremClockingApp.Models.Identity;
@@ -24,6 +25,24 @@ namespace InpremClockingApp.Data
         public virtual DbSet<Tenant> Tenants { get; set; } = null!;
         public virtual DbSet<Subscription> Subscriptions { get; set; } = null!;
         public virtual DbSet<Invoice> Invoices { get; set; } = null!;
+
+        /// <summary>
+        /// Read-only view of platform.TenantMemberships (owned by PlatformDbContext's migrations),
+        /// used by the AppUser query filter. Never written through this context.
+        /// </summary>
+        public virtual DbSet<TenantMembership> MembershipsView { get; set; } = null!;
+
+        // C2-1 (multi-tenancy Phase 0 step 0.5): tenant rules on every save - see
+        // TenantSaveChangesInterceptor. Registered here rather than at AddDbContext so that every
+        // way of building this context (the app, tests, tools) gets it.
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            optionsBuilder.AddInterceptors(TenantSaveChangesInterceptor.Instance);
+            base.OnConfiguring(optionsBuilder);
+        }
+
+        /// <summary>The organization this context works for (null: none), for the save interceptor.</summary>
+        internal int? CurrentTenantId => _currentTenant.TenantId;
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -129,59 +148,44 @@ namespace InpremClockingApp.Data
             // tenant-management (Phase 4) bypasses this deliberately via IgnoreQueryFilters().
             builder.Entity<Tenant>().HasQueryFilter(t => t.Id == _currentTenant.TenantId);
 
-            // AppUser needs a different shape of filter than the tables above: at login time,
-            // before anyone is authenticated, CurrentTenantService.TenantId is null - if this
-            // filtered down to "TenantId == null" like the others, FindByEmailAsync would find
-            // zero users and every login would break. So: no filtering until a tenant is known
-            // (matches today's single-tenant behavior for that anonymous lookup), then scoped
-            // once it is - e.g. the "Admins" list can never show another tenant's admins.
+            // C2-1 (multi-tenancy Phase 0 step 0.5): the AppUser filter fails closed. Without an
+            // organization (anonymous, startup, platform operators) no account is visible through
+            // queries; with one, the visible accounts are its members - an Active membership in
+            // platform.TenantMemberships, or an account of this organization that has no membership
+            // row at all yet (created by an older path; it gets one at first sign-in). Sign-in and
+            // lookups by id, user name or email go through AppUserStore, which deliberately looks
+            // past this filter: that is the one audited place for unfiltered account lookups.
             builder.Entity<AppUser>().HasQueryFilter(u =>
-                _currentTenant.TenantId == null || u.TenantId == _currentTenant.TenantId);
-        }
+                _currentTenant.TenantId != null &&
+                (MembershipsView.Any(m => m.UserId == u.Id && m.TenantId == _currentTenant.TenantId && m.Status == MembershipStatus.Active)
+                 || (u.TenantId == _currentTenant.TenantId && !MembershipsView.Any(m => m.UserId == u.Id && m.TenantId == _currentTenant.TenantId))));
 
-        // Multi-tenancy Phase 2: stamps TenantId onto any newly-added row that has one, from
-        // the signed-in user's own tenant, so every existing Create/Add call site in the app
-        // (StaffService, VolunteerService, StaffClockingService, VolunteerClockingService,
-        // Identity's UserManager.CreateAsync, etc.) needs no manual change - see
-        // multi-tenancy.md decision #3. Only stamps when the value is still at its default
-        // (unset), so an explicit value set by future tenant-onboarding code (Phase 4) is
-        // never clobbered.
-        private void StampTenantId()
-        {
-            var tenantId = _currentTenant.TenantId;
-            if (!tenantId.HasValue) return;
-
-            foreach (var entry in ChangeTracker.Entries())
+            builder.Entity<TenantMembership>(membership =>
             {
-                if (entry.State != EntityState.Added) continue;
+                membership.ToTable("TenantMemberships", "platform", t => t.ExcludeFromMigrations());
+                membership.HasKey(m => m.Id);
+                membership.Property(m => m.Role).HasConversion<string>().HasMaxLength(20);
+                membership.Property(m => m.Status).HasConversion<string>().HasMaxLength(20);
+                membership.Ignore(m => m.IsActive);
+            });
 
-                var property = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "TenantId");
-                if (property == null) continue;
-
-                var isUnset = property.CurrentValue switch
-                {
-                    null => true,
-                    int intValue => intValue == 0,
-                    _ => false,
-                };
-
-                if (isUnset)
-                {
-                    property.CurrentValue = tenantId.Value;
-                }
-            }
-        }
-
-        public override int SaveChanges(bool acceptAllChangesOnSuccess)
-        {
-            StampTenantId();
-            return base.SaveChanges(acceptAllChangesOnSuccess);
-        }
-
-        public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
-        {
-            StampTenantId();
-            return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+            // C2-1 (multi-tenancy Phase 0 step 0.5, migration M4): a session can only point at a
+            // person of its own organization. The clocking foreign keys become composite -
+            // (TenantId, StafId) -> Staffs(TenantId, StaffId) and (TenantId, VoluntId) ->
+            // Volunteers(TenantId, VolunteerId) - backed by alternate keys on the people tables.
+            // Configured here only; the model classes are unchanged. Delete behaviour stays Cascade.
+            builder.Entity<Staff>().HasAlternateKey(s => new { s.TenantId, s.StaffId });
+            builder.Entity<Volunteer>().HasAlternateKey(v => new { v.TenantId, v.VolunteerId });
+            builder.Entity<ClockingStaff>()
+                .HasOne(c => c.Staff).WithMany(s => s.ClockingsStaff)
+                .HasForeignKey(c => new { c.TenantId, c.StafId })
+                .HasPrincipalKey(s => new { s.TenantId, s.StaffId })
+                .OnDelete(DeleteBehavior.Cascade);
+            builder.Entity<Clocking>()
+                .HasOne(c => c.Volunteer).WithMany(v => v.Clockings)
+                .HasForeignKey(c => new { c.TenantId, c.VoluntId })
+                .HasPrincipalKey(v => new { v.TenantId, v.VolunteerId })
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

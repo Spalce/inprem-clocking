@@ -49,12 +49,12 @@ public class InspectionScriptTests
     {
         var results = await RunAsync(_app.ConnectionString, "02-migration-history.sql");
 
-        // The approved app's 15 migrations plus Phase 0's M3.
-        Assert.Equal(16, results[0].Count);
+        // The approved app's 15 migrations plus Phase 0's M3 and M4.
+        Assert.Equal(17, results[0].Count);
         Assert.Empty(results[1]);
         Assert.Empty(results[2]);
         var summary = Assert.Single(results[3]);
-        Assert.Equal("20261013161410_M3_PlatformUniqueEmail", summary["LastApplied"]);
+        Assert.Equal("20261013175341_M4_CompositeTenantKeys", summary["LastApplied"]);
         Assert.Equal(summary["LastExpected"], summary["LastApplied"]);
     }
 
@@ -70,7 +70,7 @@ public class InspectionScriptTests
         Assert.Equal(6, counts["dbo.Volunteers"]);
         Assert.Equal(24, counts["dbo.ClockingsStaff"]);
         Assert.Equal(24, counts["dbo.Clockings"]);
-        Assert.Equal(16, counts["dbo.__EFMigrationsHistory"]);
+        Assert.Equal(17, counts["dbo.__EFMigrationsHistory"]);
         Assert.Equal(4, counts["platform.TenantMemberships"]);
     }
 
@@ -136,8 +136,8 @@ public class InspectionAnomalyTests : IClassFixture<AppFixture>
         {
             // An account with no organization or role.
             db.Users.Add(new AppUser { UserName = "orphan@nowhere.test", NormalizedUserName = "ORPHAN@NOWHERE.TEST", Email = "orphan@nowhere.test", NormalizedEmail = "ORPHAN@NOWHERE.TEST" });
-            // A staff session filed under Alpha for a Beta staff member, and a moved session with no date.
-            db.ClockingsStaff.Add(new ClockingStaff { TenantId = _app.Data.Alpha.Id, StafId = _app.Data.Beta.Staff[0].Id, ClockDate = new DateTime(2026, 4, 1) });
+            // A moved session with no date. (A session filed under another organization than its
+            // person can no longer be planted: the composite keys of migration M4 refuse it - see below.)
             db.Clockings.Add(new Clocking { TenantId = _app.Data.Alpha.Id, VoluntId = _app.Data.Alpha.Volunteers[0].Id, ClockDate = DateTime.MinValue });
             await db.SaveChangesAsync();
         }
@@ -146,14 +146,25 @@ public class InspectionAnomalyTests : IClassFixture<AppFixture>
         var summary = Summary(results[0]);
 
         Assert.Equal(1, summary["Accounts with no organization that are not SuperAdmin"]);
-        Assert.Equal(1, summary["Staff sessions whose staff member is in another organization"]);
+        Assert.Equal(0, summary["Staff sessions whose staff member is in another organization"]);
         Assert.Equal(0, summary["Volunteer sessions whose volunteer is in another organization"]);
         Assert.Equal(1, summary["Sessions with ClockDate 0001-01-01 (moved by the Move buttons, finding F-01/F-02)"]);
         Assert.Equal(1, summary["Accounts without the Admin or SuperAdmin role"]);
         Assert.Equal("ORPHAN@NOWHERE.TEST", Assert.Single(results[2])["NormalizedEmail"]);
-        var crossed = Assert.Single(results[3]);
-        Assert.Equal(("staff", _app.Data.Alpha.Id, _app.Data.Beta.Id),
-            ((string)crossed["Kind"]!, Convert.ToInt32(crossed["SessionTenantId"]), Convert.ToInt32(crossed["PersonTenantId"])));
+        Assert.Empty(results[3]);
+    }
+
+    [Fact]
+    public async Task Inspection_04_Cross_Organization_Sessions_Can_No_Longer_Be_Planted()
+    {
+        // Since migration M4 (Phase 0 step 0.5) a session's (TenantId, person) must match the
+        // person's own organization, so checks 3 and 4 can only find problems in databases from before M4.
+        await using var db = _app.CreateDbContext();
+        db.ClockingsStaff.Add(new ClockingStaff { TenantId = _app.Data.Alpha.Id, StafId = _app.Data.Beta.Staff[0].Id, ClockDate = new DateTime(2026, 4, 2) });
+
+        var error = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+
+        Assert.Contains("FK_ClockingsStaff_Staffs_TenantId_StafId", error.InnerException!.Message);
     }
 
     [Fact]

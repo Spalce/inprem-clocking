@@ -176,26 +176,21 @@ public class IsolationWriteTests : IClassFixture<AppFixture>
     [Trait(Traits.Finding, "F-08")]
     public async Task Isolation_Move_Page_Handler_With_Beta_Id(string kind)
     {
-        // The Move page handlers delete the posted id without checking it belongs to the
-        // signed-in organization. This records what happens to Beta's row and its sessions.
+        // F-08, fixed in Phase 0 step 0.5. Until then the Move page handlers deleted the posted id
+        // without checking its organization, and Beta's person and all their sessions were gone.
+        // Now the save interceptor reads the row's real organization from the database and refuses
+        // the delete: the request fails (500) and Beta's rows are untouched. The handler still
+        // creates the copy in Alpha first (its own behaviour, unchanged).
         var betaId = kind == "staff" ? _app.Data.Beta.Staff[0].Id : _app.Data.Beta.Volunteers[0].Id;
         using var client = await _app.AdminOfAsync(_app.Data.Alpha);
         var email = $"moved-{kind}@alpha.test";
+        var before = await BetaFingerprintAsync();
 
         using var response = kind == "staff"
             ? await client.PostJsonAsync("/Staff?handler=Move", new { StaffId = betaId, FirstName = "Cross", LastName = "Move", EmailAddress = email, Gender = "M", PhoneNumber = "6145558888", ZipCode = "43229", Address = "1 Cross Move Road, Testville" })
             : await client.PostJsonAsync("/Volunteer?handler=Move", new { VolunteerId = betaId, FirstName = "Cross", LastName = "Move", EmailAddress = email, Gender = "M", PhoneNumber = "6145558888", ZipCode = "43229", Address = "1 Cross Move Road, Testville" });
 
-        await using var db = _app.CreateDbContext();
-        var betaRowExists = kind == "staff"
-            ? await db.Staffs.IgnoreQueryFilters().AnyAsync(s => s.StaffId == betaId)
-            : await db.Volunteers.IgnoreQueryFilters().AnyAsync(v => v.VolunteerId == betaId);
-        var betaSessions = kind == "staff"
-            ? await db.ClockingsStaff.IgnoreQueryFilters().CountAsync(c => c.StafId == betaId)
-            : await db.Clockings.IgnoreQueryFilters().CountAsync(c => c.VoluntId == betaId);
-
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.False(betaRowExists, "Beta's person was deleted by Alpha's admin.");
-        Assert.Equal(0, betaSessions);
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Equal(before, await BetaFingerprintAsync());
     }
 }
