@@ -17,9 +17,9 @@ public static class IdentitySeeder
 {
     public const string AdminRole = "Admin";
 
-    // Platform-operator role used by the original tenant-onboarding pages (Pages/Platform, replaced
-    // by the Provider Console in multi-tenancy Phase 1) - not scoped to any one tenant
-    // (AppUser.TenantId stays null), and never assignable through the ordinary /User "Create Admin" flow.
+    // Platform-operator role of the original tenant-onboarding pages (Pages/Platform, removed in
+    // multi-tenancy Phase 1 step 1.7: the Provider Console replaces them). Kept so existing accounts
+    // and role rows stay valid; such accounts are refused on the App site's login.
     public const string SuperAdminRole = "SuperAdmin";
 
     // The configuration parameter is kept so Program.cs needs no change; nothing is read from it.

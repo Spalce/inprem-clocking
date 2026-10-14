@@ -204,13 +204,17 @@ public class MembershipSignInTests : IClassFixture<AppFixture>
     }
 
     [Fact]
-    public async Task Membership_Platform_Operator_Is_Unchanged()
+    public async Task Membership_Platform_Operator_Is_Pointed_To_The_Provider_Console()
     {
+        // Phase 1 step 1.7: the old /Platform pages are gone; such an account is refused on the App site.
         var (_, email) = await CreateAccountAsync(tenantId: null, role: IdentitySeeder.SuperAdminRole);
         using var client = _app.CreateClient();
-        await SignIn.AsAsync(client, email, _app.Data.Password);
+        using var response = await SignIn.PostLoginAsync(client, email, _app.Data.Password);
 
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/Platform/Tenants")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Provider Console", await response.Content.ReadAsStringAsync());
+        Assert.Contains("/Identity/Account/Login", response.RequestMessage!.RequestUri!.AbsolutePath);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/Platform/Tenants")).StatusCode);
     }
 
     [Fact]

@@ -14,7 +14,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Inprem.Platform.Application.Memberships;
 using InpremClockingApp.Helpers;
 using InpremClockingApp.Services;
 
@@ -118,7 +120,6 @@ namespace InpremClockingApp.Areas.Identity.Pages.Account
             // Fall back to a sensible default only when there's no real destination to return to
             // (e.g. landing on Login directly, or being challenged from the root "/" page).
             // Otherwise honor whatever protected page originally triggered the login challenge.
-            var usedKioskFallback = false;
             if (string.IsNullOrEmpty(returnUrl) || returnUrl == "/")
             {
                 if (!string.IsNullOrEmpty(Return) && Return != "/" && Url.IsLocalUrl(Return))
@@ -128,7 +129,6 @@ namespace InpremClockingApp.Areas.Identity.Pages.Account
                 else
                 {
                     returnUrl = Url.Content("~/VolunteerAttendance");
-                    usedKioskFallback = true;
                 }
             }
 
@@ -144,15 +144,16 @@ namespace InpremClockingApp.Areas.Identity.Pages.Account
                 var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: true);
                 if (result.Succeeded)
                 {
-                    // The kiosk fallback above predates the SuperAdmin role (multi-tenancy.md) -
-                    // a SuperAdmin has no TenantId, so VolunteerAttendance is never a meaningful
-                    // destination for one. Only overrides the generic fallback, never an explicit
-                    // destination (e.g. being challenged from /Platform/Tenants itself already
-                    // produces that exact returnUrl above, untouched by this).
+                    // Multi-tenancy Phase 1 step 1.7: the old platform-operator pages (/Platform) were
+                    // replaced by the Provider Console, so a SuperAdmin account without any
+                    // active organization membership has nothing on the App site: it is signed out again with a pointer.
                     var signedIn = await _signInManager.UserManager.FindByNameAsync(Input.Email);
-                    if (usedKioskFallback && signedIn != null && await _signInManager.UserManager.IsInRoleAsync(signedIn, IdentitySeeder.SuperAdminRole))
+                    if (signedIn != null && await _signInManager.UserManager.IsInRoleAsync(signedIn, IdentitySeeder.SuperAdminRole)
+                        && (await HttpContext.RequestServices.GetRequiredService<IMembershipService>().GetForSignInAsync(signedIn.Id, signedIn.TenantId)).Count == 0)
                     {
-                        returnUrl = Url.Content("~/Platform/Tenants");
+                        await _signInManager.SignOutAsync();
+                        ModelState.AddModelError(string.Empty, "This is a platform-operator account. Platform operations moved to the Provider Console (the admin site).");
+                        return Page();
                     }
 
                     return LocalRedirect(returnUrl);

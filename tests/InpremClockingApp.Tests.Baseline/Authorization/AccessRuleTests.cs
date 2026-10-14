@@ -11,7 +11,8 @@ namespace InpremClockingApp.Tests.Baseline.Authorization;
 /// <list type="bullet">
 /// <item>anonymous: only the home page and the Identity pages; everything else redirects to login (APIs too);</item>
 /// <item>signed in without the Admin role: kiosk pages and the kiosk/search APIs only;</item>
-/// <item>Admin: everything except the SuperAdmin-only /Platform pages and invoice PDFs.</item>
+/// <item>Admin: everything. (The SuperAdmin-only /Platform pages and invoice PDFs were removed in
+/// multi-tenancy Phase 1 step 1.7; <see cref="Removed_Platform_Pages_Are_Gone"/>.)</item>
 /// </list>
 /// Own fixture: the no-role account it creates would change the admin counts other tests read.
 /// </summary>
@@ -54,7 +55,8 @@ public class AccessRuleTests : IClassFixture<AppFixture>
         "/api/search/staff?term=a", "/api/search/volunteer?term=a",
     };
 
-    public static TheoryData<string> SuperAdminOnlyGets => new()
+    /// <summary>The old SuperAdmin-only pages (C4), removed in Phase 1 step 1.7.</summary>
+    public static TheoryData<string> RemovedPlatformGets => new()
     {
         "/Platform/Tenants", "/Platform/Tenants/1", "/Platform/Invoices", "/api/invoices/1/pdf",
     };
@@ -62,7 +64,6 @@ public class AccessRuleTests : IClassFixture<AppFixture>
     [Theory]
     [MemberData(nameof(AdminOnlyGets))]
     [MemberData(nameof(SignedInGets))]
-    [MemberData(nameof(SuperAdminOnlyGets))]
     public async Task Anonymous_Get_Redirects_To_Login(string path)
     {
         using var client = _app.CreateClient();
@@ -98,7 +99,6 @@ public class AccessRuleTests : IClassFixture<AppFixture>
 
     [Theory]
     [MemberData(nameof(AdminOnlyGets))]
-    [MemberData(nameof(SuperAdminOnlyGets))]
     public async Task Signed_In_Without_Admin_Role_Is_Denied_Admin_Gets(string path)
     {
         using var client = await _app.NoRoleUserOfAsync(_app.Data.Alpha);
@@ -131,14 +131,15 @@ public class AccessRuleTests : IClassFixture<AppFixture>
     }
 
     [Theory]
-    [MemberData(nameof(SuperAdminOnlyGets))]
-    public async Task Admin_Is_Denied_SuperAdmin_Pages(string path)
+    [MemberData(nameof(RemovedPlatformGets))]
+    [Trait(Traits.ChangedBy, "Phase 1 step 1.7: the C4 /Platform pages and invoice PDFs were removed (Provider Console)")]
+    public async Task Removed_Platform_Pages_Are_Gone(string path)
     {
-        using var client = await _app.AdminOfAsync(_app.Data.Alpha);
+        using var anonymous = _app.CreateClient();
+        Assert.Equal(HttpStatusCode.NotFound, (await anonymous.GetAsync(path)).StatusCode);
 
-        using var response = await client.GetAsync(path);
-
-        AssertRedirect(response, AccessDenied);
+        using var admin = await _app.AdminOfAsync(_app.Data.Alpha);
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync(path)).StatusCode);
     }
 
     [Fact]

@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 0 Foundation (in progress)
-- **Next step:** Phase 1 / Step 1.7 — Remove replaced code (C4), as its own commit
+- **Next step:** Phase 1 — bundle and exit review (P1-1 to P1-7)
 - **Branch:** `mt/phase0` (from `mt/integration` `1b59b6b`)
 
 ## Phase status
@@ -14,7 +14,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 |---|---|---|---|
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
 | 0 Foundation | Implementation complete (0.1–0.8, 0.10; 0.9 moved to Phase 7). Deployment-dependent exit checks (P0-6 Level 3, P0-9 real copy, P0-11, P0-12) wait for the test-site deployment (developer's decision: deploy after all phases) | — | — |
-| 1 Provider Console | In progress (Steps 1.1–1.6 done) | — | — |
+| 1 Provider Console | In progress (Steps 1.1–1.7 done; exit review next) | — | — |
 | 2 PayPal core | Not started | — | — |
 | 3 Website API | Not started | — | — |
 | 4 Invoices | Not started | — | — |
@@ -104,6 +104,16 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-14 — Phase 1 / Step 1.7 — Removed replaced code (C4).** Its own commit.
+  - **Removed:** `Pages/Platform/**` (Tenants, TenantDetail, Invoices), `Controllers/Api/InvoicesController.cs`, `Services/TenantAdminService.cs`, and in `Program.cs` its registration, the `SuperAdminOnly` policy and the `/Platform` folder rule. They stay in git history.
+  - **Kept** until Phase 2: `BillingService`, `BillingBackgroundService`, `Models/Billing`, their tables and migrations. The `SuperAdmin` role stays, so existing accounts and role rows remain valid.
+  - **Login (App site):** a SuperAdmin account without any active organization membership is signed out again, with the message that platform operations moved to the Provider Console. Before, it was sent to `/Platform/Tenants`. The local database has one such account, which now gets this message.
+  - **Support sessions:** the blocked billing paths are now `/Billing` and `/api/billing` (the removed paths are gone; they answer 404).
+  - **Tests:**
+    - Baseline: the three SuperAdmin access tests became `Removed_Platform_Pages_Are_Gone` (404 for anonymous and Admin), tagged `ChangedBy`.
+    - Integration: the platform-operator sign-in test now expects the message; the support session billing test uses `/Billing/Subscription`.
+  - **Results:** Unit 136, Architecture 11, Baseline 312 (−12 old, +4 new), Integration 98, UI 5.
 
 - **2026-10-14 — Local database: platform migration M1e applied** (developer's request). Backup `DB_A65635_inpremdb_before_M1e_20261014.bak` was taken first and verified; verify gave `1|1|1|0`; the app data fingerprint is unchanged.
 

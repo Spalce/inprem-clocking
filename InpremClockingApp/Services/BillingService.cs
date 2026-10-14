@@ -6,7 +6,7 @@ namespace InpremClockingApp.Services;
 
 // Invoice generation, payment recording, and renewal (see multi-tenancy.md Part 2, Phase 8).
 // SuperAdmin-only - every query bypasses the tenant query filter via IgnoreQueryFilters(), the
-// same audited pattern TenantAdminService uses, since billing data spans every tenant and the
+// same audited pattern the old TenantAdminService (removed in Phase 1 step 1.7) used, since billing data spans every tenant and the
 // caller (a SuperAdmin) has no TenantId of their own for the filter to match against.
 public class BillingService
 {

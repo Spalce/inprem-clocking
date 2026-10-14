@@ -82,7 +82,7 @@ public class SupportSessionTests : IClassFixture<ProviderFixture>
         Assert.DoesNotContain(_app.Data.Beta.Staff[0].LastName, staff.Body!.TextContent);
 
         // Billing is refused.
-        var billing = await app.GetAsync("/Platform/Tenants");
+        var billing = await app.GetAsync("/Billing/Subscription");
         Assert.Equal(HttpStatusCode.Forbidden, billing.StatusCode);
 
         // Single use.
@@ -94,7 +94,7 @@ public class SupportSessionTests : IClassFixture<ProviderFixture>
         Assert.Contains(await AuditAsync("support.started"), d => d.Contains("Help with the staff report"));
         Assert.NotEmpty(await AuditAsync("support.handoff"));
         Assert.Contains(await AuditAsync("support.request"), d => d.StartsWith("GET /Staff"));
-        Assert.Contains(await AuditAsync("support.request-blocked"), d => d.StartsWith("GET /Platform/Tenants"));
+        Assert.Contains(await AuditAsync("support.request-blocked"), d => d.StartsWith("GET /Billing/Subscription"));
 
         // Ending from the banner signs out of the organization.
         var end = await PostFormAsync(app, "/Staff", a => a.EndsWith("/Account/Support/End")); // the banner's own button

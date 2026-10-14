@@ -15,10 +15,10 @@ public static class SupportSessions
     public const string EndedPath = "/Account/Support/Ended";
 
     /// <summary>
-    /// Billing is not available during a support session: the owner's Billing area (Phase 2), the
-    /// old billing pages and invoice downloads. Requests there get 403 and are audited as blocked.
+    /// Billing is not available during a support session: the owner's Billing area and billing API
+    /// (Phase 2). Requests there get 403 and are audited as blocked.
     /// </summary>
-    private static readonly PathString[] BillingPaths = { new("/Billing"), new("/Platform"), new("/api/invoices"), new("/api/billing") };
+    private static readonly PathString[] BillingPaths = { new("/Billing"), new("/api/billing") };
 
     public static bool IsBilling(HttpContext context) =>
         string.Equals(context.GetRouteValue("area") as string, "Billing", StringComparison.OrdinalIgnoreCase)

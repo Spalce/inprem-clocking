@@ -29,7 +29,6 @@ builder.Services.AddScoped<StaffClockingService>();
 builder.Services.AddScoped<VolunteerClockingService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<EmailService>();
-builder.Services.AddScoped<TenantAdminService>();
 builder.Services.AddScoped<BillingService>();
 // BillingBackgroundService is no longer registered (C2-2, step 0.8): background work runs as
 // Hangfire jobs on the App site (AddJobs below). Its billing sweep is replaced in Phase 2.
@@ -88,9 +87,6 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
 
-    // Platform-operator only (multi-tenancy.md Phase 4) - tenant onboarding, not reachable by
-    // an ordinary tenant Admin no matter how the role is combined.
-    options.AddPolicy("SuperAdminOnly", policy => policy.RequireRole(IdentitySeeder.SuperAdminRole));
 });
 
 builder.Services.AddRazorPages()
@@ -126,13 +122,6 @@ builder.Services.AddRazorPages()
         // Public self-registration is closed; only an existing Admin can create new accounts.
         options.Conventions.AuthorizeAreaPage("Identity", "/Account/Register", "AdminOnly");
 
-        // Tenant onboarding/management is platform-operator only, deliberately separate from
-        // AdminOnly - an ordinary tenant Admin must never reach any /Platform/* page. Gated at
-        // the folder level (not per-page) so a future page added under /Platform/ is covered
-        // automatically - see ROLES.md's "Known gaps" history for why that matters: the API
-        // controllers were once left wide open exactly because each one needed its own explicit
-        // attribute. See multi-tenancy.md Phase 4 and Part 2, Phase 7.
-        options.Conventions.AuthorizeFolder("/Platform", "SuperAdminOnly");
     })
     .AddMvcOptions(option => option.EnableEndpointRouting = false);
 
