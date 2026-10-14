@@ -1,0 +1,36 @@
+@page "{id:int}"
+@model InpremClockingApp.Areas.Provider.Pages.Tenants.StartSupportModel
+@using Inprem.Platform.Domain.Support
+@{
+    ViewData["Title"] = "Start support session";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<p><a asp-page="Details" asp-route-id="@RouteData.Values["id"]">&larr; Back to the organization</a></p>
+<h1 class="pc-title">Start a support session in @Model.Name</h1>
+<p class="pc-subtitle">You open the organization's app as one of its admins, for the time you choose. A red banner shows on every page, every page you open is recorded, billing is not available, and the organization can see the session in its history.</p>
+
+@if (Model.Error != null)
+{
+    <div class="pc-error" data-testid="error">@Model.Error</div>
+}
+
+<form method="post" class="pc-card pc-form">
+  <div class="pc-field">
+    <label for="Reason">Reason <span class="pc-muted">(required; shown to the organization)</span></label>
+    <textarea id="Reason" name="Reason" rows="3" maxlength="500" required>@Model.Reason</textarea>
+  </div>
+  <div class="pc-field">
+    <label for="Minutes">Length</label>
+    <select id="Minutes" name="Minutes">
+      @foreach (var minutes in SupportSession.AllowedMinutes)
+      {
+          <option value="@minutes" selected="@(minutes == Model.Minutes)">@minutes minutes</option>
+      }
+    </select>
+  </div>
+  <div class="pc-actions">
+    <button type="submit" class="pc-btn pc-btn-primary" data-testid="confirm">Start and open the app</button>
+    <a asp-page="Details" asp-route-id="@RouteData.Values["id"]" class="pc-btn">Cancel</a>
+  </div>
+</form>

@@ -1,0 +1,29 @@
+@page "/Account/SupportSessions"
+@model InpremClockingApp.Areas.Account.Pages.SupportSessionsModel
+@{
+    ViewData["Title"] = "Support sessions";
+    Layout = "/Pages/Shared/_MainLayout.cshtml";
+}
+
+<div class="tw:p-6">
+  <h1 class="tw:mb-2 tw:text-lg tw:font-semibold tw:text-slate-900">Support sessions</h1>
+  <p class="tw:mb-4 tw:text-sm tw:text-slate-600">When Inprem support works in your organization, it happens in a time-limited session that is listed here and recorded page by page.</p>
+  <table class="tw:w-full tw:text-left tw:text-sm" data-testid="support-sessions">
+    <thead><tr><th class="tw:py-2">Started (UTC)</th><th>Who</th><th>Reason</th><th>Ended</th></tr></thead>
+    <tbody>
+    @foreach (var s in Model.Sessions)
+    {
+        <tr class="tw:border-t tw:border-slate-200">
+          <td class="tw:py-2">@s.StartedUtc.ToString("yyyy-MM-dd HH:mm")</td>
+          <td>@s.ProviderEmail</td>
+          <td>@s.Reason</td>
+          <td>@(s.EndedUtc?.ToString("yyyy-MM-dd HH:mm") ?? (s.ExpiresUtc < DateTime.UtcNow ? s.ExpiresUtc.ToString("yyyy-MM-dd HH:mm") + " (time up)" : "In progress"))</td>
+        </tr>
+    }
+    @if (Model.Sessions.Count == 0)
+    {
+        <tr><td colspan="4" class="tw:py-2 tw:text-slate-500">No support sessions so far.</td></tr>
+    }
+    </tbody>
+  </table>
+</div>

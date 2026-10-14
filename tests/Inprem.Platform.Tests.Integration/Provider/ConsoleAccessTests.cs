@@ -50,6 +50,7 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
     private static readonly ProviderRole[] Everyone = { ProviderRole.Support, ProviderRole.Billing, ProviderRole.Owner };
     private static readonly ProviderRole[] BillingAndOwner = { ProviderRole.Billing, ProviderRole.Owner };
     private static readonly ProviderRole[] OwnerOnly = { ProviderRole.Owner };
+    private static readonly ProviderRole[] SupportAndOwner = { ProviderRole.Support, ProviderRole.Owner };
 
     private static readonly Dictionary<string, (ProviderRole[] Roles, Func<Ids, string> Url)> SubPages = new()
     {
@@ -64,6 +65,7 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
         ["/Tenants/Suspend"] = (OwnerOnly, x => $"/Provider/Tenants/Suspend/{x.TenantId}"),
         ["/Tenants/Reactivate"] = (OwnerOnly, x => $"/Provider/Tenants/Reactivate/{x.TenantId}"),
         ["/Tenants/TransferOwnership"] = (OwnerOnly, x => $"/Provider/Tenants/TransferOwnership/{x.TenantId}?userId={x.AdminUserId}"),
+        ["/Tenants/StartSupport"] = (SupportAndOwner, x => $"/Provider/Tenants/StartSupport/{x.TenantId}"),
         ["/Users/Details"] = (OwnerOnly, x => $"/Provider/Users/Details/{x.ProviderUserId}"),
         ["/Users/Invite"] = (OwnerOnly, _ => "/Provider/Users/Invite"),
         ["/Users/Role"] = (OwnerOnly, x => $"/Provider/Users/Role/{x.ProviderUserId}"),

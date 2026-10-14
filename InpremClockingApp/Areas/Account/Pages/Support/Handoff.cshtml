@@ -1,0 +1,24 @@
+@page "/Account/Support/Handoff"
+@model InpremClockingApp.Areas.Account.Pages.Support.HandoffModel
+@{
+    ViewData["Title"] = "Support session";
+    var btnPrimary = "tw:inline-flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-blue-600 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-700";
+}
+
+<div class="tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:p-8 tw:shadow-sm">
+    <h1 class="tw:mb-2 tw:text-center tw:text-lg tw:font-semibold tw:text-slate-900">Support session</h1>
+    @if (Model.Session == null)
+    {
+        <p class="tw:mb-6 tw:text-center tw:text-sm tw:text-slate-600" data-testid="invalid">This link has been used or has expired (links work once, for 60 seconds). Start a new support session from the Provider Console.</p>
+    }
+    else
+    {
+        <p class="tw:mb-6 tw:text-center tw:text-sm tw:text-slate-600" data-testid="request">
+            Open <strong class="tw:text-slate-900">@Model.Session.TenantName</strong> as an admin, as @Model.Session.ProviderEmail, until @Model.Session.ExpiresUtc.ToString("HH:mm") UTC. Every page is recorded.
+        </p>
+        <form method="post">
+            <input type="hidden" asp-for="Token" />
+            <button type="submit" class="@btnPrimary">Continue</button>
+        </form>
+    }
+</div>

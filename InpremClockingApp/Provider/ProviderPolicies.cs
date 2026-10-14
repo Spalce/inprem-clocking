@@ -22,11 +22,15 @@ public static class ProviderPolicies
     public const string Billing = "ProviderBilling";
     public const string Owner = "ProviderOwner";
 
+    /// <summary>Starting and ending support sessions (step 1.5): Owners and Support, not Billing.</summary>
+    public const string SupportSessions = "ProviderSupportSessions";
+
     public static readonly IReadOnlyDictionary<string, ProviderRole[]> Roles = new Dictionary<string, ProviderRole[]>
     {
         [Support] = new[] { ProviderRole.Owner, ProviderRole.Billing, ProviderRole.Support },
         [Billing] = new[] { ProviderRole.Owner, ProviderRole.Billing },
         [Owner] = new[] { ProviderRole.Owner },
+        [SupportSessions] = new[] { ProviderRole.Owner, ProviderRole.Support },
     };
 
     public static void Add(AuthorizationOptions options)

@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 0 Foundation (in progress)
-- **Next step:** Phase 1 / Step 1.5 — Support sessions
+- **Next step:** Phase 1 / Step 1.6 — Audit log and dashboard shell
 - **Branch:** `mt/phase0` (from `mt/integration` `1b59b6b`)
 
 ## Phase status
@@ -14,7 +14,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 |---|---|---|---|
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
 | 0 Foundation | Implementation complete (0.1–0.8, 0.10; 0.9 moved to Phase 7). Deployment-dependent exit checks (P0-6 Level 3, P0-9 real copy, P0-11, P0-12) wait for the test-site deployment (developer's decision: deploy after all phases) | — | — |
-| 1 Provider Console | In progress (Steps 1.1–1.4 done) | — | — |
+| 1 Provider Console | In progress (Steps 1.1–1.5 done) | — | — |
 | 2 PayPal core | Not started | — | — |
 | 3 Website API | Not started | — | — |
 | 4 Invoices | Not started | — | — |
@@ -72,6 +72,9 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **Rehearsed on synthetic data only (step 0.10).** The Phase 0 bundle was rehearsed with rollback (R2 and R3) on a disposable database with synthetic data, at about the size of the real one. Before a shared or production database, it must be repeated on a restored copy of that database (`rehearse-phase0.ps1 -Existing`). The CTO then signs it (design 11.2–11.4); see `docs/multitenancy/rehearsal-phase0.md`.
 - **M1 is M1a + M1b (step 0.10).** The step's "empty platform tables" already exist from step 0.7: provider users, invitations (named `ProviderInvitations`), audit and recovery records. No duplicate migration was added.
 - **`appsettings.Production.json` on the server (step 0.10).** `prepare-site.ps1` never ships it (a local publish would include the developer's copy). Upload with Web Deploy *without* "remove additional files", or move the connection string into the host's settings.
+- **Antiforgery on the App site (found in step 1.5).** A POST without a token to an Account-area page got 400, even though `Program.cs` applies `IgnoreAntiforgeryToken` to all pages. Forms built with tag helpers carry the token, so nothing visible breaks. Check how the global convention really behaves before C3-10 (Phase 7).
+- **Support sessions replace the console sign-in on a combined site (step 1.5).** With `SiteMode=All` (local), the hand-off sign-in replaces the provider's console session in the shared cookie; sign in to the console again afterwards. Separate App and Admin hosts (production) are not affected.
+- **Support history page has no menu link yet (step 1.5).** `/Account/SupportSessions` exists for organization admins. Linking it from the approved sidebar is a C3 change, for the UI work in Phase 7, or say so earlier.
 - **Tests tagged `ChangedBy`** record behaviour the design changes on purpose: same admin email in two organizations (D2/C3-6) and no lockout (C3-7). Both change in Phase 0 step 0.4.
 - **Playwright browsers** are a one-time install per machine: `pwsh tests/InpremClockingApp.Tests.Ui/bin/Debug/net8.0/playwright.ps1 install chromium` (CI must do the same).
 
@@ -101,6 +104,25 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-14 — Phase 1 / Step 1.5 — Support sessions.**
+  - **`SupportSession`** (platform migration **M1e**): organization, provider user, reason (required, shown to the organization), length 15 / 30 / 60 (default) / 120 / 240 minutes, ending.
+    - The hand-off token is stored only as a hash. It works once, within 60 seconds, while the session is active.
+  - **Starting:** from the organization's page, Owners and Support only (new policy `ProviderSupportSessions`), with a fresh two-factor code. The console sends the browser straight to the App site's hand-off.
+    - **Hand-off page:** it only shows what will happen, so link scanners cannot use it. "Continue" signs in as admin of that organization: the provider's own account plus session, organization and Admin-role claims.
+    - Identity's periodic refresh keeps those claims.
+  - **On every App request during a session** (`TenantContextMiddleware`):
+    - the session is checked again (not ended, not past its time, and the provider user still active and allowed); otherwise the person is signed out and sent to "Support session ended";
+    - the organization context comes from the session, and the request is audited (method and path; never bodies);
+    - billing paths are refused with 403 and audited as blocked: the Billing area, `/Platform`, `/api/invoices`, `/api/billing`.
+  - **Banner (C3-2):** `Pages/Shared/_PlatformBanner.cshtml`, included in `_MainLayout` and also in `_Layout`, the second back-office layout (an extension of C3-2, so that every page shows it). It says who is working until when, with an "End session" button.
+    - Ending is possible from the banner, or from the console ("End now" on the organization's page, Owners and Support).
+  - **Organization history:** `/Account/SupportSessions` for the organization's admins (who, when, why, ended). The provider side sees the sessions in the organization's Audit tab.
+  - **Tests:**
+    - Unit +3: lengths, reasons, single-use 60-second hand-off, ending.
+    - Integration +4: admin of Alpha only, with the banner; billing 403; audit per request; single use; 60-second expiry; ending by time, from the console and on disable; Billing users cannot start; Alpha sees its history and Beta does not.
+    - The role matrix covers the StartSupport page.
+  - **Results:** Unit 125, Architecture 11, Baseline 320, Integration 96, UI 5. No model drift.
 
 - **2026-10-14 — Local database: platform migrations M1c and M1d applied** (developer's request). Backup `DB_A65635_inpremdb_before_phase1_20261014.bak` was taken first and verified. Verify gave M1c `1|2|1|0|0` and M1d `1|3|1|0|0`; the app data fingerprint is unchanged.
 

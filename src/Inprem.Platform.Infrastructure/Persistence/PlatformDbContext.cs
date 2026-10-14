@@ -3,6 +3,7 @@ using Inprem.Platform.Domain.Billing;
 using Inprem.Platform.Domain.Memberships;
 using Inprem.Platform.Domain.Organizations;
 using Inprem.Platform.Domain.Provider;
+using Inprem.Platform.Domain.Support;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
@@ -49,6 +50,7 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<TenantProfile> TenantProfiles { get; set; } = null!;
     public DbSet<TenantNote> TenantNotes { get; set; } = null!;
     public DbSet<Subscription> Subscriptions { get; set; } = null!;
+    public DbSet<SupportSession> SupportSessions { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -208,6 +210,20 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
             subscription.HasIndex(s => s.TenantId).IsUnique();
             subscription.HasOne<Plan>().WithMany().HasForeignKey(s => s.PlanId).OnDelete(DeleteBehavior.Restrict);
             subscription.HasOne<PlanPrice>().WithMany().HasForeignKey(s => s.PlanPriceId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SupportSession>(session =>
+        {
+            session.ToTable("SupportSessions");
+            session.HasKey(s => s.Id);
+            session.Property(s => s.Id).ValueGeneratedNever();
+            session.Property(s => s.ProviderUserId).HasMaxLength(450);
+            session.Property(s => s.ProviderEmail).HasMaxLength(256);
+            session.Property(s => s.Reason).HasMaxLength(500);
+            session.Property(s => s.EndedBy).HasMaxLength(300);
+            session.Property(s => s.HandoffTokenHash).HasMaxLength(64).IsUnicode(false);
+            session.HasIndex(s => s.HandoffTokenHash).IsUnique();
+            session.HasIndex(s => new { s.TenantId, s.StartedUtc });
         });
 
         modelBuilder.Entity<AccountRow>(account =>

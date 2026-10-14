@@ -13,6 +13,7 @@ public static class DependencyInjection
         services.AddScoped<IMembershipStore, MembershipStore>();
         services.AddScoped<Application.Provider.IProviderStore, ProviderStore>();
         services.AddScoped<Application.Billing.IPlanStore, PlanStore>();
+        services.AddScoped<Application.Support.ISupportSessionStore, SupportSessionStore>();
         services.AddSingleton<IClock, SystemClock>();
         services.AddMemoryCache();
         return services;

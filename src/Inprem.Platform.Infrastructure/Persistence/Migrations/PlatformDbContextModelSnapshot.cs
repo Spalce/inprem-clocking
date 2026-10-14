@@ -473,6 +473,64 @@ namespace Inprem.Platform.Infrastructure.Persistence.Migrations
                     b.ToTable("RecoveryRecords", "platform");
                 });
 
+            modelBuilder.Entity("Inprem.Platform.Domain.Support.SupportSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("EndedBy")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateTime?>("EndedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("HandoffExpiresUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("HandoffTokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime?>("HandoffUsedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ProviderEmail")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("ProviderUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("StartedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HandoffTokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "StartedUtc");
+
+                    b.ToTable("SupportSessions", "platform");
+                });
+
             modelBuilder.Entity("Inprem.Platform.Infrastructure.Persistence.AccountRow", b =>
                 {
                     b.Property<string>("Id")

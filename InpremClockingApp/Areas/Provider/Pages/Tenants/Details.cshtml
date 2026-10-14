@@ -13,6 +13,12 @@
     <h1 class="pc-title">@s.Name <span class="pc-badge pc-badge-@s.Status.ToString().ToLowerInvariant()">@s.Status</span></h1>
     <p class="pc-subtitle"><code>@s.Slug</code> &middot; created @s.CreatedUtc.ToString("yyyy-MM-dd")</p>
   </div>
+  <div class="pc-actions">
+  @if (Model.CanSupport)
+  {
+      <a asp-page="StartSupport" asp-route-id="@s.TenantId" class="pc-btn" data-testid="start-support"><i class="fas fa-headset"></i> Start support session</a>
+  }
+  </div>
   @if (Model.IsOwner)
   {
       <div class="pc-actions">
@@ -153,6 +159,19 @@
         break;
 
     default:
+        @foreach (var session in Model.ActiveSupport)
+        {
+            <div class="pc-error" data-testid="active-support">
+              Support session in progress: @session.ProviderEmail until @session.ExpiresUtc.ToString("HH:mm") UTC — @session.Reason
+              @if (Model.CanSupport)
+              {
+                  <form method="post" asp-page-handler="EndSupport" asp-route-id="@s.TenantId" asp-route-sessionId="@session.Id" class="pc-inline"
+                        onsubmit="return confirm('End this support session now? The person in it is signed out of the organization at their next click.');">
+                    <button type="submit" class="pc-btn pc-btn-small" data-testid="end-support">End now</button>
+                  </form>
+              }
+            </div>
+        }
         <dl class="pc-dl" data-testid="overview">
           <dt>Status</dt><dd>@s.Status@(org.StatusReason == null ? "" : $" — {org.StatusReason}")@(org.StatusChangedUtc == null ? "" : $" ({org.StatusChangedUtc:yyyy-MM-dd})")</dd>
           <dt>Owner</dt><dd>@(s.OwnerEmails.Count == 0 ? "—" : string.Join(", ", s.OwnerEmails))</dd>

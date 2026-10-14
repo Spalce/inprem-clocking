@@ -29,6 +29,16 @@ public static class TenancyHosting
                     }
                 }
 
+                // Support sessions (step 1.5): keep the session claim and the Admin role it grants;
+                // the middleware still re-checks the session on every request.
+                if (newIdentity != null && context.CurrentPrincipal?.FindFirst(Provider.SupportSessions.SessionIdClaim) is { } supportClaim
+                    && newIdentity.FindFirst(Provider.SupportSessions.SessionIdClaim) == null)
+                {
+                    newIdentity.AddClaim(new System.Security.Claims.Claim(supportClaim.Type, supportClaim.Value));
+                    if (!newIdentity.HasClaim(System.Security.Claims.ClaimTypes.Role, Helpers.IdentitySeeder.AdminRole))
+                        newIdentity.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, Helpers.IdentitySeeder.AdminRole));
+                }
+
                 // Provider sessions (step 1.1): keep the start, last-seen and two-factor times (and
                 // the two-factor proof) when Identity rebuilds the principal, so a refresh can
                 // neither end the session early nor extend it.

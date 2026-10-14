@@ -33,6 +33,7 @@ public sealed class TenantContextMiddleware
         // Someone whose only pending membership is an invitation must be able to accept it.
         new("/Account/Invitations"),
         new("/Identity/Account/Logout"),
+        new("/Account/Support"),
     };
 
     private readonly RequestDelegate _next;
@@ -44,7 +45,7 @@ public sealed class TenantContextMiddleware
         _logger = logger;
     }
 
-    public async Task InvokeAsync(HttpContext context, TenantContext tenantContext, IMembershipService memberships)
+    public async Task InvokeAsync(HttpContext context, TenantContext tenantContext, IMembershipService memberships, Inprem.Platform.Application.Support.SupportSessionService support)
     {
         var user = context.User;
         if (user.Identity?.IsAuthenticated != true ||
@@ -56,6 +57,38 @@ public sealed class TenantContextMiddleware
         }
 
         var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        // Support session (step 1.5): a provider user working as admin of one organization until the
+        // session ends. Re-checked on every request; every request is audited; billing is refused.
+        var supportClaim = user.FindFirstValue(Provider.SupportSessions.SessionIdClaim);
+        if (supportClaim != null)
+        {
+            var active = userId != null && Guid.TryParse(supportClaim, out var sessionId)
+                         && int.TryParse(user.FindFirstValue(PlatformClaimTypes.TenantId), out var supportTenantId)
+                ? await support.ValidateAsync(sessionId, userId, supportTenantId, context.RequestAborted)
+                : null;
+            if (active == null)
+            {
+                await SignOutAsync(context, "support session over");
+                context.Response.Redirect(Provider.SupportSessions.EndedPath);
+                return;
+            }
+
+            tenantContext.Set(new ActiveMembershipInfo(active.SessionId, active.ProviderUserId, active.TenantId, active.TenantName, Inprem.Platform.Domain.Memberships.MembershipRole.Admin));
+            context.Items[Provider.SupportSessions.ItemKey] = active;
+            var blocked = Provider.SupportSessions.IsBilling(context);
+            await support.RecordRequestAsync(active, context.Request.Method, context.Request.Path + context.Request.QueryString, blocked, context.RequestAborted);
+            if (blocked)
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                await context.Response.WriteAsync("Billing is not available during a support session.");
+                return;
+            }
+
+            await _next(context);
+            return;
+        }
+
         var membershipClaim = user.FindFirstValue(PlatformClaimTypes.MembershipId);
 
         if (membershipClaim == null)
