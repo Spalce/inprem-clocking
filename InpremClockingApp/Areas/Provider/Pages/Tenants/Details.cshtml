@@ -1,0 +1,169 @@
+@page "{id:int}"
+@model InpremClockingApp.Areas.Provider.Pages.Tenants.DetailsModel
+@{
+    var org = Model.Organization;
+    var s = org.Summary;
+    ViewData["Title"] = s.Name;
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<p><a asp-page="Index">&larr; Organizations</a></p>
+<div class="pc-heading">
+  <div>
+    <h1 class="pc-title">@s.Name <span class="pc-badge pc-badge-@s.Status.ToString().ToLowerInvariant()">@s.Status</span></h1>
+    <p class="pc-subtitle"><code>@s.Slug</code> &middot; created @s.CreatedUtc.ToString("yyyy-MM-dd")</p>
+  </div>
+  @if (Model.IsOwner)
+  {
+      <div class="pc-actions">
+        <a asp-page="Edit" asp-route-id="@s.TenantId" class="pc-btn" data-testid="edit"><i class="fas fa-pen"></i> Edit</a>
+        @if (s.Status == OrganizationStatus.Active)
+        {
+            <a asp-page="Suspend" asp-route-id="@s.TenantId" class="pc-btn pc-btn-danger" data-testid="suspend">Suspend</a>
+        }
+        else
+        {
+            <a asp-page="Reactivate" asp-route-id="@s.TenantId" class="pc-btn" data-testid="reactivate">Reactivate</a>
+        }
+      </div>
+  }
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="pc-success" data-testid="success">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="pc-error" data-testid="error">@error</div>
+}
+
+<nav class="pc-tabs" data-testid="tabs">
+  @foreach (var (key, title) in DetailsModel.Tabs)
+  {
+      <a asp-page="Details" asp-route-id="@s.TenantId" asp-route-tab="@key" class="@(Model.Tab == key ? "pc-tab-current" : null)">@title</a>
+  }
+</nav>
+
+<div class="pc-card" data-testid="tab-@Model.Tab">
+@switch (Model.Tab)
+{
+    case "subscription":
+        if (org.Subscription == null)
+        {
+            <p class="pc-muted">No platform subscription yet: this organization is still on the old billing, moved over in Phase 2.</p>
+        }
+        else
+        {
+            var sub = org.Subscription;
+            <dl class="pc-dl">
+              <dt>Plan</dt><dd>@(sub.PlanName ?? "No plan")</dd>
+              <dt>Price</dt><dd>@(sub.PriceText ?? "—")</dd>
+              <dt>Billing</dt><dd>@sub.Mode</dd>
+              <dt>Status</dt><dd><span class="pc-badge">@sub.Status</span></dd>
+              <dt>Trial ends</dt><dd>@(sub.TrialEndsUtc?.ToString("yyyy-MM-dd") ?? "—")</dd>
+              <dt>Since</dt><dd>@sub.CreatedUtc.ToString("yyyy-MM-dd")</dd>
+            </dl>
+            <p class="pc-muted">Read-only until PayPal billing arrives (Phase 2).</p>
+        }
+        break;
+
+    case "invoices":
+        <partial name="/Areas/Provider/Pages/Shared/_ComingSoon.cshtml" model="@("Phase 2 (payments) and Phase 4 (invoices)")" />
+        break;
+
+    case "admins":
+        <table class="pc-table" data-testid="admins">
+          <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last sign-in</th><th>Two-factor</th><th></th></tr></thead>
+          <tbody>
+          @foreach (var admin in org.Admins)
+          {
+              <tr>
+                <td>@(string.IsNullOrWhiteSpace(admin.Name) ? "—" : admin.Name)</td>
+                <td>@admin.Email</td>
+                <td>@admin.Role</td>
+                <td>@admin.Status@(admin.HasPassword ? "" : " (no password yet)")</td>
+                <td>@(admin.LastSignInUtc?.ToString("yyyy-MM-dd HH:mm") ?? "Never")</td>
+                <td>@(admin.TwoFactorEnabled ? "On" : "Off")</td>
+                <td class="pc-actions">
+                  @if (!admin.HasPassword || admin.Status == MembershipStatus.Invited)
+                  {
+                      <form method="post" asp-page-handler="Resend" asp-route-id="@s.TenantId" asp-route-userId="@admin.UserId" class="pc-inline">
+                        <button type="submit" class="pc-btn pc-btn-small" data-testid="resend">Resend invitation</button>
+                      </form>
+                  }
+                  else if (admin.Status == MembershipStatus.Active)
+                  {
+                      <form method="post" asp-page-handler="Reset" asp-route-id="@s.TenantId" asp-route-userId="@admin.UserId" class="pc-inline">
+                        <button type="submit" class="pc-btn pc-btn-small" data-testid="reset">Send password reset</button>
+                      </form>
+                  }
+                  @if (Model.IsOwner && admin.Status == MembershipStatus.Active && admin.Role != MembershipRole.Owner)
+                  {
+                      <a asp-page="TransferOwnership" asp-route-id="@s.TenantId" asp-route-userId="@admin.UserId" class="pc-btn pc-btn-small" data-testid="make-owner">Make owner</a>
+                  }
+                </td>
+              </tr>
+          }
+          @if (org.Admins.Count == 0)
+          {
+              <tr><td colspan="7" class="pc-muted">No admins.</td></tr>
+          }
+          </tbody>
+        </table>
+        break;
+
+    case "kiosk":
+        <p class="pc-muted">Open kiosk sessions are listed here once kiosk sessions (Kiosk:SessionMode, Phase 7) are switched on.</p>
+        break;
+
+    case "messages":
+        <partial name="/Areas/Provider/Pages/Shared/_ComingSoon.cshtml" model="@("Phase 5 (Twilio messages)")" />
+        break;
+
+    case "audit":
+        <table class="pc-table" data-testid="audit">
+          <thead><tr><th>When (UTC)</th><th>Who</th><th>What</th><th>Details</th></tr></thead>
+          <tbody>
+          @foreach (var entry in org.Audit)
+          {
+              <tr><td>@entry.OccurredUtc.ToString("yyyy-MM-dd HH:mm")</td><td>@entry.Actor</td><td><code>@entry.Action</code></td><td>@entry.Details</td></tr>
+          }
+          @if (org.Audit.Count == 0)
+          {
+              <tr><td colspan="4" class="pc-muted">Nothing recorded yet.</td></tr>
+          }
+          </tbody>
+        </table>
+        break;
+
+    case "notes":
+        <p><a asp-page="AddNote" asp-route-id="@s.TenantId" class="pc-btn" data-testid="add-note"><i class="fas fa-plus"></i> Add note</a></p>
+        @foreach (var note in org.Notes)
+        {
+            <div class="pc-note">
+              <div class="pc-muted">@note.CreatedUtc.ToString("yyyy-MM-dd HH:mm") UTC &middot; @note.Author</div>
+              <div>@note.Text</div>
+            </div>
+        }
+        @if (org.Notes.Count == 0)
+        {
+            <p class="pc-muted">No notes yet.</p>
+        }
+        break;
+
+    default:
+        <dl class="pc-dl" data-testid="overview">
+          <dt>Status</dt><dd>@s.Status@(org.StatusReason == null ? "" : $" — {org.StatusReason}")@(org.StatusChangedUtc == null ? "" : $" ({org.StatusChangedUtc:yyyy-MM-dd})")</dd>
+          <dt>Owner</dt><dd>@(s.OwnerEmails.Count == 0 ? "—" : string.Join(", ", s.OwnerEmails))</dd>
+          <dt>Time zone</dt><dd>@org.TimeZoneId</dd>
+          <dt>Address</dt><dd>@(org.Address ?? "—")</dd>
+          <dt>Contact</dt><dd>@(org.ContactInfo ?? "—")</dd>
+          <dt>Staff</dt><dd>@org.Staff</dd>
+          <dt>Volunteers</dt><dd>@org.Volunteers</dd>
+          <dt>Plan</dt><dd>@(s.PlanName ?? "—")</dd>
+          <dt>Last activity</dt><dd>@(s.LastActivityUtc?.ToString("yyyy-MM-dd HH:mm") ?? "—")</dd>
+        </dl>
+        break;
+}
+</div>

@@ -1,0 +1,23 @@
+@page "{id:int}"
+@model InpremClockingApp.Areas.Provider.Pages.Tenants.TransferOwnershipModel
+@{
+    ViewData["Title"] = "Transfer ownership";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<p><a asp-page="Details" asp-route-id="@RouteData.Values["id"]" asp-route-tab="admins">&larr; Back to the organization</a></p>
+<h1 class="pc-title">Make @Model.NewOwner the owner of @Model.Name?</h1>
+<p class="pc-subtitle">@Model.NewOwner becomes the owner. The current owner (@Model.CurrentOwners) stays an admin. You may be asked for a code from your authenticator app.</p>
+
+@if (Model.Error != null)
+{
+    <div class="pc-error" data-testid="error">@Model.Error</div>
+}
+
+<form method="post" class="pc-card pc-form">
+  <input type="hidden" name="UserId" value="@Model.UserId" />
+  <div class="pc-actions">
+    <button type="submit" class="pc-btn pc-btn-primary" data-testid="confirm">Make owner</button>
+    <a asp-page="Details" asp-route-id="@RouteData.Values["id"]" asp-route-tab="admins" class="pc-btn">Cancel</a>
+  </div>
+</form>

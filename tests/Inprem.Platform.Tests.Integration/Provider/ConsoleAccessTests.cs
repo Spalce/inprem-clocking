@@ -45,12 +45,25 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
     /// Pages below the menu: who may open them (written out independently), and their address for
     /// a plan id. Plans: everyone views; Billing and Owners change.
     /// </summary>
-    private static readonly Dictionary<string, (ProviderRole[] Roles, Func<Guid, string> Url)> SubPages = new()
+    private sealed record Ids(Guid PlanId, int TenantId, string AdminUserId);
+
+    private static readonly ProviderRole[] Everyone = { ProviderRole.Support, ProviderRole.Billing, ProviderRole.Owner };
+    private static readonly ProviderRole[] BillingAndOwner = { ProviderRole.Billing, ProviderRole.Owner };
+    private static readonly ProviderRole[] OwnerOnly = { ProviderRole.Owner };
+
+    private static readonly Dictionary<string, (ProviderRole[] Roles, Func<Ids, string> Url)> SubPages = new()
     {
-        ["/Plans/Details"] = (new[] { ProviderRole.Support, ProviderRole.Billing, ProviderRole.Owner }, id => $"/Provider/Plans/Details/{id}"),
-        ["/Plans/New"] = (new[] { ProviderRole.Billing, ProviderRole.Owner }, _ => "/Provider/Plans/New"),
-        ["/Plans/Edit"] = (new[] { ProviderRole.Billing, ProviderRole.Owner }, id => $"/Provider/Plans/Edit/{id}"),
-        ["/Plans/NewPrice"] = (new[] { ProviderRole.Billing, ProviderRole.Owner }, id => $"/Provider/Plans/NewPrice/{id}"),
+        ["/Plans/Details"] = (Everyone, x => $"/Provider/Plans/Details/{x.PlanId}"),
+        ["/Plans/New"] = (BillingAndOwner, _ => "/Provider/Plans/New"),
+        ["/Plans/Edit"] = (BillingAndOwner, x => $"/Provider/Plans/Edit/{x.PlanId}"),
+        ["/Plans/NewPrice"] = (BillingAndOwner, x => $"/Provider/Plans/NewPrice/{x.PlanId}"),
+        ["/Tenants/Details"] = (Everyone, x => $"/Provider/Tenants/Details/{x.TenantId}"),
+        ["/Tenants/AddNote"] = (Everyone, x => $"/Provider/Tenants/AddNote/{x.TenantId}"),
+        ["/Tenants/New"] = (OwnerOnly, _ => "/Provider/Tenants/New"),
+        ["/Tenants/Edit"] = (OwnerOnly, x => $"/Provider/Tenants/Edit/{x.TenantId}"),
+        ["/Tenants/Suspend"] = (OwnerOnly, x => $"/Provider/Tenants/Suspend/{x.TenantId}"),
+        ["/Tenants/Reactivate"] = (OwnerOnly, x => $"/Provider/Tenants/Reactivate/{x.TenantId}"),
+        ["/Tenants/TransferOwnership"] = (OwnerOnly, x => $"/Provider/Tenants/TransferOwnership/{x.TenantId}?userId={x.AdminUserId}"),
     };
 
     private async Task<Guid> PlanIdAsync()
@@ -123,14 +136,14 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
             }
         }
 
-        var planId = await PlanIdAsync();
+        var ids = new Ids(await PlanIdAsync(), _app.Data.Alpha.Id, _app.Data.Alpha.Owner!.UserId);
         foreach (var (page, (roles, url)) in SubPages)
         {
-            Assert.EndsWith("/Provider/Login", Location(await anonymous.GetAsync(url(planId))));
-            Assert.EndsWith("/Provider/AccessDenied", Location(await orgAdmin.GetAsync(url(planId))));
+            Assert.EndsWith("/Provider/Login", Location(await anonymous.GetAsync(url(ids))));
+            Assert.EndsWith("/Provider/AccessDenied", Location(await orgAdmin.GetAsync(url(ids))));
             foreach (var (role, client) in clients)
             {
-                using var response = await client.GetAsync(url(planId));
+                using var response = await client.GetAsync(url(ids));
                 if (roles.Contains(role))
                     Assert.True(response.StatusCode == HttpStatusCode.OK, $"{role} should open {page}: {(int)response.StatusCode} {Location(response)}");
                 else

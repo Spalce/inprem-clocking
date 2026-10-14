@@ -40,6 +40,7 @@ public class AppUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<AppUser,
             var identity = (ClaimsIdentity)principal.Identity!;
             identity.AddClaim(new Claim(TenantClaimTypes.TenantId, active[0].TenantId.ToString()));
             identity.AddClaim(new Claim(PlatformClaimTypes.MembershipId, active[0].MembershipId.ToString()));
+            await _memberships.RecordSignInAsync(active[0].MembershipId);
         }
 
         return principal;

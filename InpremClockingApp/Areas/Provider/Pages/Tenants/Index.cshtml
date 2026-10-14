@@ -1,9 +1,83 @@
 @page
+@model InpremClockingApp.Areas.Provider.Pages.Tenants.IndexModel
+@using Microsoft.AspNetCore.Authorization
+@inject IAuthorizationService Authorization
 @{
     ViewData["Title"] = "Organizations";
     Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+    var canCreate = (await Authorization.AuthorizeAsync(User, ProviderPolicies.Owner)).Succeeded;
+    var result = Model.Result;
 }
 
-<h1 class="pc-title">Organizations</h1>
-<p class="pc-subtitle">Every organization using the platform.</p>
-<partial name="/Areas/Provider/Pages/Shared/_ComingSoon.cshtml" model="@("step 1.2 (Organizations)")" />
+<div class="pc-heading">
+  <div>
+    <h1 class="pc-title">Organizations</h1>
+    <p class="pc-subtitle">Every organization using the platform.</p>
+  </div>
+  @if (canCreate)
+  {
+      <a asp-page="New" class="pc-btn pc-btn-primary" data-testid="new"><i class="fas fa-plus"></i> New organization</a>
+  }
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="pc-success" data-testid="success">@success</div>
+}
+
+<form method="get" class="pc-filters">
+  <input name="Search" value="@Model.Search" placeholder="Name, address name or owner email" aria-label="Search" />
+  <select name="Status" aria-label="Status">
+    <option value="">All statuses</option>
+    @foreach (var status in Enum.GetValues<OrganizationStatus>())
+    {
+        <option value="@status" selected="@(Model.Status == status)">@status</option>
+    }
+  </select>
+  <select name="PlanId" aria-label="Plan">
+    <option value="">All plans</option>
+    @foreach (var plan in Model.Plans)
+    {
+        <option value="@plan.Id" selected="@(Model.PlanId == plan.Id)">@plan.Name</option>
+    }
+  </select>
+  <label class="pc-muted">Created from <input type="date" name="CreatedFrom" value="@Model.CreatedFrom?.ToString("yyyy-MM-dd")" /></label>
+  <label class="pc-muted">to <input type="date" name="CreatedTo" value="@Model.CreatedTo?.ToString("yyyy-MM-dd")" /></label>
+  <button type="submit" class="pc-btn">Filter</button>
+</form>
+
+<table class="pc-table" data-testid="organizations">
+  <thead>
+    <tr><th>Name</th><th>Address name</th><th>Status</th><th>Plan</th><th>People</th><th>Last activity</th><th>Created</th></tr>
+  </thead>
+  <tbody>
+  @foreach (var org in result.Items)
+  {
+      <tr>
+        <td><a asp-page="Details" asp-route-id="@org.TenantId">@org.Name</a></td>
+        <td><code>@org.Slug</code></td>
+        <td><span class="pc-badge pc-badge-@org.Status.ToString().ToLowerInvariant()">@org.Status</span></td>
+        <td>@(org.PlanName ?? "—")</td>
+        <td>@org.People</td>
+        <td>@(org.LastActivityUtc?.ToString("yyyy-MM-dd") ?? "—")</td>
+        <td>@org.CreatedUtc.ToString("yyyy-MM-dd")</td>
+      </tr>
+  }
+  @if (result.Items.Count == 0)
+  {
+      <tr><td colspan="7" class="pc-muted">No organizations match.</td></tr>
+  }
+  </tbody>
+</table>
+
+<div class="pc-pager" data-testid="pager">
+  <span class="pc-muted">@result.Total organization(s) &middot; page @result.Page of @result.Pages</span>
+  @if (result.Page > 1)
+  {
+      <a asp-page="Index" asp-all-route-data="Model.PageRoute(result.Page - 1)" class="pc-btn pc-btn-small">Previous</a>
+  }
+  @if (result.Page < result.Pages)
+  {
+      <a asp-page="Index" asp-all-route-data="Model.PageRoute(result.Page + 1)" class="pc-btn pc-btn-small">Next</a>
+  }
+</div>

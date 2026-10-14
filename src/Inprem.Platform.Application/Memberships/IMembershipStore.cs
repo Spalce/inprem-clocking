@@ -31,6 +31,9 @@ public interface IMembershipStore
 
     /// <summary>Saves changes made to memberships returned by FindAsync/FindByIdAsync.</summary>
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Stamps the membership's last sign-in time (Provider Console, Admins tab).</summary>
+    Task RecordSignInAsync(Guid membershipId, DateTime nowUtc, CancellationToken cancellationToken = default);
 }
 
 public sealed record MemberStatus(string UserId, MembershipStatus Status);

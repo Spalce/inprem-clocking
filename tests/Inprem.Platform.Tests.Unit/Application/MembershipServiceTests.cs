@@ -290,6 +290,14 @@ public class MembershipServiceTests
         public Task<IReadOnlyList<MemberStatus>> ListMembersAsync(int tenantId, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<MemberStatus>>(Memberships.Where(m => m.TenantId == tenantId).Select(m => new MemberStatus(m.UserId, m.Status)).ToList());
 
+        public List<Guid> SignIns { get; } = new();
+
+        public Task RecordSignInAsync(Guid membershipId, DateTime nowUtc, CancellationToken cancellationToken = default)
+        {
+            SignIns.Add(membershipId);
+            return Task.CompletedTask;
+        }
+
         public Task SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             SaveCalls++;

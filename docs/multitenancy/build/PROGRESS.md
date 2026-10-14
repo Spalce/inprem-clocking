@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 0 Foundation (in progress)
-- **Next step:** Phase 1 / Step 1.2 — Organizations (done after 1.3, which it depends on)
+- **Next step:** Phase 1 / Step 1.4 — Provider users and peer reset
 - **Branch:** `mt/phase0` (from `mt/integration` `1b59b6b`)
 
 ## Phase status
@@ -14,7 +14,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 |---|---|---|---|
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
 | 0 Foundation | Implementation complete (0.1–0.8, 0.10; 0.9 moved to Phase 7). Deployment-dependent exit checks (P0-6 Level 3, P0-9 real copy, P0-11, P0-12) wait for the test-site deployment (developer's decision: deploy after all phases) | — | — |
-| 1 Provider Console | In progress (Steps 1.1, 1.3 done) | — | — |
+| 1 Provider Console | In progress (Steps 1.1–1.3 done) | — | — |
 | 2 PayPal core | Not started | — | — |
 | 3 Website API | Not started | — | — |
 | 4 Invoices | Not started | — | — |
@@ -101,6 +101,32 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-14 — Phase 1 / Step 1.2 — Organizations.**
+  - **Domain:** `TenantProfile` (unique slug: 3–50 characters, lower-case, reserved names refused; status Active/Suspended with reason), `TenantNote`, `Subscription`.
+    - Design 8 states. Phase 1 starts PayPal as Trialing (at least 1 day, since paying starts in Phase 2), Invoiced as Trialing or Active, Free as Active.
+    - `TenantMembership.LastSignInUtc` is recorded at every admin sign-in (claims factory and "Choose organization").
+  - **`OrganizationService`:** list (search name / slug / owner email; filters status, plan, created dates; pages of 25), per-step wizard checks, create, edit, suspend / reactivate (reason required), notes, resend invitation, password reset, transfer ownership. Every action writes exactly one audit entry carrying the organization's id.
+  - **Creation is one transaction across both schemas** (app context plus a platform context on the same connection):
+    - creates the organization, the old app's billing row (its C4 pages still expect it), the owner account (new: no password, Admin role), the Owner membership (Active for a new account, Invited for an existing one), the profile, the subscription and the audit entry;
+    - a failure leaves nothing (tested with a database trigger) and the page says "nothing was saved";
+    - the email goes after the commit. A new owner gets a "choose your password" link (Identity reset link to the approved reset page, 24 hours); an existing account gets an invitation to accept. If sending fails, the organization stays, with a warning and "Resend invitation".
+  - **Pages:**
+    - list with filters and pagination;
+    - 4-step wizard with a live address-name check (`wwwroot/provider/console.js`);
+    - detail with 8 tabs (Overview, Subscription, Invoices placeholder, Admins with last sign-in, two-factor and actions, Kiosk placeholder, Messages placeholder, Audit, Notes);
+    - separate Edit, Suspend, Reactivate, Add note and Transfer ownership pages.
+  - **Permissions:** viewing, notes, resend and reset are for every provider user; create, edit, suspend, reactivate and transfer are for Owners. Transfer needs a code from the last 5 minutes (`[RequireRecentTwoFactor]`, now tested end to end).
+  - **Suspension** is recorded with its reason; read-only enforcement comes with billing in Phase 2 (C3-3), as designed, and the page says so.
+  - **Migration M1d:** profiles, notes and subscriptions, plus the membership column. It backfills a profile for every organization (`org-{Id}`; Suspended where `IsActive` = 0). Organizations created later by older paths get one on first change. Rehearsed.
+  - **The console reads the app's tables past their per-organization filters on purpose**, including `Tenants`, whose filter hid new organizations at first.
+  - **Tests:**
+    - Unit +17: slugs, status, notes, subscription starts.
+    - Integration +5: the wizard end to end (owner sets a password from the email and reaches the back office: P1-3), existing-account owner invited, atomic failure, every detail action with one audit entry each, list search / filter / paging.
+    - The role matrix covers all 7 new pages.
+    - The M2 backfill test reads only M2's columns.
+  - **Results:** Unit 116, Architecture 11, Baseline 320, Integration 89, UI 5. No model drift; no new advisories.
+  - **Deployment note:** the step 1.2 build needs platform migrations M1c and M1d applied first (local databases too).
 
 - **2026-10-14 — Phase 1 / Step 1.3 — Plans (local only), done before 1.2.** The organization wizard (1.2) needs plans to choose from, so the order was swapped.
   - **Domain** `Plan` and `PlanPrice`, platform tables via migration **M1c**:

@@ -1,0 +1,26 @@
+@page "{id:int}"
+@model InpremClockingApp.Areas.Provider.Pages.Tenants.SuspendModel
+@{
+    ViewData["Title"] = "Suspend organization";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<p><a asp-page="Details" asp-route-id="@RouteData.Values["id"]">&larr; Back to the organization</a></p>
+<h1 class="pc-title">Suspend @Model.Name?</h1>
+<p class="pc-subtitle">The organization is marked suspended, with your reason, and its owners see the reason in the audit trail. From Phase 2, a suspended organization becomes read-only: it can still sign in, report and export, but not save.</p>
+
+@if (Model.Error != null)
+{
+    <div class="pc-error" data-testid="error">@Model.Error</div>
+}
+
+<form method="post" class="pc-card pc-form">
+  <div class="pc-field">
+    <label for="Reason">Reason <span class="pc-muted">(required; recorded in the audit log)</span></label>
+    <textarea id="Reason" name="Reason" rows="3" maxlength="500" required>@Model.Reason</textarea>
+  </div>
+  <div class="pc-actions">
+    <button type="submit" class="pc-btn pc-btn-danger" data-testid="confirm">Suspend</button>
+    <a asp-page="Details" asp-route-id="@RouteData.Values["id"]" class="pc-btn">Cancel</a>
+  </div>
+</form>

@@ -1,0 +1,34 @@
+@page "{id:int}"
+@model InpremClockingApp.Areas.Provider.Pages.Tenants.EditModel
+@{
+    ViewData["Title"] = "Edit organization";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<p><a asp-page="Details" asp-route-id="@RouteData.Values["id"]">&larr; Back to the organization</a></p>
+<h1 class="pc-title">Edit organization</h1>
+
+@if (Model.Error != null)
+{
+    <div class="pc-error" data-testid="error">@Model.Error</div>
+}
+
+<form method="post" class="pc-card pc-form">
+  <div class="pc-field"><label for="Name">Name</label><input id="Name" name="Name" value="@Model.Name" maxlength="200" required /></div>
+  <div class="pc-field"><label for="Slug">Address name</label><input id="Slug" name="Slug" value="@Model.Slug" maxlength="50" required /></div>
+  <div class="pc-field">
+    <label for="TimeZoneId">Time zone</label>
+    <select id="TimeZoneId" name="TimeZoneId">
+      @foreach (var (id, label) in OrganizationUi.TimeZones)
+      {
+          <option value="@id" selected="@(id == Model.TimeZoneId)">@label</option>
+      }
+    </select>
+  </div>
+  <div class="pc-field"><label for="Address">Address</label><input id="Address" name="Address" value="@Model.Address" maxlength="255" /></div>
+  <div class="pc-field"><label for="ContactInfo">Contact</label><input id="ContactInfo" name="ContactInfo" value="@Model.ContactInfo" maxlength="255" /></div>
+  <div class="pc-actions">
+    <button type="submit" class="pc-btn pc-btn-primary">Save</button>
+    <a asp-page="Details" asp-route-id="@RouteData.Values["id"]" class="pc-btn">Cancel</a>
+  </div>
+</form>

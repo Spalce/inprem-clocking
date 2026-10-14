@@ -1,6 +1,7 @@
 using Inprem.Platform.Domain.Audit;
 using Inprem.Platform.Domain.Billing;
 using Inprem.Platform.Domain.Memberships;
+using Inprem.Platform.Domain.Organizations;
 using Inprem.Platform.Domain.Provider;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -45,6 +46,10 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<Plan> Plans { get; set; } = null!;
     public DbSet<PlanPrice> PlanPrices { get; set; } = null!;
 
+    public DbSet<TenantProfile> TenantProfiles { get; set; } = null!;
+    public DbSet<TenantNote> TenantNotes { get; set; } = null!;
+    public DbSet<Subscription> Subscriptions { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);
@@ -61,6 +66,7 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
             membership.Property(m => m.Role).HasConversion<string>().HasMaxLength(20);
             membership.Property(m => m.Status).HasConversion<string>().HasMaxLength(20);
             membership.Property(m => m.CreatedUtc).HasColumnType("datetime2");
+            membership.Property(m => m.LastSignInUtc).HasColumnType("datetime2");
             membership.Ignore(m => m.IsActive);
             // One membership per person per organization; Revoked rows stay as history.
             membership.HasIndex(m => new { m.UserId, m.TenantId }).IsUnique();
@@ -169,6 +175,39 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
             price.Property(p => p.PayPalPlanId).HasMaxLength(50);
             price.Property(p => p.Status).HasConversion<string>().HasMaxLength(20);
             price.HasIndex(p => p.PlanId);
+        });
+
+        modelBuilder.Entity<TenantProfile>(profile =>
+        {
+            profile.ToTable("TenantProfiles");
+            profile.HasKey(p => p.TenantId);
+            profile.Property(p => p.TenantId).ValueGeneratedNever();
+            profile.Property(p => p.Slug).HasMaxLength(50).IsUnicode(false);
+            profile.Property(p => p.Status).HasConversion<string>().HasMaxLength(20);
+            profile.Property(p => p.StatusReason).HasMaxLength(500);
+            profile.HasIndex(p => p.Slug).IsUnique();
+        });
+
+        modelBuilder.Entity<TenantNote>(note =>
+        {
+            note.ToTable("TenantNotes");
+            note.HasKey(n => n.Id);
+            note.Property(n => n.Id).ValueGeneratedNever();
+            note.Property(n => n.Text).HasMaxLength(2000);
+            note.Property(n => n.Author).HasMaxLength(300);
+            note.HasIndex(n => new { n.TenantId, n.CreatedUtc });
+        });
+
+        modelBuilder.Entity<Subscription>(subscription =>
+        {
+            subscription.ToTable("Subscriptions");
+            subscription.HasKey(s => s.Id);
+            subscription.Property(s => s.Id).ValueGeneratedNever();
+            subscription.Property(s => s.Mode).HasConversion<string>().HasMaxLength(20);
+            subscription.Property(s => s.Status).HasConversion<string>().HasMaxLength(30);
+            subscription.HasIndex(s => s.TenantId).IsUnique();
+            subscription.HasOne<Plan>().WithMany().HasForeignKey(s => s.PlanId).OnDelete(DeleteBehavior.Restrict);
+            subscription.HasOne<PlanPrice>().WithMany().HasForeignKey(s => s.PlanPriceId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<AccountRow>(account =>

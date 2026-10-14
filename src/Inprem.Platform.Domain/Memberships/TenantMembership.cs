@@ -32,6 +32,11 @@ public sealed class TenantMembership
     public string? InvitedByUserId { get; private set; }
     public DateTime CreatedUtc { get; private set; }
 
+    /// <summary>When this membership was last used to sign in (Provider Console, Admins tab).</summary>
+    public DateTime? LastSignInUtc { get; private set; }
+
+    public void RecordSignIn(DateTime nowUtc) => LastSignInUtc = nowUtc;
+
     public bool IsActive => Status == MembershipStatus.Active;
 
     /// <summary>An Active membership, e.g. for an existing admin account (backfill, first sign-in).</summary>

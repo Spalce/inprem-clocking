@@ -46,6 +46,9 @@ public interface IMembershipService
 
     /// <summary>Declines one of the user's own pending invitations. False when it is not theirs or not pending.</summary>
     Task<bool> DeclineAsync(string userId, Guid membershipId, CancellationToken cancellationToken = default);
+
+    /// <summary>Records that the membership was used to sign in now.</summary>
+    Task RecordSignInAsync(Guid membershipId, CancellationToken cancellationToken = default);
 }
 
 public enum InviteOutcome
@@ -143,6 +146,9 @@ public sealed class MembershipService : IMembershipService
 
     public Task<IReadOnlyList<MemberStatus>> ListMembersAsync(int tenantId, CancellationToken cancellationToken = default) =>
         _store.ListMembersAsync(tenantId, cancellationToken);
+
+    public Task RecordSignInAsync(Guid membershipId, CancellationToken cancellationToken = default) =>
+        _store.RecordSignInAsync(membershipId, _clock.UtcNow, cancellationToken);
 
     public Task<bool> AcceptAsync(string userId, Guid membershipId, CancellationToken cancellationToken = default) =>
         ChangeInvitationAsync(userId, membershipId, m => m.Activate(), cancellationToken);

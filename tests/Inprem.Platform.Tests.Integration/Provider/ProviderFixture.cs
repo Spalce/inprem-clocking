@@ -108,10 +108,11 @@ public static class ProviderForms
     public static async Task<string> BodyAsync(HttpResponseMessage response) => await response.Content.ReadAsStringAsync();
 
     /// <summary>The path and query of the last link in the last email to <paramref name="to"/> that has one.</summary>
-    public static string LinkSentTo(CapturingEmailSender emails, string to)
+    public static string LinkSentTo(CapturingEmailSender emails, string to, string marker = "token=")
     {
-        var body = emails.To(to).Last(e => e.HtmlBody.Contains("token=", StringComparison.Ordinal)).HtmlBody;
-        var start = body.IndexOf("href=\"", StringComparison.Ordinal) + "href=\"".Length;
+        var body = emails.To(to).Last(e => e.HtmlBody.Contains(marker, StringComparison.Ordinal)).HtmlBody;
+        // The link whose address contains the marker: the href just before it.
+        var start = body.LastIndexOf("href=\"", body.IndexOf(marker, StringComparison.Ordinal), StringComparison.Ordinal) + "href=\"".Length;
         var url = WebUtility.HtmlDecode(body[start..body.IndexOf('"', start)]);
         return new Uri(url).PathAndQuery;
     }

@@ -13,6 +13,7 @@ public static class DependencyInjection
         services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<TenantContext>());
         services.AddScoped<IMembershipService, MembershipService>();
         services.AddScoped<Billing.PlanService>();
+        services.AddScoped<Organizations.OrganizationService>();
         return services;
     }
 }

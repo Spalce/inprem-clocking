@@ -56,6 +56,14 @@ public sealed class MembershipStore : IMembershipStore
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) => _db.SaveChangesAsync(cancellationToken);
 
+    public async Task RecordSignInAsync(Guid membershipId, DateTime nowUtc, CancellationToken cancellationToken = default)
+    {
+        var membership = await _db.TenantMemberships.FirstOrDefaultAsync(m => m.Id == membershipId, cancellationToken).ConfigureAwait(false);
+        if (membership == null) return;
+        membership.RecordSignIn(nowUtc);
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
     private sealed class ActiveRow
     {
         public Guid MembershipId { get; init; }

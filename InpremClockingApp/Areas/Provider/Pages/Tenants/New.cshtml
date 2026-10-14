@@ -1,0 +1,178 @@
+@page
+@model InpremClockingApp.Areas.Provider.Pages.Tenants.NewModel
+@{
+    ViewData["Title"] = "New organization";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+    var step = Model.Step;
+    var slugCheck = Url.Page("New", "Slug") + (Url.Page("New", "Slug")!.Contains('?') ? "" : "?");
+}
+
+<p><a asp-page="Index">&larr; Organizations</a></p>
+<h1 class="pc-title">New organization</h1>
+
+<ol class="pc-steps" data-testid="steps">
+  @for (var i = 1; i <= NewModel.Steps; i++)
+  {
+      <li class="@(i == step ? "pc-step-current" : i < step ? "pc-step-done" : null)">@i. @NewModel.StepNames[i - 1]</li>
+  }
+</ol>
+
+@if (Model.Errors.Count > 0)
+{
+    <div class="pc-error" data-testid="error">
+      @foreach (var error in Model.Errors)
+      {
+          <div>@error</div>
+      }
+    </div>
+}
+
+<form method="post" class="pc-card pc-form" data-testid="wizard-step-@step">
+  <input type="hidden" name="Step" value="@step" />
+
+  @* Values of the other steps travel along. *@
+  @if (step != 1)
+  {
+      <input type="hidden" name="Name" value="@Model.Name" />
+      <input type="hidden" name="Slug" value="@Model.Slug" />
+      <input type="hidden" name="TimeZoneId" value="@Model.TimeZoneId" />
+      <input type="hidden" name="Address" value="@Model.Address" />
+      <input type="hidden" name="ContactInfo" value="@Model.ContactInfo" />
+  }
+  @if (step != 2)
+  {
+      <input type="hidden" name="OwnerFirstName" value="@Model.OwnerFirstName" />
+      <input type="hidden" name="OwnerLastName" value="@Model.OwnerLastName" />
+      <input type="hidden" name="OwnerEmail" value="@Model.OwnerEmail" />
+      <input type="hidden" name="OwnerMobile" value="@Model.OwnerMobile" />
+  }
+  @if (step != 3)
+  {
+      <input type="hidden" name="PlanChoice" value="@Model.PlanChoice" />
+      <input type="hidden" name="Mode" value="@Model.Mode" />
+      <input type="hidden" name="TrialDays" value="@Model.TrialDays" />
+  }
+
+  @if (step == 1)
+  {
+      <div class="pc-field">
+        <label for="Name">Organization name</label>
+        <input id="Name" name="Name" value="@Model.Name" maxlength="200" required data-slug-source />
+      </div>
+      <div class="pc-field">
+        <label for="Slug">Address name <span class="pc-muted">(lower-case letters, digits and dashes; unique)</span></label>
+        <input id="Slug" name="Slug" value="@Model.Slug" maxlength="50" required data-slug-input data-slug-check="@slugCheck" autocomplete="off" />
+        <span data-slug-status aria-live="polite"></span>
+      </div>
+      <div class="pc-field">
+        <label for="TimeZoneId">Time zone</label>
+        <select id="TimeZoneId" name="TimeZoneId">
+          @foreach (var (id, label) in OrganizationUi.TimeZones)
+          {
+              <option value="@id" selected="@(id == Model.TimeZoneId)">@label</option>
+          }
+        </select>
+      </div>
+      <div class="pc-field">
+        <label for="Address">Address <span class="pc-muted">(shown on reports)</span></label>
+        <input id="Address" name="Address" value="@Model.Address" maxlength="255" />
+      </div>
+      <div class="pc-field">
+        <label for="ContactInfo">Contact <span class="pc-muted">(phone, email; shown on reports)</span></label>
+        <input id="ContactInfo" name="ContactInfo" value="@Model.ContactInfo" maxlength="255" />
+      </div>
+  }
+  else if (step == 2)
+  {
+      <div class="pc-row">
+        <div class="pc-field">
+          <label for="OwnerFirstName">Owner's first name</label>
+          <input id="OwnerFirstName" name="OwnerFirstName" value="@Model.OwnerFirstName" maxlength="100" required />
+        </div>
+        <div class="pc-field">
+          <label for="OwnerLastName">Last name</label>
+          <input id="OwnerLastName" name="OwnerLastName" value="@Model.OwnerLastName" maxlength="100" required />
+        </div>
+      </div>
+      <div class="pc-field">
+        <label for="OwnerEmail">Owner's email</label>
+        <input id="OwnerEmail" name="OwnerEmail" type="email" value="@Model.OwnerEmail" maxlength="256" required />
+      </div>
+      <div class="pc-field">
+        <label for="OwnerMobile">Mobile <span class="pc-muted">(optional)</span></label>
+        <input id="OwnerMobile" name="OwnerMobile" value="@Model.OwnerMobile" maxlength="20" />
+      </div>
+  }
+  else if (step == 3)
+  {
+      <div class="pc-field">
+        <label for="PlanChoice">Plan and price</label>
+        <select id="PlanChoice" name="PlanChoice">
+          <option value="">No plan (Free only)</option>
+          @foreach (var plan in Model.OfferedPlans)
+          {
+              foreach (var price in plan.Prices.Where(p => p.Status == PlanStatus.Active))
+              {
+                  var value = $"{plan.Id}|{price.Id}";
+                  <option value="@value" selected="@(Model.PlanChoice == value)">@plan.Name — @Inprem.Platform.Application.Billing.PlanService.Describe(price) (trial @plan.TrialDays days)</option>
+              }
+          }
+        </select>
+        @if (Model.OfferedPlans.Count == 0)
+        {
+            <span class="pc-muted">No plans are offered yet: create one under Plans, or choose Free.</span>
+        }
+      </div>
+      <div class="pc-field">
+        <label for="Mode">Billing</label>
+        <select id="Mode" name="Mode">
+          <option value="@BillingMode.PayPal" selected="@(Model.Mode == BillingMode.PayPal)">PayPal subscription (from Phase 2; a free trial until then)</option>
+          <option value="@BillingMode.Invoiced" selected="@(Model.Mode == BillingMode.Invoiced)">Invoiced (paid by invoice)</option>
+          <option value="@BillingMode.Free" selected="@(Model.Mode == BillingMode.Free)">Free</option>
+        </select>
+      </div>
+      <div class="pc-field">
+        <label for="TrialDays">Free trial (days)</label>
+        <input id="TrialDays" name="TrialDays" type="number" min="0" max="365" value="@Model.TrialDays" />
+      </div>
+  }
+  else
+  {
+      <dl class="pc-dl" data-testid="review">
+        <dt>Organization</dt><dd>@Model.Name</dd>
+        <dt>Address name</dt><dd><code>@Model.Slug</code></dd>
+        <dt>Time zone</dt><dd>@Model.TimeZoneId</dd>
+        <dt>Address</dt><dd>@(string.IsNullOrWhiteSpace(Model.Address) ? "—" : Model.Address)</dd>
+        <dt>Contact</dt><dd>@(string.IsNullOrWhiteSpace(Model.ContactInfo) ? "—" : Model.ContactInfo)</dd>
+        <dt>Owner</dt><dd>@Model.OwnerFirstName @Model.OwnerLastName &lt;@Model.OwnerEmail&gt;@(string.IsNullOrWhiteSpace(Model.OwnerMobile) ? "" : $", {Model.OwnerMobile}")</dd>
+        <dt>Plan</dt><dd>@Model.ChosenPlanText()</dd>
+        <dt>Billing</dt><dd>@Model.Mode@(Model.Mode != BillingMode.Free && Model.TrialDays > 0 ? $", {Model.TrialDays}-day trial" : "")</dd>
+      </dl>
+      <p class="pc-muted" data-testid="owner-note">
+        @if (Model.OwnerHasAccount)
+        {
+            <span>@Model.OwnerEmail already has an account: they are invited and become owner when they accept after signing in.</span>
+        }
+        else
+        {
+            <span>@Model.OwnerEmail gets an email with a link to choose their password (valid 24 hours).</span>
+        }
+      </p>
+  }
+
+  <div class="pc-actions">
+    @if (step > 1)
+    {
+        <button type="submit" name="move" value="back" class="pc-btn" formnovalidate>Back</button>
+    }
+    @if (step < NewModel.Steps)
+    {
+        <button type="submit" name="move" value="next" class="pc-btn pc-btn-primary">Next</button>
+    }
+    else
+    {
+        <button type="submit" name="move" value="create" class="pc-btn pc-btn-primary" data-testid="create">Create organization</button>
+    }
+    <a asp-page="Index" class="pc-btn">Cancel</a>
+  </div>
+</form>

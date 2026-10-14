@@ -51,7 +51,9 @@ public class MembershipBackfillMigrationTests
 
         await migrator.MigrateAsync(M2);
 
-        var memberships = await platform.TenantMemberships.AsNoTracking().ToListAsync();
+        // Only the columns M2 creates (later migrations add more, e.g. LastSignInUtc in M1d).
+        var memberships = await platform.TenantMemberships.AsNoTracking()
+            .Select(m => new Row(m.UserId, m.TenantId, m.Role, m.Status)).ToListAsync();
         Assert.Equal(3, memberships.Count);
         Assert.All(memberships, m => Assert.Equal(MembershipStatus.Active, m.Status));
         Assert.Equal((solo, MembershipRole.Owner), Single(memberships, soloAdmin));
@@ -66,6 +68,8 @@ public class MembershipBackfillMigrationTests
         Assert.Equal(3, await platform.TenantMemberships.CountAsync());
     }
 
+    private sealed record Row(string UserId, int TenantId, MembershipRole Role, MembershipStatus Status);
+
     [Fact]
     public async Task Migration_M2_Foreign_Keys_Protect_The_Data()
     {
@@ -78,7 +82,7 @@ public class MembershipBackfillMigrationTests
         Assert.Contains("FK_TenantMemberships_AspNetUsers_UserId", error.InnerException!.Message);
     }
 
-    private static (int TenantId, MembershipRole Role) Single(List<TenantMembership> memberships, string userId)
+    private static (int TenantId, MembershipRole Role) Single(List<Row> memberships, string userId)
     {
         var membership = Assert.Single(memberships, m => m.UserId == userId);
         return (membership.TenantId, membership.Role);

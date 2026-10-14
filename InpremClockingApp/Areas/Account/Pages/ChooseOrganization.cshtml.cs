@@ -55,6 +55,7 @@ public class ChooseOrganizationModel : PageModel
             new Claim(PlatformClaimTypes.MembershipId, chosen.MembershipId.ToString()),
         });
 
+        await _memberships.RecordSignInAsync(chosen.MembershipId);
         return LocalRedirect(Destination);
     }
 

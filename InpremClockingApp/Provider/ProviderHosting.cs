@@ -27,6 +27,8 @@ public static class ProviderHosting
         services.AddScoped<ProviderAccessCheck>();
         services.AddScoped<ProviderAccessFilter>();
         services.AddScoped<ProviderSession>();
+        services.AddScoped<Inprem.Platform.Application.Organizations.IOrganizationStore, Organizations.OrganizationStore>();
+        services.AddScoped<Inprem.Platform.Application.Organizations.IOrganizationMail, Organizations.OrganizationMail>();
 
         // Roles (step 1.1): ProviderSupport / ProviderBilling / ProviderOwner.
         services.AddScoped<IAuthorizationHandler, ProviderRoleHandler>();

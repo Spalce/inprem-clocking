@@ -153,6 +153,48 @@ namespace Inprem.Platform.Infrastructure.Persistence.Migrations
                     b.ToTable("PlanPrices", "platform");
                 });
 
+            modelBuilder.Entity("Inprem.Platform.Domain.Billing.Subscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid?>("PlanId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("PlanPriceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("TrialEndsUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlanId");
+
+                    b.HasIndex("PlanPriceId");
+
+                    b.HasIndex("TenantId")
+                        .IsUnique();
+
+                    b.ToTable("Subscriptions", "platform");
+                });
+
             modelBuilder.Entity("Inprem.Platform.Domain.Memberships.TenantMembership", b =>
                 {
                     b.Property<Guid>("Id")
@@ -164,6 +206,9 @@ namespace Inprem.Platform.Infrastructure.Persistence.Migrations
                     b.Property<string>("InvitedByUserId")
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("LastSignInUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Role")
                         .IsRequired()
@@ -191,6 +236,68 @@ namespace Inprem.Platform.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("TenantMemberships", "platform");
+                });
+
+            modelBuilder.Entity("Inprem.Platform.Domain.Organizations.TenantNote", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Author")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "CreatedUtc");
+
+                    b.ToTable("TenantNotes", "platform");
+                });
+
+            modelBuilder.Entity("Inprem.Platform.Domain.Organizations.TenantProfile", b =>
+                {
+                    b.Property<int>("TenantId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime?>("StatusChangedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("StatusReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("TenantId");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.ToTable("TenantProfiles", "platform");
                 });
 
             modelBuilder.Entity("Inprem.Platform.Domain.Provider.Invitation", b =>
@@ -485,6 +592,19 @@ namespace Inprem.Platform.Infrastructure.Persistence.Migrations
                         .HasForeignKey("PlanId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Inprem.Platform.Domain.Billing.Subscription", b =>
+                {
+                    b.HasOne("Inprem.Platform.Domain.Billing.Plan", null)
+                        .WithMany()
+                        .HasForeignKey("PlanId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Inprem.Platform.Domain.Billing.PlanPrice", null)
+                        .WithMany()
+                        .HasForeignKey("PlanPriceId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Inprem.Platform.Domain.Billing.Plan", b =>
