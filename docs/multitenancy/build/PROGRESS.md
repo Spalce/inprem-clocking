@@ -121,6 +121,7 @@ _(date — what was tested — result)_
     - Integration +3: invite → setup → role change with re-authentication → Level 2 reset (session ends at once) → disable (sign-in refused), audit and notifications; a second owner removes the go-live warning (health Healthy); resend replaces the link.
     - The role matrix covers the 5 new pages.
   - **Results:** Unit 122, Architecture 11, Baseline 320, Integration 92, UI 5.
+  - **UI flake to watch:** in one run the browser (UI) suite had 1 failure, at about twice its usual duration (56 s instead of 24 s). The output was not captured, so the failing test is unknown. Four reruns all passed. If it happens again, keep the log; a longer wait in that test is the likely fix.
 
 - **2026-10-14 — Phase 1 / Step 1.2 — Organizations.**
   - **Domain:** `TenantProfile` (unique slug: 3–50 characters, lower-case, reserved names refused; status Active/Suspended with reason), `TenantNote`, `Subscription`.
