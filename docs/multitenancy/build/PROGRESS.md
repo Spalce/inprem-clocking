@@ -76,6 +76,14 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 
 ## Manual / sandbox test records
 
+- **2026-10-14 — Developer's local test, provider bootstrap (checklist B1–B6): passed.**
+  - First Provider Owner created through `/Provider/setup`.
+  - Setup link opened, password set, Google Authenticator enrolled with the QR code, recovery codes shown, console reached. Database: owner Active with two-factor; audit trail complete.
+  - Found and fixed on the way:
+    - typing the key failed in Google Authenticator → the QR code was added;
+    - the local SMTP server was unreachable and the half-done bootstrap blocked retries → bootstrap now undoes itself on email failure, and Development can save emails to a folder (`Email:DropFolder`);
+    - new package advisories → patched crypto packages pinned.
+
 - **2026-10-13 — Local database prepared for the Phase 0 manual test** (by Claude Code, at the developer's request).
   - `DB_A65635_inpremdb` on `localhost`: backed up (verified), then `phase0-up.sql` applied.
   - The first run stopped safely at the M3 guard (error 50003): the developer's own email had admin accounts in organizations 10 and 12. With the developer's approval, they were merged into one account, Owner of both organizations. The re-run completed, and all six verify scripts gave the expected values.
