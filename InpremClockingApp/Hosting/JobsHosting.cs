@@ -78,7 +78,9 @@ public static class JobsHosting
             Authorization = Array.Empty<IDashboardAuthorizationFilter>(),
             AsyncAuthorization = new[] { new ProviderOwnerDashboardFilter() },
             DisplayStorageConnectionString = false,
-        });
+        },
+        // This app's own storage, not Hangfire's process-wide JobStorage.Current (last writer wins).
+        endpoints.ServiceProvider.GetRequiredService<JobStorage>());
         dashboard.WithMetadata(ProviderEndpointMetadata.Instance);
         if (site.HostFor(SiteMode.Admin) is { } host) dashboard.RequireHost(host);
         return endpoints;

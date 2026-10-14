@@ -45,7 +45,7 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
     /// Pages below the menu: who may open them (written out independently), and their address for
     /// a plan id. Plans: everyone views; Billing and Owners change.
     /// </summary>
-    private sealed record Ids(Guid PlanId, int TenantId, string AdminUserId);
+    private sealed record Ids(Guid PlanId, int TenantId, string AdminUserId, string ProviderUserId);
 
     private static readonly ProviderRole[] Everyone = { ProviderRole.Support, ProviderRole.Billing, ProviderRole.Owner };
     private static readonly ProviderRole[] BillingAndOwner = { ProviderRole.Billing, ProviderRole.Owner };
@@ -64,6 +64,11 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
         ["/Tenants/Suspend"] = (OwnerOnly, x => $"/Provider/Tenants/Suspend/{x.TenantId}"),
         ["/Tenants/Reactivate"] = (OwnerOnly, x => $"/Provider/Tenants/Reactivate/{x.TenantId}"),
         ["/Tenants/TransferOwnership"] = (OwnerOnly, x => $"/Provider/Tenants/TransferOwnership/{x.TenantId}?userId={x.AdminUserId}"),
+        ["/Users/Details"] = (OwnerOnly, x => $"/Provider/Users/Details/{x.ProviderUserId}"),
+        ["/Users/Invite"] = (OwnerOnly, _ => "/Provider/Users/Invite"),
+        ["/Users/Role"] = (OwnerOnly, x => $"/Provider/Users/Role/{x.ProviderUserId}"),
+        ["/Users/Disable"] = (OwnerOnly, x => $"/Provider/Users/Disable/{x.ProviderUserId}"),
+        ["/Users/ResetTwoFactor"] = (OwnerOnly, x => $"/Provider/Users/ResetTwoFactor/{x.ProviderUserId}"),
     };
 
     private async Task<Guid> PlanIdAsync()
@@ -136,7 +141,9 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
             }
         }
 
-        var ids = new Ids(await PlanIdAsync(), _app.Data.Alpha.Id, _app.Data.Alpha.Owner!.UserId);
+        var supportEmail = $"target-{Guid.NewGuid():N}"[..18] + "@console.test";
+        await CreateEnrolledProviderUserAsync(_app.Services, _app.CreatePlatformDbContext, supportEmail, ProviderRole.Support);
+        var ids = new Ids(await PlanIdAsync(), _app.Data.Alpha.Id, _app.Data.Alpha.Owner!.UserId, (await _app.FindUserAsync(supportEmail)).Id);
         foreach (var (page, (roles, url)) in SubPages)
         {
             Assert.EndsWith("/Provider/Login", Location(await anonymous.GetAsync(url(ids))));

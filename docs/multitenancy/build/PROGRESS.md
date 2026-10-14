@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 0 Foundation (in progress)
-- **Next step:** Phase 1 / Step 1.4 — Provider users and peer reset
+- **Next step:** Phase 1 / Step 1.5 — Support sessions
 - **Branch:** `mt/phase0` (from `mt/integration` `1b59b6b`)
 
 ## Phase status
@@ -14,7 +14,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 |---|---|---|---|
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
 | 0 Foundation | Implementation complete (0.1–0.8, 0.10; 0.9 moved to Phase 7). Deployment-dependent exit checks (P0-6 Level 3, P0-9 real copy, P0-11, P0-12) wait for the test-site deployment (developer's decision: deploy after all phases) | — | — |
-| 1 Provider Console | In progress (Steps 1.1–1.3 done) | — | — |
+| 1 Provider Console | In progress (Steps 1.1–1.4 done) | — | — |
 | 2 PayPal core | Not started | — | — |
 | 3 Website API | Not started | — | — |
 | 4 Invoices | Not started | — | — |
@@ -101,6 +101,26 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-14 — Local database: platform migrations M1c and M1d applied** (developer's request). Backup `DB_A65635_inpremdb_before_phase1_20261014.bak` was taken first and verified. Verify gave M1c `1|2|1|0|0` and M1d `1|3|1|0|0`; the app data fingerprint is unchanged.
+
+- **2026-10-14 — Phase 1 / Step 1.4 — Provider users and peer reset.**
+  - **`ProviderSecurityService`:** list, invite (any role), change role, disable (with reason), new setup link. Only active Owners act, and never on themselves.
+    - Invitations reuse the bootstrap mechanism: an account without a password, status Invited, a 24-hour setup link, then two-factor.
+    - An email that already has an account (e.g. an organization admin) is refused: provider accounts are separate.
+    - Disabling withdraws pending links, locks the account and ends every session.
+    - Invite, role change and disable are audited and announced to all owners and the security mailbox.
+    - A "last active owner" check stays as a safety net. It cannot trigger today, because the acting owner is always a remaining owner.
+  - **Pages** (Owners only):
+    - list, and a read-only page per person (actions hidden for yourself);
+    - separate Invite, Role, Disable and ResetTwoFactor pages; "Send a new setup link" for people who have not set up yet.
+    - Invite, Role and Disable need a code from the last 5 minutes. **ResetTwoFactor** is the Level 2 screen: a reason plus your own current code, built on the Phase 0 use case.
+  - **Fix:** the jobs dashboard now uses the app's own Hangfire storage instead of the process-wide `JobStorage.Current`. That global made a matrix test fail when test hosts ran in parallel; a single production host was not affected.
+  - **Tests:**
+    - Unit +6: invite, refusals, roles, disable, resend.
+    - Integration +3: invite → setup → role change with re-authentication → Level 2 reset (session ends at once) → disable (sign-in refused), audit and notifications; a second owner removes the go-live warning (health Healthy); resend replaces the link.
+    - The role matrix covers the 5 new pages.
+  - **Results:** Unit 122, Architecture 11, Baseline 320, Integration 92, UI 5.
 
 - **2026-10-14 — Phase 1 / Step 1.2 — Organizations.**
   - **Domain:** `TenantProfile` (unique slug: 3–50 characters, lower-case, reserved names refused; status Active/Suspended with reason), `TenantNote`, `Subscription`.

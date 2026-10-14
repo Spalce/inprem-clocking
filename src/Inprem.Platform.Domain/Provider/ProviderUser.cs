@@ -46,4 +46,10 @@ public sealed class ProviderUser
     }
 
     public void Disable() => Status = ProviderUserStatus.Disabled;
+
+    public void ChangeRole(ProviderRole role)
+    {
+        if (Status == ProviderUserStatus.Disabled) throw new InvalidOperationException("A disabled provider user's role cannot be changed.");
+        Role = role;
+    }
 }

@@ -1,0 +1,30 @@
+@page "{userId}"
+@model InpremClockingApp.Areas.Provider.Pages.Users.ResetTwoFactorModel
+@{
+    ViewData["Title"] = "Reset two-factor";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<p><a asp-page="Details" asp-route-userId="@Model.Person.UserId">&larr; Back</a></p>
+<h1 class="pc-title">Reset the two-factor sign-in of @Model.Person.Email?</h1>
+<p class="pc-subtitle">Use this when they lost both their authenticator and their recovery codes. Their sessions end now; at their next sign-in they set up a new authenticator. All owners and the security mailbox are told.</p>
+
+@if (Model.Error != null)
+{
+    <div class="pc-error" data-testid="error">@Model.Error</div>
+}
+
+<form method="post" class="pc-card pc-form" autocomplete="off">
+  <div class="pc-field">
+    <label for="Reason">Reason <span class="pc-muted">(required; recorded and sent to the owners)</span></label>
+    <textarea id="Reason" name="Reason" rows="3" maxlength="500" required>@Model.Reason</textarea>
+  </div>
+  <div class="pc-field">
+    <label for="Code">Your own authenticator code</label>
+    <input id="Code" name="Code" inputmode="numeric" autocomplete="one-time-code" required />
+  </div>
+  <div class="pc-actions">
+    <button type="submit" class="pc-btn pc-btn-danger" data-testid="confirm">Reset two-factor</button>
+    <a asp-page="Details" asp-route-userId="@Model.Person.UserId" class="pc-btn">Cancel</a>
+  </div>
+</form>

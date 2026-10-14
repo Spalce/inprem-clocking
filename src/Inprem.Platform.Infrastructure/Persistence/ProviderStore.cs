@@ -30,6 +30,15 @@ public sealed class ProviderStore : IProviderStore
         return rows.Select(r => new OwnerInfo(r.Id, r.Email ?? "", r.TwoFactorEnabled)).ToList();
     }
 
+    public async Task<IReadOnlyList<ProviderUserRow>> ListProviderUsersAsync(CancellationToken ct = default)
+    {
+        var rows = await (from u in _db.ProviderUsers.AsNoTracking()
+                          join a in _db.Accounts.AsNoTracking() on u.UserId equals a.Id
+                          orderby u.Status, u.Role, a.Email
+                          select new { u.UserId, a.Email, u.Role, u.Status, a.TwoFactorEnabled, u.CreatedUtc }).ToListAsync(ct).ConfigureAwait(false);
+        return rows.Select(r => new ProviderUserRow(r.UserId, r.Email ?? "", r.Role, r.Status, r.TwoFactorEnabled, r.CreatedUtc)).ToList();
+    }
+
     public async Task AddProviderUserAsync(ProviderUser user, CancellationToken ct = default) =>
         await _db.ProviderUsers.AddAsync(user, ct).ConfigureAwait(false);
 

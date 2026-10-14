@@ -1,0 +1,55 @@
+@page "{userId}"
+@model InpremClockingApp.Areas.Provider.Pages.Users.DetailsModel
+@{
+    var p = Model.Person;
+    ViewData["Title"] = p.Email;
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+    var active = p.Status != ProviderUserStatus.Disabled;
+}
+
+<p><a asp-page="Index">&larr; Provider users</a></p>
+<div class="pc-heading">
+  <div>
+    <h1 class="pc-title">@p.Email</h1>
+    <p class="pc-subtitle">@p.Role &middot; @p.Status@(Model.IsSelf ? " · this is you" : "")</p>
+  </div>
+  @if (active && !Model.IsSelf)
+  {
+      <div class="pc-actions">
+        <a asp-page="Role" asp-route-userId="@p.UserId" class="pc-btn" data-testid="role">Change role</a>
+        @if (p.TwoFactorEnabled)
+        {
+            <a asp-page="ResetTwoFactor" asp-route-userId="@p.UserId" class="pc-btn" data-testid="reset">Reset two-factor</a>
+        }
+        @if (p.Status == ProviderUserStatus.Invited)
+        {
+            <form method="post" asp-page-handler="Resend" asp-route-userId="@p.UserId" class="pc-inline">
+              <button type="submit" class="pc-btn" data-testid="resend">Send a new setup link</button>
+            </form>
+        }
+        <a asp-page="Disable" asp-route-userId="@p.UserId" class="pc-btn pc-btn-danger" data-testid="disable">Disable</a>
+      </div>
+  }
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="pc-success" data-testid="success">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="pc-error" data-testid="error">@error</div>
+}
+
+<div class="pc-card">
+  <dl class="pc-dl">
+    <dt>Role</dt><dd>@p.Role</dd>
+    <dt>Status</dt><dd>@p.Status</dd>
+    <dt>Two-factor</dt><dd>@(p.TwoFactorEnabled ? "On" : "Not set up")</dd>
+    <dt>Since</dt><dd>@p.CreatedUtc.ToString("yyyy-MM-dd")</dd>
+  </dl>
+  @if (Model.IsSelf)
+  {
+      <p class="pc-muted" style="margin:12px 0 0">You cannot change, disable or reset yourself: another owner can. Lost your authenticator? Sign in with a recovery code.</p>
+  }
+</div>

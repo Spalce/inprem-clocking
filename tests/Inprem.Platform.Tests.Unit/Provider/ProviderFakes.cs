@@ -124,6 +124,13 @@ internal sealed class FakeStore : IProviderStore
 
     public Task<ProviderUser?> FindProviderUserAsync(string userId, CancellationToken ct = default) => Task.FromResult(Users.FirstOrDefault(u => u.UserId == userId));
 
+    public Task<IReadOnlyList<ProviderUserRow>> ListProviderUsersAsync(CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<ProviderUserRow>>(Users.Select(u =>
+        {
+            var a = _accounts.All.Single(x => x.Id == u.UserId);
+            return new ProviderUserRow(u.UserId, a.Email, u.Role, u.Status, a.TwoFactor, u.CreatedUtc);
+        }).ToList());
+
     public Task<bool> AnyOwnerAsync(DateTime nowUtc, CancellationToken ct = default) =>
         Task.FromResult(Users.Any(u => u.Role == ProviderRole.Owner &&
             (u.Status == ProviderUserStatus.Active || (u.Status == ProviderUserStatus.Invited && Invitations.Any(i => i.UserId == u.UserId && i.IsUsable(nowUtc))))));

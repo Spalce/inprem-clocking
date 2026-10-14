@@ -21,6 +21,9 @@ public interface IProviderStore
 
     Task AddProviderUserAsync(ProviderUser user, CancellationToken ct = default);
 
+    /// <summary>Every provider user with their account's email and two-factor state.</summary>
+    Task<IReadOnlyList<ProviderUserRow>> ListProviderUsersAsync(CancellationToken ct = default);
+
     Task AddInvitationAsync(Invitation invitation, CancellationToken ct = default);
     Task<Invitation?> FindInvitationByTokenHashAsync(string tokenHash, CancellationToken ct = default);
     Task<IReadOnlyList<Invitation>> ListPendingInvitationsAsync(string userId, DateTime nowUtc, CancellationToken ct = default);
@@ -47,6 +50,8 @@ public interface IProviderStore
 }
 
 public sealed record OwnerInfo(string UserId, string Email, bool TwoFactorEnabled);
+
+public sealed record ProviderUserRow(string UserId, string Email, ProviderRole Role, ProviderUserStatus Status, bool TwoFactorEnabled, DateTime CreatedUtc);
 
 /// <summary>Identity operations the provider use cases need (implemented over UserManager in the web app).</summary>
 public interface IAccountGateway

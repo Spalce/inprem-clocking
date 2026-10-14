@@ -508,6 +508,114 @@ public sealed class ProviderSecurityService
         return ProviderResult.Ok("recovery.completed", summary);
     }
 
+    // ---------------------------------------------------------------- provider users (Phase 1 step 1.4)
+
+    public Task<IReadOnlyList<ProviderUserRow>> ListProviderUsersAsync(CancellationToken ct = default) => _store.ListProviderUsersAsync(ct);
+
+    /// <summary>
+    /// Invites a provider user (any role): a new account without a password, status Invited, and a
+    /// 24-hour setup link (password, then two-factor). Provider accounts are separate: an email
+    /// that already has an account (e.g. an organization admin) is refused.
+    /// </summary>
+    public async Task<ProviderResult> InviteProviderUserAsync(string actorUserId, string email, ProviderRole role, string? linkBase, CancellationToken ct = default)
+    {
+        var now = _clock.UtcNow;
+        var address = email?.Trim() ?? "";
+        if (await RequireActiveOwnerAsync(actorUserId, ct).ConfigureAwait(false) is { } refused) return refused;
+        if (!IsValidEmail(address)) return ProviderResult.Refused("refused.invalid-email", "Enter a valid email address.");
+        if (await _accounts.FindByEmailAsync(address, ct).ConfigureAwait(false) is { } existing)
+        {
+            return await _store.FindProviderUserAsync(existing.Id, ct).ConfigureAwait(false) != null
+                ? ProviderResult.Refused("refused.already-provider", "That person is already a provider user.")
+                : ProviderResult.Refused("refused.account-exists", "That email already has an account (e.g. an organization admin). Provider accounts are separate: use another address.");
+        }
+        if (LinkBaseOrNull(linkBase) == null) return ProviderResult.Refused("refused.no-link-base", "Links:AdminBaseUrl is not configured, so no setup link can be built.");
+
+        var userId = await _accounts.CreateWithoutPasswordAsync(address, ct).ConfigureAwait(false);
+        await _store.AddProviderUserAsync(ProviderUser.Invite(userId, role, now), ct).ConfigureAwait(false);
+        var token = await AddInvitationAsync(address, userId, InvitationPurpose.ProviderSetup, SetupInvitationLifetime, $"provider:{actorUserId}", now, ct).ConfigureAwait(false);
+        await AuditAsync($"provider:{actorUserId}", "provider.user.invited", userId, $"{address} invited as {role}", now, ct).ConfigureAwait(false);
+        await _store.SaveChangesAsync(ct).ConfigureAwait(false);
+
+        await SendInvitationAsync(address, InvitationPurpose.ProviderSetup, LinkFor("AcceptInvitation", token, linkBase), SetupInvitationLifetime, ct).ConfigureAwait(false);
+        await NotifyAsync("Provider user invited", $"{await EmailOfAsync(actorUserId, ct).ConfigureAwait(false)} invited {address} as {role}.", ct).ConfigureAwait(false);
+        return ProviderResult.Ok("user.invited", $"{address} was invited as {role}. The setup link is valid for 24 hours.");
+    }
+
+    /// <summary>A new setup link for someone who has not finished setting up (the old link stops working).</summary>
+    public async Task<ProviderResult> ResendProviderInvitationAsync(string actorUserId, string userId, string? linkBase, CancellationToken ct = default)
+    {
+        var now = _clock.UtcNow;
+        if (await RequireActiveOwnerAsync(actorUserId, ct).ConfigureAwait(false) is { } refused) return refused;
+        var user = await _store.FindProviderUserAsync(userId, ct).ConfigureAwait(false);
+        var account = await _accounts.FindByIdAsync(userId, ct).ConfigureAwait(false);
+        if (user is not { Status: ProviderUserStatus.Invited } || account == null || account.HasPassword)
+            return ProviderResult.Refused("refused.not-invited", "Only someone who has not set up their account yet can get a new setup link.");
+        if (LinkBaseOrNull(linkBase) == null) return ProviderResult.Refused("refused.no-link-base", "Links:AdminBaseUrl is not configured, so no setup link can be built.");
+
+        foreach (var pending in await _store.ListPendingInvitationsAsync(userId, now, ct).ConfigureAwait(false)) pending.Revoke(now);
+        var token = await AddInvitationAsync(account.Email, userId, InvitationPurpose.ProviderSetup, SetupInvitationLifetime, $"provider:{actorUserId}", now, ct).ConfigureAwait(false);
+        await AuditAsync($"provider:{actorUserId}", "provider.user.invitation-resent", userId, account.Email, now, ct).ConfigureAwait(false);
+        await _store.SaveChangesAsync(ct).ConfigureAwait(false);
+        await SendInvitationAsync(account.Email, InvitationPurpose.ProviderSetup, LinkFor("AcceptInvitation", token, linkBase), SetupInvitationLifetime, ct).ConfigureAwait(false);
+        return ProviderResult.Ok("user.invitation-resent", $"A new setup link was sent to {account.Email}.");
+    }
+
+    public async Task<ProviderResult> ChangeProviderRoleAsync(string actorUserId, string userId, ProviderRole role, CancellationToken ct = default)
+    {
+        var now = _clock.UtcNow;
+        if (await RequireActiveOwnerAsync(actorUserId, ct).ConfigureAwait(false) is { } refused) return refused;
+        if (actorUserId == userId) return ProviderResult.Refused("refused.self", "You cannot change your own role. Ask another owner.");
+        var user = await _store.FindProviderUserAsync(userId, ct).ConfigureAwait(false);
+        if (user == null || user.Status == ProviderUserStatus.Disabled) return ProviderResult.Refused("refused.no-target", "That person is not an active provider user.");
+        if (user.Role == role) return ProviderResult.Refused("refused.no-change", $"That person is already {role}.");
+        if (user.IsActiveOwner && role != ProviderRole.Owner && await IsLastActiveOwnerAsync(userId, ct).ConfigureAwait(false))
+            return ProviderResult.Refused("refused.last-owner", "This is the last active owner: make someone else owner first.");
+
+        var before = user.Role;
+        user.ChangeRole(role);
+        var email = await EmailOfAsync(userId, ct).ConfigureAwait(false);
+        await AuditAsync($"provider:{actorUserId}", "provider.user.role-changed", userId, $"{email}: {before} -> {role}", now, ct).ConfigureAwait(false);
+        await _store.SaveChangesAsync(ct).ConfigureAwait(false);
+        await NotifyAsync("Provider role changed", $"{await EmailOfAsync(actorUserId, ct).ConfigureAwait(false)} changed {email} from {before} to {role}.", ct).ConfigureAwait(false);
+        return ProviderResult.Ok("user.role-changed", $"{email} is now {role}.");
+    }
+
+    /// <summary>Disables a provider user: no more sign-in, every session ends, pending links are withdrawn.</summary>
+    public async Task<ProviderResult> DisableProviderUserAsync(string actorUserId, string userId, string reason, CancellationToken ct = default)
+    {
+        var now = _clock.UtcNow;
+        if (await RequireActiveOwnerAsync(actorUserId, ct).ConfigureAwait(false) is { } refused) return refused;
+        if (actorUserId == userId) return ProviderResult.Refused("refused.self", "You cannot disable yourself. Ask another owner.");
+        if (string.IsNullOrWhiteSpace(reason)) return ProviderResult.Refused("refused.no-reason", "Give a reason.");
+        var user = await _store.FindProviderUserAsync(userId, ct).ConfigureAwait(false);
+        if (user == null || user.Status == ProviderUserStatus.Disabled) return ProviderResult.Refused("refused.no-target", "That person is not an active provider user.");
+        if (user.IsActiveOwner && await IsLastActiveOwnerAsync(userId, ct).ConfigureAwait(false))
+            return ProviderResult.Refused("refused.last-owner", "This is the last active owner and cannot be disabled.");
+
+        user.Disable();
+        foreach (var pending in await _store.ListPendingInvitationsAsync(userId, now, ct).ConfigureAwait(false)) pending.Revoke(now);
+        await _accounts.DisableAsync(userId, ct).ConfigureAwait(false);
+        var email = await EmailOfAsync(userId, ct).ConfigureAwait(false);
+        await AuditAsync($"provider:{actorUserId}", "provider.user.disabled", userId, $"{email}. Reason: {reason.Trim()}", now, ct).ConfigureAwait(false);
+        await _store.SaveChangesAsync(ct).ConfigureAwait(false);
+        await NotifyAsync("Provider user disabled", $"{await EmailOfAsync(actorUserId, ct).ConfigureAwait(false)} disabled {email}. Reason: {reason.Trim()}", ct).ConfigureAwait(false);
+        return ProviderResult.Ok("user.disabled", $"{email} was disabled and signed out everywhere.");
+    }
+
+    private async Task<ProviderResult?> RequireActiveOwnerAsync(string actorUserId, CancellationToken ct) =>
+        await _store.FindProviderUserAsync(actorUserId, ct).ConfigureAwait(false) is { IsActiveOwner: true }
+            ? null
+            : ProviderResult.Refused("refused.not-owner", "Only an active Provider Owner can manage provider users.");
+
+    // A safety net: the acting owner can never act on themselves and stays an active owner, so this
+    // never refuses today. It keeps the rule true if other paths (e.g. support tooling) are added.
+    private async Task<bool> IsLastActiveOwnerAsync(string userId, CancellationToken ct) =>
+        (await _store.ListProviderUsersAsync(ct).ConfigureAwait(false)).Count(u => u.Role == ProviderRole.Owner && u.Status == ProviderUserStatus.Active && u.UserId != userId) == 0;
+
+    private async Task<string> EmailOfAsync(string userId, CancellationToken ct) =>
+        (await _accounts.FindByIdAsync(userId, ct).ConfigureAwait(false))?.Email ?? userId;
+
     // ---------------------------------------------------------------- helpers
 
     private async Task<string> AddInvitationAsync(string email, string userId, InvitationPurpose purpose, TimeSpan lifetime, string createdBy, DateTime now, CancellationToken ct)
