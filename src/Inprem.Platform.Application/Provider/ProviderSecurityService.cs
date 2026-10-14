@@ -124,7 +124,22 @@ public sealed class ProviderSecurityService
         await AuditAsync(request.Actor, "provider.bootstrap.succeeded", userId, $"First Provider Owner invited: {email}", now, ct).ConfigureAwait(false);
         await _store.SaveChangesAsync(ct).ConfigureAwait(false);
 
-        await SendInvitationAsync(email, InvitationPurpose.ProviderSetup, LinkFor("AcceptInvitation", token, request.LinkBase), SetupInvitationLifetime, ct).ConfigureAwait(false);
+        try
+        {
+            await SendInvitationAsync(email, InvitationPurpose.ProviderSetup, LinkFor("AcceptInvitation", token, request.LinkBase), SetupInvitationLifetime, ct).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            // Nobody can use a link that never arrived: withdraw it and release the code, so setup
+            // is open again and the same code works once email is fixed (the account is reused).
+            foreach (var pending in await _store.ListPendingInvitationsAsync(userId, now, ct).ConfigureAwait(false)) pending.Revoke(now);
+            await _store.ReleaseCodeAsync(codeHash, ct).ConfigureAwait(false);
+            await AuditAsync(request.Actor, "provider.bootstrap.email-failed", userId, $"Setup email to {email} could not be sent ({e.GetType().Name}); undone, code released.", now, ct).ConfigureAwait(false);
+            await _store.SaveChangesAsync(ct).ConfigureAwait(false);
+            return ProviderResult.Refused("refused.email-failed",
+                $"The setup email to {email} could not be sent, so nothing was kept. Fix the email settings, then try again with the same code.");
+        }
+
         await NotifyAsync("First Provider Owner invited",
             $"The bootstrap code was used by {request.Actor} to invite {email} as the first Provider Owner. Bootstrap is now disabled. Delete the bootstrap code from the secret store.", ct).ConfigureAwait(false);
 
@@ -516,9 +531,25 @@ public sealed class ProviderSecurityService
     {
         var recipients = (await _store.ListActiveOwnersAsync(ct).ConfigureAwait(false)).Select(o => o.Email).ToList();
         if (!string.IsNullOrWhiteSpace(_options.SecurityMailbox)) recipients.Add(_options.SecurityMailbox.Trim());
+        var failed = new List<string>();
         foreach (var to in recipients.Distinct(StringComparer.OrdinalIgnoreCase).Where(r => !string.Equals(r, exceptEmail, StringComparison.OrdinalIgnoreCase)))
         {
-            await _email.SendAsync(to, $"[Inprem security] {subject}", Html(text), ct).ConfigureAwait(false);
+            // The action itself is done (and audited); a notification that cannot be sent must not
+            // turn it into an error. The failure is audited instead.
+            try
+            {
+                await _email.SendAsync(to, $"[Inprem security] {subject}", Html(text), ct).ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                failed.Add($"{to} ({e.GetType().Name})");
+            }
+        }
+
+        if (failed.Count > 0)
+        {
+            await AuditAsync("system", "provider.notification.failed", null, $"\"{subject}\" not delivered to: {string.Join(", ", failed)}", _clock.UtcNow, ct).ConfigureAwait(false);
+            await _store.SaveChangesAsync(ct).ConfigureAwait(false);
         }
     }
 

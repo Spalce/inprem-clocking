@@ -169,6 +169,39 @@ public class ProviderSecurityServiceTests
         Assert.Empty(rig.Email.Sent);
     }
 
+    [Fact]
+    public async Task Bootstrap_Undoes_Itself_When_The_Setup_Email_Cannot_Be_Sent()
+    {
+        var rig = new ProviderTestRig();
+        rig.Email.FailFor = to => to == Owner;
+
+        var failed = await rig.Service.BootstrapAsync(Boot());
+        Assert.Equal("refused.email-failed", failed.Code);
+        Assert.Empty(rig.Store.UsedCodes);                        // the code works again
+        Assert.All(rig.Store.Invitations, i => Assert.NotNull(i.RevokedUtc)); // no link left that nobody received
+        Assert.True(await rig.Service.IsSetupAvailableAsync());    // setup is open again
+        Assert.Contains(rig.Store.Audit, a => a.Action == "provider.bootstrap.email-failed");
+
+        rig.Email.FailFor = null;
+        var retried = await rig.Service.BootstrapAsync(Boot());
+        Assert.True(retried.Succeeded, retried.Message);
+        Assert.Single(rig.Accounts.All);                           // the same account, invited again
+        Assert.Single(rig.Store.Users);
+        Assert.Single(rig.Email.To(Owner));
+    }
+
+    [Fact]
+    public async Task A_Notification_That_Cannot_Be_Sent_Does_Not_Fail_The_Action()
+    {
+        var rig = new ProviderTestRig();
+        rig.Email.FailFor = to => to == Mailbox;
+
+        var result = await rig.Service.BootstrapAsync(Boot());
+        Assert.True(result.Succeeded, result.Message);
+        Assert.Single(rig.Email.To(Owner));
+        Assert.Contains(rig.Store.Audit, a => a.Action == "provider.notification.failed" && a.Details!.Contains(Mailbox));
+    }
+
     // ------------------------------------------------------------ invitations
 
     [Fact]

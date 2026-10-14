@@ -16,8 +16,12 @@ internal sealed class FakeEmail : IEmailSender
 {
     public List<(string To, string Subject, string Body)> Sent { get; } = new();
 
+    /// <summary>When set, sending to a matching address fails like an unreachable mail server.</summary>
+    public Func<string, bool>? FailFor { get; set; }
+
     public Task SendAsync(string to, string subject, string htmlBody, CancellationToken cancellationToken = default)
     {
+        if (FailFor?.Invoke(to) == true) throw new InvalidOperationException("Failure sending mail.");
         Sent.Add((to, subject, htmlBody));
         return Task.CompletedTask;
     }
@@ -151,6 +155,8 @@ internal sealed class FakeStore : IProviderStore
     public Task<bool> IsCodeUsedAsync(string codeHash, CancellationToken ct = default) => Task.FromResult(UsedCodes.ContainsKey(codeHash));
 
     public Task MarkCodeUsedAsync(string codeHash, string purpose, DateTime nowUtc, CancellationToken ct = default) { UsedCodes.Add(codeHash, purpose); return Task.CompletedTask; }
+
+    public Task ReleaseCodeAsync(string codeHash, CancellationToken ct = default) { UsedCodes.Remove(codeHash); return Task.CompletedTask; }
 
     public Task AddAttemptAsync(string kind, bool succeeded, string source, DateTime nowUtc, CancellationToken ct = default) { Attempts.Add((kind, succeeded, source, nowUtc)); return Task.CompletedTask; }
 

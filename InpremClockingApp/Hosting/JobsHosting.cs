@@ -1,5 +1,6 @@
 using Hangfire;
 using Hangfire.Dashboard;
+using Hangfire.Logging;
 using Hangfire.SqlServer;
 using InpremClockingApp.Provider;
 using Microsoft.Extensions.Options;
@@ -41,6 +42,7 @@ public static class JobsHosting
         // The configuration callback runs when storage is first needed, so it sees the final
         // configuration (including per-environment and test settings).
         services.AddHangfire((sp, configuration) => configuration
+            .UseLogProvider(new HostSafeLogProvider(sp.GetRequiredService<ILoggerFactory>()))
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
@@ -151,5 +153,55 @@ public sealed class ProviderOwnerDashboardFilter : IDashboardAsyncAuthorizationF
         var check = http.RequestServices.GetRequiredService<ProviderAccessCheck>();
         var (outcome, user) = await check.CheckAsync(http.User, ProviderAccessLevel.Console);
         return outcome == ProviderAccessOutcome.Allowed && user is { IsActiveOwner: true };
+    }
+}
+
+/// <summary>
+/// Hangfire's log provider is one process-wide setting. This one logs through the app's logging,
+/// and quietly stops logging (instead of throwing) once that host's logger factory is disposed:
+/// during shutdown, or when several app hosts share a process (the integration tests).
+/// </summary>
+public sealed class HostSafeLogProvider : ILogProvider
+{
+    private readonly ILoggerFactory _factory;
+
+    public HostSafeLogProvider(ILoggerFactory factory) => _factory = factory;
+
+    public ILog GetLogger(string name) => new SafeLog(_factory, name);
+
+    private sealed class SafeLog : ILog
+    {
+        private readonly ILoggerFactory _factory;
+        private readonly string _name;
+
+        public SafeLog(ILoggerFactory factory, string name)
+        {
+            _factory = factory;
+            _name = name;
+        }
+
+        public bool Log(Hangfire.Logging.LogLevel logLevel, Func<string>? messageFunc, Exception? exception = null)
+        {
+            try
+            {
+                var logger = _factory.CreateLogger(_name);
+                var level = logLevel switch
+                {
+                    Hangfire.Logging.LogLevel.Trace => Microsoft.Extensions.Logging.LogLevel.Trace,
+                    Hangfire.Logging.LogLevel.Debug => Microsoft.Extensions.Logging.LogLevel.Debug,
+                    Hangfire.Logging.LogLevel.Info => Microsoft.Extensions.Logging.LogLevel.Information,
+                    Hangfire.Logging.LogLevel.Warn => Microsoft.Extensions.Logging.LogLevel.Warning,
+                    Hangfire.Logging.LogLevel.Error => Microsoft.Extensions.Logging.LogLevel.Error,
+                    _ => Microsoft.Extensions.Logging.LogLevel.Critical,
+                };
+                if (messageFunc == null) return logger.IsEnabled(level);
+                logger.Log(level, 0, messageFunc(), exception, (message, _) => message);
+                return true;
+            }
+            catch (ObjectDisposedException)
+            {
+                return false;
+            }
+        }
     }
 }

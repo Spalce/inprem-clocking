@@ -35,6 +35,9 @@ public interface IProviderStore
     Task<bool> IsCodeUsedAsync(string codeHash, CancellationToken ct = default);
     Task MarkCodeUsedAsync(string codeHash, string purpose, DateTime nowUtc, CancellationToken ct = default);
 
+    /// <summary>Makes a code usable again (only when the action it was used for was fully undone).</summary>
+    Task ReleaseCodeAsync(string codeHash, CancellationToken ct = default);
+
     Task AddAttemptAsync(string kind, bool succeeded, string source, DateTime nowUtc, CancellationToken ct = default);
     Task<int> CountFailuresSinceAsync(string kind, DateTime sinceUtc, CancellationToken ct = default);
 

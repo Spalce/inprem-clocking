@@ -61,6 +61,12 @@ public sealed class ProviderStore : IProviderStore
     public async Task MarkCodeUsedAsync(string codeHash, string purpose, DateTime nowUtc, CancellationToken ct = default) =>
         await _db.UsedCodes.AddAsync(new UsedCode { CodeHash = codeHash, Purpose = purpose, UsedUtc = nowUtc }, ct).ConfigureAwait(false);
 
+    public async Task ReleaseCodeAsync(string codeHash, CancellationToken ct = default)
+    {
+        var used = await _db.UsedCodes.FirstOrDefaultAsync(c => c.CodeHash == codeHash, ct).ConfigureAwait(false);
+        if (used != null) _db.UsedCodes.Remove(used);
+    }
+
     public async Task AddAttemptAsync(string kind, bool succeeded, string source, DateTime nowUtc, CancellationToken ct = default) =>
         await _db.SecurityAttempts.AddAsync(new SecurityAttempt
         {
