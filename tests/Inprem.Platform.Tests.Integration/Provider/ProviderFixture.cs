@@ -183,6 +183,7 @@ public class ProviderFixture : IAsyncLifetime
     {
         var page = await ProviderForms.GetDocumentAsync(client, "/Provider/EnrolTwoFactor");
         var key = page.QuerySelector("[data-testid=shared-key]")!.TextContent.Trim();
+        Assert.NotNull(page.QuerySelector("[data-testid=qr-code] svg")); // scannable, no typing needed
         var enrolled = await ProviderForms.PostAsync(client, "/Provider/EnrolTwoFactor", ("Code", Totp.Code(key)));
         var codes = new HtmlParser().ParseDocument(await enrolled.Content.ReadAsStringAsync())
             .QuerySelectorAll("[data-testid=recovery-codes] code").Select(c => c.TextContent.Trim()).ToList();

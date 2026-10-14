@@ -26,9 +26,10 @@
         <h1 class="@ProviderUi.Title">Set up two-factor sign-in</h1>
         <p class="@ProviderUi.Lead">The Provider Console needs an authenticator app (for example Microsoft Authenticator or Google Authenticator).</p>
 
-        <p class="tw:mb-2 tw:text-sm tw:text-slate-700">1. In the app, add an account and enter this key:</p>
+        <p class="tw:mb-2 tw:text-sm tw:text-slate-700">1. In the app, tap <strong>+</strong> and <strong>Scan a QR code</strong>:</p>
+        <div class="tw:mb-4 tw:flex tw:justify-center" data-testid="qr-code">@Html.Raw(Model.QrCodeSvg)</div>
+        <p class="tw:mb-2 tw:text-sm tw:text-slate-700">Can't scan? Choose <strong>Enter a setup key</strong>, type any name, and enter this whole key (all 8 groups, spaces don't matter), time based:</p>
         <p class="tw:mb-4 tw:rounded-md tw:border tw:border-slate-200 tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:font-semibold tw:text-slate-900" data-testid="shared-key"><code>@Model.SharedKey</code></p>
-        <p class="tw:mb-4 @ProviderUi.Small">Or, if your app accepts a setup link: <code data-testid="authenticator-uri">@Model.AuthenticatorUri</code></p>
 
         <p class="tw:mb-2 tw:text-sm tw:text-slate-700">2. Enter the 6-digit code the app shows:</p>
 

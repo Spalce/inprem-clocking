@@ -6,6 +6,7 @@ using InpremClockingApp.Provider;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using QRCoder;
 
 namespace InpremClockingApp.Areas.Provider.Pages;
 
@@ -35,6 +36,9 @@ public class EnrolTwoFactorModel : PageModel
 
     public string SharedKey { get; private set; } = "";
     public string AuthenticatorUri { get; private set; } = "";
+
+    /// <summary>The authenticator link as a QR code (SVG made here; nothing is loaded from outside).</summary>
+    public string QrCodeSvg { get; private set; } = "";
     public string? Error { get; private set; }
 
     /// <summary>Shown once, right after enrolment; never stored in readable form.</summary>
@@ -89,6 +93,9 @@ public class EnrolTwoFactorModel : PageModel
 
         SharedKey = FormatKey(key!);
         AuthenticatorUri = $"otpauth://totp/{Uri.EscapeDataString(Issuer)}:{Uri.EscapeDataString(user.Email ?? "")}?secret={key}&issuer={Uri.EscapeDataString(Issuer)}&digits=6";
+        using var generator = new QRCodeGenerator();
+        using var data = generator.CreateQrCode(AuthenticatorUri, QRCodeGenerator.ECCLevel.Q);
+        QrCodeSvg = new SvgQRCode(data).GetGraphic(4);
     }
 
     private static string FormatKey(string key)
