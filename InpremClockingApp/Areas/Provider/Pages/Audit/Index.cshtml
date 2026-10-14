@@ -1,10 +1,74 @@
 @page
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = InpremClockingApp.Provider.ProviderPolicies.Owner)]
+@model InpremClockingApp.Areas.Provider.Pages.Audit.IndexModel
 @{
     ViewData["Title"] = "Audit log";
     Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+    var r = Model.Result;
 }
 
-<h1 class="pc-title">Audit log</h1>
-<p class="pc-subtitle">Who did what, and when.</p>
-<partial name="/Areas/Provider/Pages/Shared/_ComingSoon.cshtml" model="@("step 1.6 (Audit log and dashboard)")" />
+<div class="pc-heading">
+  <div>
+    <h1 class="pc-title">Audit log</h1>
+    <p class="pc-subtitle">Everything recorded on the platform, newest first. Entries cannot be changed or deleted.</p>
+  </div>
+  <a asp-page="Index" asp-page-handler="Csv" asp-all-route-data="Model.Route(1)" class="pc-btn" data-testid="csv"><i class="fas fa-file-csv"></i> Download CSV</a>
+</div>
+
+<form method="get" class="pc-filters">
+  <select name="Actor" aria-label="Provider user">
+    <option value="">Anyone</option>
+    @foreach (var (actor, email) in Model.Actors.OrderBy(a => a.Value))
+    {
+        <option value="@actor" selected="@(Model.Actor == actor)">@email</option>
+    }
+  </select>
+  <select name="TenantId" aria-label="Organization">
+    <option value="">All organizations</option>
+    @foreach (var (id, name) in Model.Tenants.OrderBy(t => t.Value))
+    {
+        <option value="@id" selected="@(Model.TenantId == id)">@name</option>
+    }
+  </select>
+  <input name="Action" value="@Model.Action" list="actions" placeholder="Action (e.g. organization.)" aria-label="Action" />
+  <datalist id="actions">
+    @foreach (var action in Model.Actions)
+    {
+        <option value="@action"></option>
+    }
+  </datalist>
+  <label class="pc-muted">From <input type="date" name="From" value="@Model.From?.ToString("yyyy-MM-dd")" /></label>
+  <label class="pc-muted">to <input type="date" name="To" value="@Model.To?.ToString("yyyy-MM-dd")" /></label>
+  <button type="submit" class="pc-btn">Filter</button>
+</form>
+
+<table class="pc-table" data-testid="audit">
+  <thead><tr><th>When (UTC)</th><th>Who</th><th>Action</th><th>Organization</th><th>Details</th></tr></thead>
+  <tbody>
+  @foreach (var e in r.Items)
+  {
+      <tr>
+        <td>@e.OccurredUtc.ToString("yyyy-MM-dd HH:mm:ss")</td>
+        <td>@(Model.Actors.TryGetValue(e.Actor, out var email) ? email : e.Actor)</td>
+        <td><code>@e.Action</code></td>
+        <td>@(e.TenantId is int t && Model.Tenants.TryGetValue(t, out var name) ? name : "")</td>
+        <td>@e.Details</td>
+      </tr>
+  }
+  @if (r.Items.Count == 0)
+  {
+      <tr><td colspan="5" class="pc-muted">Nothing matches.</td></tr>
+  }
+  </tbody>
+</table>
+
+<div class="pc-pager" data-testid="pager">
+  <span class="pc-muted">@r.Total entr@(r.Total == 1 ? "y" : "ies") &middot; page @r.Page of @r.Pages</span>
+  @if (r.Page > 1)
+  {
+      <a asp-page="Index" asp-all-route-data="Model.Route(r.Page - 1)" class="pc-btn pc-btn-small">Previous</a>
+  }
+  @if (r.Page < r.Pages)
+  {
+      <a asp-page="Index" asp-all-route-data="Model.Route(r.Page + 1)" class="pc-btn pc-btn-small">Next</a>
+  }
+</div>

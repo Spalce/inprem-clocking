@@ -7,6 +7,9 @@ using Microsoft.Extensions.Options;
 
 namespace InpremClockingApp.Hosting;
 
+/// <summary>The app's own Hangfire storage (one per app, never another app's).</summary>
+public sealed record AppJobStorage(JobStorage Storage);
+
 /// <summary>Configuration section <c>Jobs</c>.</summary>
 public sealed class JobsOptions
 {
@@ -41,12 +44,22 @@ public static class JobsHosting
 
         // The configuration callback runs when storage is first needed, so it sees the final
         // configuration (including per-environment and test settings).
+        // This app's own storage, made once. Hangfire's default registration hands out the process-wide
+        // JobStorage.Current as it is at that moment, which can be another app's when several run in
+        // one process (the integration tests). Registered after AddHangfire, so this one wins.
+        services.AddSingleton<AppJobStorage>(sp => new AppJobStorage(
+            new SqlServerStorage(sp.GetRequiredService<IConfiguration>().GetConnectionString("DefaultConnection"), StorageOptions())));
         services.AddHangfire((sp, configuration) => configuration
             .UseLogProvider(new HostSafeLogProvider(sp.GetRequiredService<ILoggerFactory>()))
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
-            .UseSqlServerStorage(sp.GetRequiredService<IConfiguration>().GetConnectionString("DefaultConnection"), StorageOptions()));
+            .UseStorage(sp.GetRequiredService<AppJobStorage>().Storage));
+        services.AddSingleton<JobStorage>(sp =>
+        {
+            sp.GetRequiredService<IGlobalConfiguration>(); // apply the configuration above (serializer, log provider)
+            return sp.GetRequiredService<AppJobStorage>().Storage;
+        });
 
         services.AddHostedService<JobServerHost>();
         return builder;

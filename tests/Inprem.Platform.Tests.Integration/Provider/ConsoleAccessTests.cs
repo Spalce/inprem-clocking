@@ -163,7 +163,8 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
         // The jobs dashboard: owners only.
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/Provider/jobs")).StatusCode);
         Assert.False((await clients[ProviderRole.Billing].GetAsync("/Provider/jobs")).IsSuccessStatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await clients[ProviderRole.Owner].GetAsync("/Provider/jobs")).StatusCode);
+        var jobs = await clients[ProviderRole.Owner].GetAsync("/Provider/jobs");
+        Assert.True(jobs.StatusCode == HttpStatusCode.OK, $"Jobs dashboard: {(int)jobs.StatusCode} {await jobs.Content.ReadAsStringAsync()}");
 
         // The access-denied page says so, with status 403.
         var denied = await clients[ProviderRole.Support].GetAsync("/Provider/AccessDenied");

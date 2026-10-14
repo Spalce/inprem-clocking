@@ -1,13 +1,82 @@
 @page
 @model IndexModel
+@using Inprem.Platform.Application.Audit
+@using Inprem.Platform.Application.Provider
+@using Inprem.Platform.Domain.Billing
+@using Microsoft.AspNetCore.Authorization
+@inject IAuthorizationService Authorization
 @{
     ViewData["Title"] = "Dashboard";
     Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+    var f = Model.Figures;
+    var isOwner = (await Authorization.AuthorizeAsync(User, InpremClockingApp.Provider.ProviderPolicies.Owner)).Succeeded;
 }
 
 <h1 class="pc-title">Dashboard</h1>
-<p class="pc-subtitle">Welcome to the Inprem Provider Console.</p>
-<div class="pc-card" data-testid="dashboard">
-  <p style="margin:0">Active Provider Owners with two-factor: <strong>@Model.Owners.EnrolledOwners</strong> (at least @Inprem.Platform.Application.Provider.OwnerStatus.Minimum needed before production).</p>
-  <p class="pc-muted" style="margin:8px 0 0">The dashboard's figures arrive in step 1.6.</p>
+<p class="pc-subtitle">The platform at a glance.</p>
+
+<div class="pc-tiles" data-testid="dashboard">
+  <a class="pc-tile" asp-page="/Tenants/Index" asp-route-Status="Active" data-testid="tile-active">
+    <span class="pc-tile-number">@f.OrganizationsByStatus.GetValueOrDefault("Active")</span><span>Active organizations</span>
+  </a>
+  <a class="pc-tile" asp-page="/Tenants/Index" asp-route-Status="Suspended" data-testid="tile-suspended">
+    <span class="pc-tile-number">@f.OrganizationsByStatus.GetValueOrDefault("Suspended")</span><span>Suspended</span>
+  </a>
+  <div class="pc-tile" data-testid="tile-trials">
+    <span class="pc-tile-number">@f.TrialsEndingSoon.Count</span><span>Trials ending within @AuditLogService.TrialWindow.Days days</span>
+  </div>
+  <div class="pc-tile @(Model.FailedJobs > 0 ? "pc-tile-warn" : null)" data-testid="tile-jobs">
+    <span class="pc-tile-number">@(Model.FailedJobs?.ToString() ?? "—")</span><span>Failed background jobs</span>
+  </div>
+  <div class="pc-tile @(Model.Owners.MeetsMinimum ? null : "pc-tile-warn")" data-testid="tile-owners">
+    <span class="pc-tile-number">@Model.Owners.EnrolledOwners / @OwnerStatus.Minimum</span><span>Provider Owners with two-factor</span>
+  </div>
+</div>
+
+<div class="pc-row" style="margin-top:20px">
+  <div class="pc-card" style="flex:1;min-width:280px">
+    <h2 class="pc-section" style="margin-top:0">Subscriptions</h2>
+    @if (f.SubscriptionsByStatus.Count == 0)
+    {
+        <p class="pc-muted">None yet. Organizations created in the console get one; the others move over with billing (Phase 2).</p>
+    }
+    else
+    {
+        <dl class="pc-dl" data-testid="subscriptions">
+          @foreach (var (status, count) in f.SubscriptionsByStatus.OrderBy(s => s.Key))
+          {
+              <dt>@status</dt><dd>@count</dd>
+          }
+        </dl>
+    }
+    <h2 class="pc-section">Trials ending soon</h2>
+    @if (f.TrialsEndingSoon.Count == 0)
+    {
+        <p class="pc-muted">None in the next @AuditLogService.TrialWindow.Days days.</p>
+    }
+    else
+    {
+        <ul class="pc-list" data-testid="trials">
+          @foreach (var (tenantId, name, ends) in f.TrialsEndingSoon)
+          {
+              <li><a asp-page="/Tenants/Details" asp-route-id="@tenantId">@name</a> — @ends.ToString("yyyy-MM-dd")</li>
+          }
+        </ul>
+    }
+  </div>
+  <div class="pc-card" style="flex:2;min-width:320px">
+    <h2 class="pc-section" style="margin-top:0">Latest activity</h2>
+    <table class="pc-table" data-testid="recent">
+      <tbody>
+      @foreach (var e in f.RecentActivity)
+      {
+          <tr><td>@e.OccurredUtc.ToString("MM-dd HH:mm")</td><td>@(Model.Actors.TryGetValue(e.Actor, out var email) ? email : e.Actor)</td><td><code>@e.Action</code></td></tr>
+      }
+      </tbody>
+    </table>
+    @if (isOwner)
+    {
+        <p style="margin:8px 0 0"><a asp-page="/Audit/Index">Full audit log &rarr;</a></p>
+    }
+  </div>
 </div>

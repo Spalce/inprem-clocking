@@ -15,6 +15,7 @@ public static class DependencyInjection
         services.AddScoped<Billing.PlanService>();
         services.AddScoped<Organizations.OrganizationService>();
         services.AddScoped<Support.SupportSessionService>();
+        services.AddScoped<Audit.AuditLogService>();
         return services;
     }
 }

@@ -97,6 +97,13 @@ h1.pc-title { font-size: 22px; font-weight: 600; margin: 0 0 4px; }
 .pc-slug-ok { color: var(--pc-ok-text); font-size: 13px; }
 .pc-slug-taken { color: var(--pc-warn-text); font-size: 13px; }
 
+.pc-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.pc-tile { display: flex; flex-direction: column; gap: 4px; padding: 16px; background: var(--pc-panel); border: 1px solid var(--pc-border); border-radius: 8px; color: var(--pc-muted); font-size: 14px; }
+a.pc-tile:hover { border-color: var(--pc-accent); text-decoration: none; }
+.pc-tile-number { font-size: 26px; font-weight: 600; color: var(--pc-text); }
+.pc-tile-warn { border-color: #fecaca; background: var(--pc-warn-bg); }
+.pc-tile-warn .pc-tile-number { color: var(--pc-warn-text); }
+
 @media (max-width: 800px) {
   .pc-shell { flex-direction: column; }
   .pc-nav { width: 100%; padding: 8px 0; }

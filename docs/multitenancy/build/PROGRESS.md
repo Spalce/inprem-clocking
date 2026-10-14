@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 0 Foundation (in progress)
-- **Next step:** Phase 1 / Step 1.6 — Audit log and dashboard shell
+- **Next step:** Phase 1 / Step 1.7 — Remove replaced code (C4), as its own commit
 - **Branch:** `mt/phase0` (from `mt/integration` `1b59b6b`)
 
 ## Phase status
@@ -14,7 +14,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 |---|---|---|---|
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
 | 0 Foundation | Implementation complete (0.1–0.8, 0.10; 0.9 moved to Phase 7). Deployment-dependent exit checks (P0-6 Level 3, P0-9 real copy, P0-11, P0-12) wait for the test-site deployment (developer's decision: deploy after all phases) | — | — |
-| 1 Provider Console | In progress (Steps 1.1–1.5 done) | — | — |
+| 1 Provider Console | In progress (Steps 1.1–1.6 done) | — | — |
 | 2 PayPal core | Not started | — | — |
 | 3 Website API | Not started | — | — |
 | 4 Invoices | Not started | — | — |
@@ -104,6 +104,24 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-14 — Local database: platform migration M1e applied** (developer's request). Backup `DB_A65635_inpremdb_before_M1e_20261014.bak` was taken first and verified; verify gave `1|1|1|0`; the app data fingerprint is unchanged.
+
+- **2026-10-14 — Phase 1 / Step 1.6 — Audit log and dashboard shell.**
+  - **`AuditLogService`** (Application) over **`IAuditReader`** (Infrastructure).
+    - **Audit log** (Owners): filters by provider user, organization, action (prefix, with suggestions) and date range (whole UTC days); pages of 50; newest first; actors shown by email.
+    - **CSV export** of the filtered log: UTF-8 with BOM, at most 50,000 rows, standard CSV quoting. Cells that a spreadsheet would run as a formula (starting `= + - @`, tab or CR) are prefixed with an apostrophe.
+  - **Dashboard** (every provider user):
+    - organizations by status (links to the filtered list);
+    - subscriptions by status, and trials ending within 14 days (real data from platform subscriptions);
+    - failed Hangfire jobs (shows "—" if the storage cannot be read);
+    - the owners figure;
+    - the latest 10 audit entries.
+  - **Fix: each app now has its own Hangfire storage** (`AppJobStorage`, registered for DI and for Hangfire's configuration). Hangfire's default registration hands out the process-wide `JobStorage.Current` as it is when first asked. When several apps share a process (the integration tests) that can be another app's storage on a dropped database, which gave an occasional 500 on the jobs dashboard in the role matrix. Not reproduced in two full runs since; production is a single app per process.
+  - **Tests:**
+    - Unit +11: CSV cells, quoting and formula prefixes.
+    - Integration +2: audit filters, paging and a CSV with a neutralised formula; dashboard counts update on suspension, a 7-day trial is listed, the failed-jobs tile.
+  - **Results:** Unit 136, Architecture 11, Baseline 320, Integration 98 (×3 runs), UI 5.
 
 - **2026-10-14 — Phase 1 / Step 1.5 — Support sessions.**
   - **`SupportSession`** (platform migration **M1e**): organization, provider user, reason (required, shown to the organization), length 15 / 30 / 60 (default) / 120 / 240 minutes, ending.
