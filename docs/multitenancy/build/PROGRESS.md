@@ -63,6 +63,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **No QR code on the two-factor page (step 0.7).** The app ships no QR library, and none is loaded from outside. The page shows the key and an `otpauth://` link, which every authenticator app accepts by typing. A QR code can come with the Phase 1 console.
 - **One Provider Owner until Phase 1 (D16).** Inviting provider users is a Phase 1 console screen. Until then the console banner and `/health` (Degraded) warn, as designed. Level 2 (peer reset) is a tested use case without a screen until Phase 1.
 - **Level 4 completes by command after its delay (step 0.7).** `provider recover --complete --id <id>` is run by the operator once the 24 hours have passed. The background jobs of step 0.8 could do it automatically; that is an open choice.
+- **"Forgot password" can't send email locally (found 2026-10-14).** The approved page calls `EmailService` directly (C1), so `Email:DropFolder` does not cover it. To fix it with the `EmailService` credential follow-up: move SMTP settings to configuration, with the same local folder option.
 - **Provider emails go through the approved app's mailbox (step 0.7).** Bootstrap and recovery emails use `IEmailSender` → `ApprovedAppEmailSender` → `EmailService`, the hardcoded SMTP account still waiting on the owner's confirmation. "SMS where configured" (design 5.4) comes with Twilio in Phase 5.
 - **Bootstrap after an unused, expired first invitation (step 0.7).** A new bootstrap code invites the same person again; the used code is refused for good (runbook section 2).
 - **The old billing sweep no longer runs (step 0.8).** Removing `BillingBackgroundService` (C2-2, as the step asks) means no automatic renewal, past-due or suspension of organizations until Phase 2. `BillingService` and the Platform pages (C4) are unchanged.
@@ -75,6 +76,12 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **Playwright browsers** are a one-time install per machine: `pwsh tests/InpremClockingApp.Tests.Ui/bin/Debug/net8.0/playwright.ps1 install chromium` (CI must do the same).
 
 ## Manual / sandbox test records
+
+- **2026-10-14 — Developer's local test, remaining checks: passed.**
+  - **Provider sign-in:** password, then authenticator code, then the console (B8).
+  - **Level 1:** a recovery code allowed only re-enrolment; a new key and new codes were issued (B9–B10).
+  - **Organization admin:** sign-in showed "Choose organization" for the two organizations, each showing only its own data (A1–A3). The password was reset with a link generated locally, because "Forgot password" (approved page, `EmailService`) cannot reach the SMTP server from this machine.
+  - **Not tested locally:** A4–A7, and Level 3 (C1, on the test site).
 
 - **2026-10-14 — Developer's local test, provider bootstrap (checklist B1–B6): passed.**
   - First Provider Owner created through `/Provider/setup`.
