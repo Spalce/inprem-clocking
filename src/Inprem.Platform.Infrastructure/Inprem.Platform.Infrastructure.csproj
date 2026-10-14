@@ -3,17 +3,17 @@
   <!-- Implementations of the Application interfaces: persistence, PayPal, Twilio, email, jobs. -->
 
   <ItemGroup>
-    <!-- 8.0.0 on purpose: the same EF Core version as the approved app, so referencing this project
-         does not change the app's runtime. Upgrading EF Core is a separate, deliberate step. -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="8.0.0" />
+    <!-- The same EF Core version as the approved app (both 8.0.x, kept in step), so referencing this project
+         does not change the app's runtime. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.32" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="8.0.32" />
     <!-- DataProtection 8.0.0 pulls in System.Security.Cryptography.Xml and .Pkcs 8.0.x with known
          advisories (GHSA-w3x6-4m5h-cxqf; the 2026-10-13 ones GHSA-vrv5-2jg9-4mmr, -7hqp-7c5m-4vq6,
          -c399-9853-6jmj, -r955-8q5j-3h83 for Xml, GHSA-846f-f764-76mx for Pkcs). Pinned to the
          patched 8.0.x versions without touching EF Core. -->
     <PackageReference Include="System.Security.Cryptography.Xml" Version="8.0.5" />
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.2" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.32">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>

@@ -80,7 +80,7 @@ if ($Existing) {
 Step 'Create disposable database (baseline schema)' {
     Sql $null "IF DB_ID(N'$Database') IS NOT NULL BEGIN ALTER DATABASE [$Database] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [$Database]; END; CREATE DATABASE [$Database];" 'master' | Out-Null
     Push-Location (Join-Path $root 'InpremClockingApp')
-    try { & $EfTool database update $baseline --context ApplicationDbContext --connection $connection | Out-Null; if ($LASTEXITCODE) { throw 'ef database update failed' } }
+    try { & $EfTool database update $baseline --context ApplicationDbContext --configuration Release --connection $connection | Out-Null; if ($LASTEXITCODE) { throw 'ef database update failed' } }
     finally { Pop-Location }
     "last app migration: $(AppHistory)"
 }

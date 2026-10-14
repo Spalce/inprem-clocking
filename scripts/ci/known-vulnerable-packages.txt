@@ -5,14 +5,6 @@
 
 # via the 8.0.0 EF Core / Identity packages (checked with `dotnet nuget why`); System.Formats.Asn1
 # and System.Text.Json also come through the scaffolding package below
-Microsoft.Data.SqlClient             GHSA-98G6-XH36-X2P7
-Azure.Identity                       GHSA-5MFX-4WCX-RV27
-System.Formats.Asn1                  GHSA-447R-WPH3-92PM
-Microsoft.Extensions.Caching.Memory  GHSA-QJ66-M88J-HMGJ
-System.Text.Json                     GHSA-HH2W-P6RV-4G7W
-System.Text.Json                     GHSA-8G4Q-XG66-9FP4
 
 # via Microsoft.VisualStudio.Web.CodeGeneration.Design 8.0.0 (scaffolding tool, design-time only)
-NuGet.Packaging                      GHSA-68W7-72JG-6QPP
-NuGet.Common                         GHSA-6QMF-MMC7-6C2P
-NuGet.Protocol                       GHSA-6QMF-MMC7-6C2P
+# (empty since 2026-10-14: the approved app's packages were moved to their 8.0.x security patches)

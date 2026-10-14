@@ -4,7 +4,7 @@
        and sign-in helpers. Referenced by every test project that needs the running app. -->
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.32" />
     <PackageReference Include="Testcontainers.MsSql" Version="4.16.0" />
     <PackageReference Include="AngleSharp" Version="1.8.4" />
     <PackageReference Include="xunit.extensibility.core" Version="2.9.2" />
