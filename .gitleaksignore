@@ -1,7 +1,8 @@
 # Known findings, tolerated so CI can block NEW secrets. Each line needs an owner and a plan.
 #
-# SMTP password hardcoded in EmailService.cs, in the approved app since commit 10e1e22.
-# Blocked on confirming account ownership with the original author before rotating. The
-# credential must be rotated and moved to user-secrets/host configuration, then this line
-# removed, before Phase 0 exit check P0-5 ("secret scan 0 findings").
+# SMTP password that was hardcoded in EmailService.cs from commit 10e1e22 (2023-02-20).
+# REMOVED from the code on 2026-10-14 (settings now come from host configuration, Email:*).
+# This line only covers that historical commit, which stays in the public history: the
+# credential must be treated as exposed - the account owner should change or close it.
+# CI scans the whole history, so without this line every run would fail on that old commit.
 10e1e22167c514e79d58cd401fa45472baf3a88f:InpremClockingApp/Services/EmailService.cs:csharp-network-credential:12

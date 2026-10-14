@@ -63,7 +63,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **No QR code on the two-factor page (step 0.7).** The app ships no QR library, and none is loaded from outside. The page shows the key and an `otpauth://` link, which every authenticator app accepts by typing. A QR code can come with the Phase 1 console.
 - **One Provider Owner until Phase 1 (D16).** Inviting provider users is a Phase 1 console screen. Until then the console banner and `/health` (Degraded) warn, as designed. Level 2 (peer reset) is a tested use case without a screen until Phase 1.
 - **Level 4 completes by command after its delay (step 0.7).** `provider recover --complete --id <id>` is run by the operator once the 24 hours have passed. The background jobs of step 0.8 could do it automatically; that is an open choice.
-- **"Forgot password" can't send email locally (found 2026-10-14).** The approved page calls `EmailService` directly (C1), so `Email:DropFolder` does not cover it. To fix it with the `EmailService` credential follow-up: move SMTP settings to configuration, with the same local folder option.
+- **"Forgot password" can't send email locally: fixed 2026-10-14** (`EmailService` honours `Email:DropFolder` in Development). ~~"Forgot password" can't send email locally (found 2026-10-14).~~ The approved page calls `EmailService` directly (C1), so `Email:DropFolder` does not cover it. To fix it with the `EmailService` credential follow-up: move SMTP settings to configuration, with the same local folder option.
 - **Provider emails go through the approved app's mailbox (step 0.7).** Bootstrap and recovery emails use `IEmailSender` → `ApprovedAppEmailSender` → `EmailService`, the hardcoded SMTP account still waiting on the owner's confirmation. "SMS where configured" (design 5.4) comes with Twilio in Phase 5.
 - **Bootstrap after an unused, expired first invitation (step 0.7).** A new bootstrap code invites the same person again; the used code is refused for good (runbook section 2).
 - **The old billing sweep no longer runs (step 0.8).** Removing `BillingBackgroundService` (C2-2, as the step asks) means no automatic renewal, past-due or suspension of organizations until Phase 2. `BillingService` and the Platform pages (C4) are unchanged.
@@ -103,6 +103,19 @@ _(date — what was tested — result)_
 ## Log
 
 _(date — phase/step — summary — tests — next)_
+
+- **2026-10-14 — Hardcoded SMTP credential removed (P0-5; the developer's decision: old trial settings, take it off).**
+  - **Change:** `EmailService` (C1, changed at the developer's request) now reads `Email:SmtpHost`, `SmtpPort` (default 587), `EnableSsl`, `UserName`, `Password` and `From` from configuration.
+    - Without settings, it fails with "Email is not configured".
+    - Port 465 is refused with an explanation (`SmtpClient` cannot do implicit TLS, which likely explains why the old settings timed out).
+    - In Development, `Email:DropFolder` saves every email, including the approved "Forgot password" page's, as a file.
+  - **Registration:** the platform sender always goes through `EmailService`.
+  - **Tests:** Integration +4 (no settings, port 465, drop folder in Development only, no credentials in the source). All suites pass: Unit 87, Architecture 11, Baseline 320, Integration 70, UI 5.
+  - **Still to do:**
+    - **Exposed in history:** the credential stays in public Git history (commit 10e1e22). Treat it as exposed: the account owner should change or close it.
+    - **Gitleaks:** the `.gitleaksignore` line now covers only that historical commit.
+    - **Repository visibility:** making the repository private needs the Spalce account's administrator; the developer has no access.
+    - **Hosts:** set `Email__*` on every host (`deployment-phase0.md`).
 
 - **2026-10-14 — Package upgrade (developer's request: "fix the upgrade but make sure nothing breaks").**
   - **Upgraded:** every Microsoft package moved from 8.0.0 to its latest 8.0.x security patch: EF Core, Identity, data protection and test hosting to 8.0.32; the scaffolding tool to 8.0.23. Same major version, no feature changes. Also, `dotnet-ef` local tool 7.0.2 → 8.0.32.

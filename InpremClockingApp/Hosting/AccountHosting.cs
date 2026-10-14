@@ -18,17 +18,10 @@ public static class AccountHosting
             options.Lockout.AllowedForNewUsers = true;
         });
 
-        // Development only: with Email:DropFolder set, platform emails are saved as .html files in
-        // that folder instead of being sent (local testing where the SMTP server cannot be reached).
-        // Decided per request, so the final configuration counts. Ignored outside Development.
-        builder.Services.AddScoped<ApprovedAppEmailSender>();
-        builder.Services.AddScoped<PlatformEmailSender>(sp =>
-        {
-            var folder = sp.GetRequiredService<IConfiguration>()["Email:DropFolder"];
-            return sp.GetRequiredService<IWebHostEnvironment>().IsDevelopment() && !string.IsNullOrWhiteSpace(folder)
-                ? new FolderEmailSender(folder)
-                : sp.GetRequiredService<ApprovedAppEmailSender>();
-        });
+        // Email settings (Email:*) come from host configuration (P0-5). EmailService also handles
+        // Email:DropFolder (Development only: emails saved as files), for every sender.
+        builder.Services.AddOptions<Services.EmailOptions>().Bind(builder.Configuration.GetSection(Services.EmailOptions.SectionName));
+        builder.Services.AddScoped<PlatformEmailSender, ApprovedAppEmailSender>();
 
         // Step 0.5: account lookups by id/name/email see past the fail-closed AppUser filter
         // (AppUserStore); replaces the store AddEntityFrameworkStores registered.
@@ -38,9 +31,8 @@ public static class AccountHosting
 }
 
 /// <summary>
-/// The platform's IEmailSender, sending through the approved app's EmailService (the same mailbox
-/// that sends password resets today), so invitations reach people now. Swapped for a configured
-/// sender when email settings move out of source code (see the EmailService follow-up).
+/// The platform's IEmailSender: sends through the app's EmailService, so every email (approved
+/// pages and platform) uses the same configured account (Email:*).
 /// </summary>
 public sealed class ApprovedAppEmailSender : PlatformEmailSender
 {
@@ -53,7 +45,7 @@ public sealed class ApprovedAppEmailSender : PlatformEmailSender
 }
 
 /// <summary>
-/// Development only (see AddAccountSecurity): saves each email as an .html file you can open in a
+/// Development only (Email:DropFolder, used by EmailService): saves each email as an .html file you can open in a
 /// browser - recipient, subject and body, links clickable. Nothing leaves the machine.
 /// </summary>
 public sealed class FolderEmailSender : PlatformEmailSender

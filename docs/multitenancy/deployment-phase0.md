@@ -45,6 +45,9 @@ Set these in each site's control panel, as environment variables or app settings
 | `Bootstrap__CodeHash` | – | until the first owner is set up (runbook section 2) |
 | `Security__BreakGlassCodeHash`, `Security__RecoveryApprovers`, `Security__Mailbox` | – | yes |
 | `Links__AdminBaseUrl` | – | yes, e.g. `https://admin.<domain>` |
+| `Email__SmtpHost`, `Email__SmtpPort` (587), `Email__UserName`, `Email__Password`, `Email__From` | yes | yes |
+
+**Email:** without the `Email__*` settings, nothing can be emailed (password reset, invitations, provider setup), and the app says so. Use port **587**; port 465 is not supported.
 
 **If you upload with Web Deploy,** don't tick "remove additional files at destination". Otherwise a server-only `appsettings.Production.json` is deleted.
 
