@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 0 Foundation (in progress)
-- **Next step:** Phase 1 / Step 1.2 — Organizations
+- **Next step:** Phase 1 / Step 1.2 — Organizations (done after 1.3, which it depends on)
 - **Branch:** `mt/phase0` (from `mt/integration` `1b59b6b`)
 
 ## Phase status
@@ -14,7 +14,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 |---|---|---|---|
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
 | 0 Foundation | Implementation complete (0.1–0.8, 0.10; 0.9 moved to Phase 7). Deployment-dependent exit checks (P0-6 Level 3, P0-9 real copy, P0-11, P0-12) wait for the test-site deployment (developer's decision: deploy after all phases) | — | — |
-| 1 Provider Console | In progress (Step 1.1 done) | — | — |
+| 1 Provider Console | In progress (Steps 1.1, 1.3 done) | — | — |
 | 2 PayPal core | Not started | — | — |
 | 3 Website API | Not started | — | — |
 | 4 Invoices | Not started | — | — |
@@ -101,6 +101,22 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-14 — Phase 1 / Step 1.3 — Plans (local only), done before 1.2.** The organization wizard (1.2) needs plans to choose from, so the order was swapped.
+  - **Domain** `Plan` and `PlanPrice`, platform tables via migration **M1c**:
+    - plan: code (lower-case, unique, fixed), name, description, features, people limit, trial days (default 30, D21), shown on the pricing page or not, Active / Retired;
+    - price: cycle Monthly / Yearly, amount (max 2 decimals), USD (D25), `PayPalPlanId` empty until Phase 2;
+    - prices are fixed once created, with one active price per cycle; a new amount is a new price; retiring a plan retires its prices.
+  - **`PlanService`:** create (with first price), edit, add / retire price, retire / offer again. Each change saves exactly one audit entry together with it; refusals change nothing and write none. `ListOfferedAsync` lists active plans with an active price, for the wizard.
+  - **Pages** (UI rules): list with search and status filter and "+ New plan"; New, Edit and Add-price pages; read-only detail with Retire / Offer again / Retire price buttons, confirmed in a dialog.
+    - **Permissions:** viewing needs Support; changes need Billing (pages and handlers both check).
+  - **Scripts:** `platform-M1c-up/down/verify` rehearsed (up `1|2|1|0|0`, idempotent, down clean). Not in the Phase 0 bundle; Phase 1 gets its own at the end.
+  - **Tests:**
+    - Unit +12: rules, service, audit per change, refusals.
+    - Integration +3: the pages end to end; Support can view but not change.
+    - The role matrix now covers the plan sub-pages.
+    - The form helper no longer submits the layout's sign-out form by accident (`SignOutAsync` added).
+  - **Results:** Unit 99, Architecture 11, Baseline 320, Integration 84, UI 5. No model drift.
 
 - **2026-10-14 — Phase 0 merged; Phase 1 started.** `mt/phase0` was fast-forwarded into `mt/integration` (local; not pushed), and `mt/phase1` branched from it.
 

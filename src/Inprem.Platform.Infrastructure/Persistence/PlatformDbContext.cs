@@ -1,4 +1,5 @@
 using Inprem.Platform.Domain.Audit;
+using Inprem.Platform.Domain.Billing;
 using Inprem.Platform.Domain.Memberships;
 using Inprem.Platform.Domain.Provider;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
@@ -40,6 +41,9 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<AuditEntry> AuditEntries { get; set; } = null!;
     public DbSet<UsedCode> UsedCodes { get; set; } = null!;
     public DbSet<SecurityAttempt> SecurityAttempts { get; set; } = null!;
+
+    public DbSet<Plan> Plans { get; set; } = null!;
+    public DbSet<PlanPrice> PlanPrices { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -136,6 +140,35 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
             attempt.Property(a => a.Kind).HasMaxLength(30);
             attempt.Property(a => a.Source).HasMaxLength(300);
             attempt.HasIndex(a => new { a.Kind, a.OccurredUtc });
+        });
+
+        modelBuilder.Entity<Plan>(plan =>
+        {
+            plan.ToTable("Plans");
+            plan.HasKey(p => p.Id);
+            plan.Property(p => p.Id).ValueGeneratedNever();
+            plan.Property(p => p.Code).HasMaxLength(50);
+            plan.Property(p => p.Name).HasMaxLength(100);
+            plan.Property(p => p.Description).HasMaxLength(1000);
+            plan.Property(p => p.Features).HasMaxLength(2000);
+            plan.Property(p => p.Status).HasConversion<string>().HasMaxLength(20);
+            plan.Ignore(p => p.IsOffered);
+            plan.HasIndex(p => p.Code).IsUnique();
+            plan.HasMany(p => p.Prices).WithOne().HasForeignKey(p => p.PlanId).OnDelete(DeleteBehavior.Restrict);
+            plan.Navigation(p => p.Prices).HasField("_prices").UsePropertyAccessMode(PropertyAccessMode.Field);
+        });
+
+        modelBuilder.Entity<PlanPrice>(price =>
+        {
+            price.ToTable("PlanPrices");
+            price.HasKey(p => p.Id);
+            price.Property(p => p.Id).ValueGeneratedNever();
+            price.Property(p => p.Cycle).HasConversion<string>().HasMaxLength(20);
+            price.Property(p => p.Amount).HasPrecision(10, 2);
+            price.Property(p => p.Currency).HasMaxLength(3).IsFixedLength().IsUnicode(false);
+            price.Property(p => p.PayPalPlanId).HasMaxLength(50);
+            price.Property(p => p.Status).HasConversion<string>().HasMaxLength(20);
+            price.HasIndex(p => p.PlanId);
         });
 
         modelBuilder.Entity<AccountRow>(account =>

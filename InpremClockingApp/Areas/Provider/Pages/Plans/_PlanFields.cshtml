@@ -1,0 +1,29 @@
+@model PlanForm
+@* Plan fields shared by New and Edit. Field names are prefixed "Plan." by the pages. *@
+<div class="pc-field">
+  <label for="Plan_Name">Name</label>
+  <input id="Plan_Name" name="Plan.Name" value="@Model.Name" maxlength="100" required />
+</div>
+<div class="pc-field">
+  <label for="Plan_Description">Description <span class="pc-muted">(optional)</span></label>
+  <textarea id="Plan_Description" name="Plan.Description" rows="2" maxlength="1000">@Model.Description</textarea>
+</div>
+<div class="pc-field">
+  <label for="Plan_Features">Features <span class="pc-muted">(one per line, shown on the pricing page)</span></label>
+  <textarea id="Plan_Features" name="Plan.Features" rows="4" maxlength="2000">@Model.Features</textarea>
+</div>
+<div class="pc-row">
+  <div class="pc-field">
+    <label for="Plan_TrialDays">Free trial (days)</label>
+    <input id="Plan_TrialDays" name="Plan.TrialDays" type="number" min="0" max="365" value="@Model.TrialDays" required />
+  </div>
+  <div class="pc-field">
+    <label for="Plan_MaxPeople">People limit <span class="pc-muted">(empty = no limit)</span></label>
+    <input id="Plan_MaxPeople" name="Plan.MaxPeople" type="number" min="1" value="@Model.MaxPeople" />
+  </div>
+</div>
+<div class="pc-field pc-check">
+  <input id="Plan_IsPublic" name="Plan.IsPublic" type="checkbox" value="true" @(Model.IsPublic ? "checked" : "") />
+  <input type="hidden" name="Plan.IsPublic" value="false" />
+  <label for="Plan_IsPublic">Show on the public pricing page</label>
+</div>

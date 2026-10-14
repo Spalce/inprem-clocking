@@ -1,0 +1,82 @@
+@page "{id:guid}"
+@model DetailsModel
+@{
+    ViewData["Title"] = Model.Plan.Name;
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+    var plan = Model.Plan;
+}
+
+<p><a asp-page="Index">&larr; Plans</a></p>
+<div class="pc-heading">
+  <div>
+    <h1 class="pc-title">@plan.Name <span class="pc-badge pc-badge-@plan.Status.ToString().ToLowerInvariant()">@plan.Status</span></h1>
+    <p class="pc-subtitle"><code>@plan.Code</code> &middot; created @plan.CreatedUtc.ToString("yyyy-MM-dd")</p>
+  </div>
+  @if (Model.CanChange)
+  {
+      <div class="pc-actions">
+        <a asp-page="Edit" asp-route-id="@plan.Id" class="pc-btn" data-testid="edit"><i class="fas fa-pen"></i> Edit</a>
+        @if (plan.Status == PlanStatus.Active)
+        {
+            <a asp-page="NewPrice" asp-route-id="@plan.Id" class="pc-btn" data-testid="add-price"><i class="fas fa-plus"></i> Add price</a>
+            <form method="post" asp-page-handler="Retire" asp-route-id="@plan.Id" class="pc-inline"
+                  onsubmit="return confirm('Retire the plan &quot;@plan.Name&quot;? No new organization can choose it and its prices retire. Organizations already on it keep it.');">
+              <button type="submit" class="pc-btn pc-btn-danger" data-testid="retire">Retire plan</button>
+            </form>
+        }
+        else
+        {
+            <form method="post" asp-page-handler="Reactivate" asp-route-id="@plan.Id" class="pc-inline">
+              <button type="submit" class="pc-btn" data-testid="reactivate">Offer again</button>
+            </form>
+        }
+      </div>
+  }
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="pc-success" data-testid="success">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="pc-error" data-testid="error">@error</div>
+}
+
+<div class="pc-card">
+  <dl class="pc-dl">
+    <dt>Description</dt><dd>@(plan.Description ?? "—")</dd>
+    <dt>Features</dt><dd>@if (plan.Features == null) { <span>—</span> } else { <ul class="pc-list">@foreach (var line in plan.Features.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)) { <li>@line</li> }</ul> }</dd>
+    <dt>Free trial</dt><dd>@plan.TrialDays days</dd>
+    <dt>People limit</dt><dd>@(plan.MaxPeople?.ToString() ?? "No limit")</dd>
+    <dt>Pricing page</dt><dd>@(plan.IsPublic ? "Shown" : "Console only")</dd>
+    <dt>Organizations</dt><dd>@Model.Organizations</dd>
+  </dl>
+</div>
+
+<h2 class="pc-section">Prices</h2>
+<p class="pc-muted">A price cannot be changed once created: add a new one and retire the old. Organizations already paying keep their price.</p>
+<table class="pc-table" data-testid="prices">
+  <thead><tr><th>Cycle</th><th>Amount</th><th>Status</th><th>PayPal plan</th><th>Created</th><th></th></tr></thead>
+  <tbody>
+  @foreach (var price in plan.Prices.OrderBy(p => p.Status).ThenBy(p => p.Cycle))
+  {
+      <tr>
+        <td>@price.Cycle</td>
+        <td>@price.Amount.ToString("0.00") @price.Currency</td>
+        <td><span class="pc-badge pc-badge-@price.Status.ToString().ToLowerInvariant()">@price.Status</span></td>
+        <td>@(price.PayPalPlanId ?? "Not yet (Phase 2)")</td>
+        <td>@price.CreatedUtc.ToString("yyyy-MM-dd")</td>
+        <td>
+          @if (Model.CanChange && price.Status == PlanStatus.Active)
+          {
+              <form method="post" asp-page-handler="RetirePrice" asp-route-id="@plan.Id" asp-route-priceId="@price.Id" class="pc-inline"
+                    onsubmit="return confirm('Retire the price @PlanService.Describe(price)? New organizations cannot choose it; organizations already paying it keep it.');">
+                <button type="submit" class="pc-btn pc-btn-small" data-testid="retire-price">Retire</button>
+              </form>
+          }
+        </td>
+      </tr>
+  }
+  </tbody>
+</table>

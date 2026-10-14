@@ -1,0 +1,26 @@
+@model PriceForm
+@using Inprem.Platform.Domain.Billing
+<div class="pc-row">
+  <div class="pc-field">
+    <label for="Price_Cycle">Billing cycle</label>
+    <select id="Price_Cycle" name="Price.Cycle">
+      @foreach (var cycle in Enum.GetValues<BillingCycle>())
+      {
+          <option value="@cycle" selected="@(cycle == Model.Cycle)">@cycle</option>
+      }
+    </select>
+  </div>
+  <div class="pc-field">
+    <label for="Price_Amount">Amount</label>
+    <input id="Price_Amount" name="Price.Amount" type="number" min="0.01" step="0.01" value="@(Model.Amount > 0 ? Model.Amount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) : "")" required />
+  </div>
+  <div class="pc-field">
+    <label for="Price_Currency">Currency</label>
+    <select id="Price_Currency" name="Price.Currency">
+      @foreach (var currency in PlanPrice.SupportedCurrencies)
+      {
+          <option value="@currency" selected="@(currency == Model.Currency)">@currency</option>
+      }
+    </select>
+  </div>
+</div>

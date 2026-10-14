@@ -1,9 +1,62 @@
 @page
+@model InpremClockingApp.Areas.Provider.Pages.Plans.IndexModel
+@using Microsoft.AspNetCore.Authorization
+@using InpremClockingApp.Provider
+@inject IAuthorizationService Authorization
 @{
     ViewData["Title"] = "Plans";
     Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+    var canChange = (await Authorization.AuthorizeAsync(User, ProviderPolicies.Billing)).Succeeded;
 }
 
-<h1 class="pc-title">Plans</h1>
-<p class="pc-subtitle">Plans and prices offered to organizations.</p>
-<partial name="/Areas/Provider/Pages/Shared/_ComingSoon.cshtml" model="@("step 1.3 (Plans)")" />
+<div class="pc-heading">
+  <div>
+    <h1 class="pc-title">Plans</h1>
+    <p class="pc-subtitle">Plans and prices offered to organizations. Nothing is sent to PayPal yet (Phase 2).</p>
+  </div>
+  @if (canChange)
+  {
+      <a asp-page="New" class="pc-btn pc-btn-primary" data-testid="new"><i class="fas fa-plus"></i> New plan</a>
+  }
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="pc-success" data-testid="success">@success</div>
+}
+
+<form method="get" class="pc-filters">
+  <input name="Search" value="@Model.Search" placeholder="Search name or code" aria-label="Search" />
+  <select name="Status" aria-label="Status">
+    <option value="">All statuses</option>
+    @foreach (var status in Enum.GetValues<PlanStatus>())
+    {
+        <option value="@status" selected="@(Model.Status == status)">@status</option>
+    }
+  </select>
+  <button type="submit" class="pc-btn">Filter</button>
+</form>
+
+<table class="pc-table" data-testid="plans">
+  <thead>
+    <tr><th>Name</th><th>Code</th><th>Status</th><th>Prices</th><th>Trial</th><th>Pricing page</th><th>Organizations</th></tr>
+  </thead>
+  <tbody>
+  @foreach (var plan in Model.Plans)
+  {
+      <tr>
+        <td><a asp-page="Details" asp-route-id="@plan.Id">@plan.Name</a></td>
+        <td><code>@plan.Code</code></td>
+        <td><span class="pc-badge pc-badge-@plan.Status.ToString().ToLowerInvariant()">@plan.Status</span></td>
+        <td>@string.Join(", ", plan.Prices.Where(p => p.Status == PlanStatus.Active).Select(PlanService.Describe))</td>
+        <td>@plan.TrialDays days</td>
+        <td>@(plan.IsPublic ? "Shown" : "Console only")</td>
+        <td>@(Model.Organizations.TryGetValue(plan.Id, out var count) ? count : 0)</td>
+      </tr>
+  }
+  @if (Model.Plans.Count == 0)
+  {
+      <tr><td colspan="7" class="pc-muted">No plans match.</td></tr>
+  }
+  </tbody>
+</table>

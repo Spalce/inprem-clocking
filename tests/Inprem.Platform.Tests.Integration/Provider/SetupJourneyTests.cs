@@ -84,7 +84,7 @@ public class SetupJourneyTests : IClassFixture<ProviderFixture>
         Assert.Equal("Degraded", await (await visitor.GetAsync("/health")).Content.ReadAsStringAsync());
 
         // 8. Sign out; sign in again needs the authenticator code.
-        await PostAsync(owner, "/Provider", Array.Empty<(string, string)>());
+        await SignOutAsync(owner);
         Assert.EndsWith("/Provider/Login", Location(await owner.GetAsync("/Provider")));
         var password = await PostAsync(owner, "/Provider/Login", ("Email", Owner), ("Password", StrongPassword));
         Assert.EndsWith("/Provider/LoginWith2fa", Location(password));

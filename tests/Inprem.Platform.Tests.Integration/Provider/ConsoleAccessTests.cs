@@ -38,8 +38,29 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
         .Where(i => i.Page != null)
         .ToDictionary(i => i.Page!, i => i.Policy);
 
-    /// <summary>Signed-in pages that are not in the menu (all at Support level).</summary>
+    /// <summary>Signed-in pages that are not in the menu and not GET-checked (they redirect by design).</summary>
     private static readonly string[] OtherSignedInPages = { "/EnrolTwoFactor", "/Reauthenticate" };
+
+    /// <summary>
+    /// Pages below the menu: who may open them (written out independently), and their address for
+    /// a plan id. Plans: everyone views; Billing and Owners change.
+    /// </summary>
+    private static readonly Dictionary<string, (ProviderRole[] Roles, Func<Guid, string> Url)> SubPages = new()
+    {
+        ["/Plans/Details"] = (new[] { ProviderRole.Support, ProviderRole.Billing, ProviderRole.Owner }, id => $"/Provider/Plans/Details/{id}"),
+        ["/Plans/New"] = (new[] { ProviderRole.Billing, ProviderRole.Owner }, _ => "/Provider/Plans/New"),
+        ["/Plans/Edit"] = (new[] { ProviderRole.Billing, ProviderRole.Owner }, id => $"/Provider/Plans/Edit/{id}"),
+        ["/Plans/NewPrice"] = (new[] { ProviderRole.Billing, ProviderRole.Owner }, id => $"/Provider/Plans/NewPrice/{id}"),
+    };
+
+    private async Task<Guid> PlanIdAsync()
+    {
+        using var scope = _app.Services.CreateScope();
+        var plans = scope.ServiceProvider.GetRequiredService<Inprem.Platform.Application.Billing.PlanService>();
+        var code = $"matrix-{Guid.NewGuid():N}"[..20];
+        var result = await plans.CreateAsync(code, new("Matrix plan", null, null, null, 30, true), Inprem.Platform.Domain.Billing.BillingCycle.Monthly, 10m, "USD", "test");
+        return result.PlanId!.Value;
+    }
 
     /// <summary>
     /// The agreed permissions, written out independently of the app's own tables (so changing those
@@ -69,7 +90,7 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
             .Distinct().ToList();
 
         Assert.NotEmpty(pages);
-        Assert.All(pages, p => Assert.True(ConsolePages.ContainsKey(p) || OtherSignedInPages.Contains(p), $"{p} is not in the role matrix."));
+        Assert.All(pages, p => Assert.True(ConsolePages.ContainsKey(p) || SubPages.ContainsKey(p) || OtherSignedInPages.Contains(p), $"{p} is not in the role matrix."));
         Assert.Equal(9, ConsolePages.Count);
     }
 
@@ -99,6 +120,21 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
                     Assert.True(response.StatusCode == HttpStatusCode.OK, $"{role} should open {url}: {(int)response.StatusCode} {Location(response)}");
                 else
                     Assert.True(Location(response).EndsWith("/Provider/AccessDenied"), $"{role} should not open {url}: {(int)response.StatusCode} {Location(response)}");
+            }
+        }
+
+        var planId = await PlanIdAsync();
+        foreach (var (page, (roles, url)) in SubPages)
+        {
+            Assert.EndsWith("/Provider/Login", Location(await anonymous.GetAsync(url(planId))));
+            Assert.EndsWith("/Provider/AccessDenied", Location(await orgAdmin.GetAsync(url(planId))));
+            foreach (var (role, client) in clients)
+            {
+                using var response = await client.GetAsync(url(planId));
+                if (roles.Contains(role))
+                    Assert.True(response.StatusCode == HttpStatusCode.OK, $"{role} should open {page}: {(int)response.StatusCode} {Location(response)}");
+                else
+                    Assert.True(Location(response).EndsWith("/Provider/AccessDenied"), $"{role} should not open {page}: {(int)response.StatusCode} {Location(response)}");
             }
         }
 

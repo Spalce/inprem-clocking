@@ -1,0 +1,29 @@
+@page
+@model NewModel
+@{
+    ViewData["Title"] = "New plan";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<p><a asp-page="Index">&larr; Plans</a></p>
+<h1 class="pc-title">New plan</h1>
+<p class="pc-subtitle">The plan and its first price. More prices (e.g. yearly) can be added on the plan's page.</p>
+
+@if (Model.Error != null)
+{
+    <div class="pc-error" data-testid="error">@Model.Error</div>
+}
+
+<form method="post" class="pc-card pc-form">
+  <div class="pc-field">
+    <label for="Code">Code <span class="pc-muted">(lower-case letters, digits and dashes; cannot be changed later)</span></label>
+    <input id="Code" name="Code" value="@Model.Code" maxlength="50" pattern="[a-z0-9]+(-[a-z0-9]+)*" required />
+  </div>
+  <partial name="_PlanFields" model="Model.Plan" />
+  <h2 class="pc-section">First price</h2>
+  <partial name="_PriceFields" model="Model.Price" />
+  <div class="pc-actions">
+    <button type="submit" class="pc-btn pc-btn-primary">Create plan</button>
+    <a asp-page="Index" class="pc-btn">Cancel</a>
+  </div>
+</form>

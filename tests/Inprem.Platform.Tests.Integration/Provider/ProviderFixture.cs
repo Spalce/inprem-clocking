@@ -70,16 +70,37 @@ public static class ProviderForms
         return new HtmlParser().ParseDocument(await response.Content.ReadAsStringAsync());
     }
 
-    public static async Task<HttpResponseMessage> PostAsync(HttpClient client, string path, params (string Name, string Value)[] fields)
+    public static Task<HttpResponseMessage> PostAsync(HttpClient client, string path, params (string Name, string Value)[] fields) =>
+        PostFormAsync(client, path, (Func<string, bool>?)null, fields);
+
+    public static Task<HttpResponseMessage> PostFormAsync(HttpClient client, string path, string actionContains, params (string Name, string Value)[] fields) =>
+        PostFormAsync(client, path, a => a.Contains(actionContains, StringComparison.OrdinalIgnoreCase), fields);
+
+    /// <summary>
+    /// Submits a POST form of the page: the first one, or the first whose action matches
+    /// <paramref name="select"/>. The console layout's sign-out form is never picked.
+    /// </summary>
+    public static async Task<HttpResponseMessage> PostFormAsync(HttpClient client, string path, Func<string, bool>? select, params (string Name, string Value)[] fields)
     {
         var document = await GetDocumentAsync(client, path);
-        var form = document.Forms.First(f => f.Method.Equals("post", StringComparison.OrdinalIgnoreCase));
+        var form = document.Forms.First(f => f.Method.Equals("post", StringComparison.OrdinalIgnoreCase)
+            && f.GetAttribute("data-role") != "sign-out"
+            && (select == null || select(f.GetAttribute("action") ?? "")));
         var values = form.Elements.OfType<IHtmlInputElement>()
             .Where(i => i.Type == "hidden" && !string.IsNullOrEmpty(i.Name))
             .Select(i => new KeyValuePair<string, string>(i.Name!, i.Value)).ToList();
         values.AddRange(fields.Select(f => new KeyValuePair<string, string>(f.Name, f.Value)));
         var action = string.IsNullOrEmpty(form.GetAttribute("action")) ? path : form.GetAttribute("action")!;
         return await client.PostAsync(action, new FormUrlEncodedContent(values));
+    }
+
+    /// <summary>Presses the console layout's Sign out button.</summary>
+    public static async Task<HttpResponseMessage> SignOutAsync(HttpClient client, string page = "/Provider")
+    {
+        var document = await GetDocumentAsync(client, page);
+        var form = document.Forms.Single(f => f.GetAttribute("data-role") == "sign-out");
+        var token = form.QuerySelector("input[name=__RequestVerificationToken]")!.GetAttribute("value")!;
+        return await client.PostAsync(form.GetAttribute("action"), new FormUrlEncodedContent(new Dictionary<string, string> { ["__RequestVerificationToken"] = token }));
     }
 
     public static string Location(HttpResponseMessage response) => response.Headers.Location?.OriginalString ?? "";

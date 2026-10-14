@@ -1,0 +1,23 @@
+@page "{id:guid}"
+@model EditModel
+@{
+    ViewData["Title"] = "Edit plan";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<p><a asp-page="Details" asp-route-id="@RouteData.Values["id"]">&larr; Back to the plan</a></p>
+<h1 class="pc-title">Edit plan <code>@Model.Code</code></h1>
+<p class="pc-subtitle">The code and prices are not changed here.</p>
+
+@if (Model.Error != null)
+{
+    <div class="pc-error" data-testid="error">@Model.Error</div>
+}
+
+<form method="post" class="pc-card pc-form">
+  <partial name="_PlanFields" model="Model.Plan" />
+  <div class="pc-actions">
+    <button type="submit" class="pc-btn pc-btn-primary">Save</button>
+    <a asp-page="Details" asp-route-id="@RouteData.Values["id"]" class="pc-btn">Cancel</a>
+  </div>
+</form>

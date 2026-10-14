@@ -12,6 +12,7 @@ public static class DependencyInjection
         services.AddDbContext<PlatformDbContext>(options => PlatformDbContext.Configure(options, connectionString));
         services.AddScoped<IMembershipStore, MembershipStore>();
         services.AddScoped<Application.Provider.IProviderStore, ProviderStore>();
+        services.AddScoped<Application.Billing.IPlanStore, PlanStore>();
         services.AddSingleton<IClock, SystemClock>();
         services.AddMemoryCache();
         return services;
