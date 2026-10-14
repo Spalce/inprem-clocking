@@ -1,5 +1,6 @@
 using Inprem.Platform.Application.Provider;
 using InpremClockingApp.Provider;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -10,7 +11,7 @@ namespace InpremClockingApp.Areas.Provider.Pages;
 /// link only shows the request; approving takes a button press (POST), so link previews and
 /// mail scanners cannot approve by opening it.
 /// </summary>
-[ProviderAccess(ProviderAccessLevel.Anonymous)]
+[AllowAnonymous]
 public class ApproveRecoveryModel : PageModel
 {
     private readonly ProviderSecurityService _provider;

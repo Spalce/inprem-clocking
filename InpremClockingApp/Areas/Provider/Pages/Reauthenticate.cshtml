@@ -1,0 +1,22 @@
+@page
+@model ReauthenticateModel
+@{
+    ViewData["Title"] = "Confirm it's you";
+}
+
+<div class="@ProviderUi.Card">
+    <h1 class="@ProviderUi.Title">Confirm it's you</h1>
+    <p class="@ProviderUi.Lead">This action needs a fresh code from your authenticator app.</p>
+
+    @if (Model.Error != null)
+    {
+        <div class="@ProviderUi.Error" data-testid="error">@Model.Error</div>
+    }
+
+    <form method="post" autocomplete="off">
+        <input type="hidden" asp-for="ReturnUrl" />
+        <label asp-for="Code" class="@ProviderUi.Label">Authenticator code</label>
+        <input asp-for="Code" inputmode="numeric" autocomplete="one-time-code" class="@ProviderUi.Input" required />
+        <button type="submit" class="@ProviderUi.Button">Continue</button>
+    </form>
+</div>

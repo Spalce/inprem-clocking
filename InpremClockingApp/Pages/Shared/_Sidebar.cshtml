@@ -52,17 +52,6 @@
       </div>
     }
 
-    @if (User.IsInRole(IdentitySeeder.SuperAdminRole))
-    {
-      <a asp-page="/Platform/Tenants" class="@linkClass">
-        <i class="fas fa-building tw:w-4 tw:text-center"></i>
-        <span>Tenants</span>
-      </a>
-      <a asp-page="/Platform/Invoices" class="@linkClass">
-        <i class="fas fa-file-invoice-dollar tw:w-4 tw:text-center"></i>
-        <span>Invoices</span>
-      </a>
-    }
   </nav>
 </aside>
 <div data-sidebar-backdrop class="tw:fixed tw:inset-0 tw:z-30 tw:hidden tw:bg-slate-900/50 tw:lg:hidden"></div>

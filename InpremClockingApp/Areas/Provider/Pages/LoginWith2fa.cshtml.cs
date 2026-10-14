@@ -1,18 +1,24 @@
 using InpremClockingApp.Models.Identity;
 using InpremClockingApp.Provider;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace InpremClockingApp.Areas.Provider.Pages;
 
 /// <summary>Second step of the provider sign-in: the authenticator app code.</summary>
-[ProviderAccess(ProviderAccessLevel.Anonymous)]
+[AllowAnonymous]
 public class LoginWith2faModel : PageModel
 {
     private readonly SignInManager<AppUser> _signIn;
+    private readonly ProviderSession _session;
 
-    public LoginWith2faModel(SignInManager<AppUser> signIn) => _signIn = signIn;
+    public LoginWith2faModel(SignInManager<AppUser> signIn, ProviderSession session)
+    {
+        _signIn = signIn;
+        _session = session;
+    }
 
     [BindProperty] public string Code { get; set; } = "";
 
@@ -23,10 +29,15 @@ public class LoginWith2faModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
-        if (await _signIn.GetTwoFactorAuthenticationUserAsync() == null) return RedirectToPage("/Login", new { area = "Provider" });
+        var user = await _signIn.GetTwoFactorAuthenticationUserAsync();
+        if (user == null) return RedirectToPage("/Login", new { area = "Provider" });
 
         var result = await _signIn.TwoFactorAuthenticatorSignInAsync(AccountGateway.NormalizeCode(Code ?? ""), isPersistent: false, rememberClient: false);
-        if (result.Succeeded) return RedirectToPage("/Index", new { area = "Provider" });
+        if (result.Succeeded)
+        {
+            await _session.SignInAsync(user, twoFactor: true);
+            return RedirectToPage("/Index", new { area = "Provider" });
+        }
 
         Error = result.IsLockedOut ? "This account is locked after too many failed attempts. Try again in 15 minutes." : "The code is not valid.";
         return Page();

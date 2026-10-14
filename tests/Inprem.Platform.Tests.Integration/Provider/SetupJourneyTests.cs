@@ -124,9 +124,9 @@ public class SetupJourneyTests : IClassFixture<ProviderFixture>
         var refused = await PostAsync(client, "/Provider/Login", ("Email", alphaOwner.Email), ("Password", _app.Data.Password));
         Assert.Contains("Invalid sign-in attempt.", await BodyAsync(refused));
 
-        // Signed in to the App site (shared cookie with SiteMode All): no console, App session kept.
+        // Signed in to the App site (shared cookie with SiteMode All): no console ("No access"), App session kept.
         await SignIn.AsAsync(client, alphaOwner.Email, _app.Data.Password);
-        Assert.EndsWith("/Provider/Login", Location(await client.GetAsync("/Provider")));
+        Assert.EndsWith("/Provider/AccessDenied", Location(await client.GetAsync("/Provider")));
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/VolunteerAttendance")).StatusCode);
     }
 

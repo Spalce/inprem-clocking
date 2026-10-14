@@ -1,12 +1,13 @@
 using InpremClockingApp.Models.Identity;
 using InpremClockingApp.Provider;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace InpremClockingApp.Areas.Provider.Pages;
 
-[ProviderAccess(ProviderAccessLevel.Anonymous)]
+[AllowAnonymous]
 public class LogoutModel : PageModel
 {
     private readonly SignInManager<AppUser> _signIn;

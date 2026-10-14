@@ -124,6 +124,7 @@ public class ProviderFixture : IAsyncLifetime
     public async Task InitializeAsync()
     {
         _db = await TestDatabase.CreateAsync(GetType().Name);
+        await Jobs.HangfireSchema.InstallAsync(_db.ConnectionString); // the console links to the jobs dashboard
         _app = new InpremAppFactory(_db.ConnectionString, new Dictionary<string, string?>
         {
             ["Site:SiteMode"] = "All",

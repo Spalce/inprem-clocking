@@ -1,0 +1,61 @@
+@using Inprem.Platform.Application.Provider
+@using InpremClockingApp.Hosting
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.Extensions.Options
+@inject IAuthorizationService Authorization
+@inject ProviderSecurityService ProviderSecurity
+@inject IOptions<SiteOptions> Site
+@{
+    var currentPage = ViewContext.RouteData.Values["page"] as string ?? "";
+    var owners = await ProviderSecurity.GetOwnerStatusAsync();
+    var jobsPath = JobsHosting.DashboardPath(Site.Value);
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>@ViewData["Title"] - Inprem Provider Console</title>
+  <link rel="stylesheet" href="~/lib/fontawesome-free/css/all.min.css">
+  <link rel="stylesheet" href="~/provider/console.css" asp-append-version="true">
+</head>
+<body class="pc">
+<div class="pc-shell">
+  <nav class="pc-nav" data-testid="console-nav">
+    <div class="pc-brand">Inprem<small>Provider Console</small></div>
+    @foreach (var item in ProviderNavigation.Items)
+    {
+        if (!(await Authorization.AuthorizeAsync(User, item.Policy)).Succeeded) continue;
+        var active = item.Page != null && (currentPage == item.Page || (item.Page != "/Index" && currentPage.StartsWith(item.Page[..item.Page.LastIndexOf('/')] + "/")));
+        if (item.Page != null)
+        {
+            <a asp-area="Provider" asp-page="@item.Page" class="@(active ? "pc-active" : null)" data-nav="@item.Title"><i class="fas @item.Icon"></i><span>@item.Title</span></a>
+        }
+        else
+        {
+            <a href="@Url.Content("~" + jobsPath)" data-nav="@item.Title"><i class="fas @item.Icon"></i><span>@item.Title</span></a>
+        }
+    }
+  </nav>
+  <div class="pc-main">
+    <header class="pc-top">
+      <span class="pc-user">Signed in as <strong>@User.Identity?.Name</strong></span>
+      <form method="post" asp-area="Provider" asp-page="/Logout" class="pc-inline" data-role="sign-out">
+        <button type="submit" class="pc-btn"><i class="fas fa-right-from-bracket"></i> Sign out</button>
+      </form>
+    </header>
+    @if (!owners.MeetsMinimum)
+    {
+        <div class="pc-banner" data-testid="owners-warning">
+          <i class="fas fa-triangle-exclamation"></i>
+          Not ready for production: @owners.EnrolledOwners of the required @OwnerStatus.Minimum Provider Owners are active with two-factor sign-in.
+          Invite a second owner under Provider users.
+        </div>
+    }
+    <main class="pc-content">
+      @RenderBody()
+    </main>
+  </div>
+</div>
+</body>
+</html>

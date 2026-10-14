@@ -28,6 +28,19 @@ public static class TenancyHosting
                         if (claim != null && newIdentity.FindFirst(type) == null) newIdentity.AddClaim(new System.Security.Claims.Claim(type, claim.Value));
                     }
                 }
+
+                // Provider sessions (step 1.1): keep the start, last-seen and two-factor times (and
+                // the two-factor proof) when Identity rebuilds the principal, so a refresh can
+                // neither end the session early nor extend it.
+                if (newIdentity != null)
+                {
+                    foreach (var type in Provider.ProviderSession.Claims)
+                    {
+                        if (newIdentity.FindFirst(type) != null) continue;
+                        foreach (var claim in context.CurrentPrincipal?.FindAll(type) ?? Enumerable.Empty<System.Security.Claims.Claim>())
+                            newIdentity.AddClaim(new System.Security.Claims.Claim(type, claim.Value));
+                    }
+                }
                 return Task.CompletedTask;
             };
         });

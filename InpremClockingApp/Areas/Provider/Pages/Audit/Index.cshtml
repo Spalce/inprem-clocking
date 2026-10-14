@@ -1,0 +1,10 @@
+@page
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = InpremClockingApp.Provider.ProviderPolicies.Owner)]
+@{
+    ViewData["Title"] = "Audit log";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<h1 class="pc-title">Audit log</h1>
+<p class="pc-subtitle">Who did what, and when.</p>
+<partial name="/Areas/Provider/Pages/Shared/_ComingSoon.cshtml" model="@("step 1.6 (Audit log and dashboard)")" />

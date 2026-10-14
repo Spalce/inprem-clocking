@@ -1,0 +1,10 @@
+@page
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = InpremClockingApp.Provider.ProviderPolicies.Billing)]
+@{
+    ViewData["Title"] = "Webhook events";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<h1 class="pc-title">Webhook events</h1>
+<p class="pc-subtitle">Events received from PayPal.</p>
+<partial name="/Areas/Provider/Pages/Shared/_ComingSoon.cshtml" model="@("Phase 2 (PayPal)")" />

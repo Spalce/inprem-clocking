@@ -1,0 +1,10 @@
+@page
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = InpremClockingApp.Provider.ProviderPolicies.Billing)]
+@{
+    ViewData["Title"] = "Billing";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<h1 class="pc-title">Billing</h1>
+<p class="pc-subtitle">Subscriptions, payments and invoices.</p>
+<partial name="/Areas/Provider/Pages/Shared/_ComingSoon.cshtml" model="@("Phase 2 (PayPal)")" />

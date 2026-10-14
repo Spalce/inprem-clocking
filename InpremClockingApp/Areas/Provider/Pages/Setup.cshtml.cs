@@ -1,5 +1,6 @@
 using Inprem.Platform.Application.Provider;
 using InpremClockingApp.Provider;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -10,7 +11,7 @@ namespace InpremClockingApp.Areas.Provider.Pages;
 /// does. Exists only while no Provider Owner exists and Bootstrap:CodeHash is configured;
 /// otherwise 404. Rate-limited and audited by the shared use case.
 /// </summary>
-[ProviderAccess(ProviderAccessLevel.Anonymous)]
+[AllowAnonymous]
 public class SetupModel : PageModel
 {
     private readonly ProviderSecurityService _provider;

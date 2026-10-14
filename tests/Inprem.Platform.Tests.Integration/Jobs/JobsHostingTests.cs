@@ -37,11 +37,7 @@ public class JobsHostingTests : IAsyncLifetime
         _db = await TestDatabase.CreateAsync(nameof(JobsHostingTests));
 
         // The Hangfire tables come from the reviewed script, as in a deployment (the app never creates them).
-        var script = await File.ReadAllTextAsync(Path.Combine(RepositoryRoot(), "scripts", "migrations", "hangfire-up.idempotent.sql"));
-        await using var connection = new SqlConnection(_db.ConnectionString);
-        await connection.OpenAsync();
-        await using var command = new SqlCommand(script, connection) { CommandTimeout = 120 };
-        await command.ExecuteNonQueryAsync();
+        await HangfireSchema.InstallAsync(_db.ConnectionString);
     }
 
     public async Task DisposeAsync() => await _db.DisposeAsync();
@@ -147,10 +143,4 @@ public class JobsHostingTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/Provider/jobs")).StatusCode);
     }
 
-    private static string RepositoryRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "InpremClockingApp.sln"))) dir = dir.Parent;
-        return dir?.FullName ?? throw new InvalidOperationException("Repository root not found.");
-    }
 }

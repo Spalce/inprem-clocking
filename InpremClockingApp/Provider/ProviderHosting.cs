@@ -1,5 +1,9 @@
 using Inprem.Platform.Application.Provider;
 using InpremClockingApp.Hosting;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -22,16 +26,47 @@ public static class ProviderHosting
         services.AddScoped<ProviderSecurityService>();
         services.AddScoped<ProviderAccessCheck>();
         services.AddScoped<ProviderAccessFilter>();
+        services.AddScoped<ProviderSession>();
 
-        // Every Provider page goes through the access gate, including pages added later. These are
+        // Roles (step 1.1): ProviderSupport / ProviderBilling / ProviderOwner.
+        services.AddScoped<IAuthorizationHandler, ProviderRoleHandler>();
+        services.Configure<AuthorizationOptions>(ProviderPolicies.Add);
+
+        // Admin site IP allow-list (D17), validated at startup.
+        services.AddSingleton<IValidateOptions<AdminSiteOptions>, AdminSiteOptionsValidator>();
+        services.AddOptions<AdminSiteOptions>().Bind(builder.Configuration.GetSection(AdminSiteOptions.SectionName)).ValidateOnStart();
+
+        // Provider sessions: 8 h / 30 min limits on top of Identity's checks; console requests that
+        // need a sign-in or lack the role go to the console's own login and access-denied pages.
+        services.PostConfigure<CookieAuthenticationOptions>(IdentityConstants.ApplicationScheme, cookie =>
+        {
+            var validate = cookie.Events.OnValidatePrincipal;
+            cookie.Events.OnValidatePrincipal = async context =>
+            {
+                await validate(context);
+                if (context.Principal != null) await ProviderSession.ValidateAsync(context);
+            };
+            var toLogin = cookie.Events.OnRedirectToLogin;
+            cookie.Events.OnRedirectToLogin = context =>
+                ProviderSession.IsConsoleRequest(context.HttpContext) ? RedirectToConsolePage(context, "/Login") : toLogin(context);
+            var toDenied = cookie.Events.OnRedirectToAccessDenied;
+            cookie.Events.OnRedirectToAccessDenied = context =>
+                ProviderSession.IsConsoleRequest(context.HttpContext) ? RedirectToConsolePage(context, "/AccessDenied") : toDenied(context);
+        });
+
+        // Every Provider page goes through the access gate and needs at least a provider role
+        // (pages open to everyone say [AllowAnonymous]), including pages added later. These are
         // security forms, so antiforgery tokens are checked here (closer than the app-wide
         // IgnoreAntiforgeryToken convention of the approved pages, so this one applies).
         services.Configure<RazorPagesOptions>(options =>
+        {
+            options.Conventions.AuthorizeAreaFolder(SiteMap.ProviderArea, "/", ProviderPolicies.Support);
             options.Conventions.AddAreaFolderApplicationModelConvention(SiteMap.ProviderArea, "/", model =>
             {
                 model.Filters.Add(new ServiceFilterAttribute(typeof(ProviderAccessFilter)));
                 model.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
-            }));
+            });
+        });
 
         // Go-live check (D16): Degraded while fewer than two Provider Owners are active with two-factor.
         services.AddHealthChecks().AddCheck<ProviderOwnersHealthCheck>("provider-owners");
@@ -51,6 +86,24 @@ public static class ProviderHosting
         if (site.HostFor(SiteMode.Admin) is { } host) health.RequireHost(host);
         return endpoints;
     }
+
+    private static Task RedirectToConsolePage(RedirectContext<CookieAuthenticationOptions> context, string page)
+    {
+        var links = context.HttpContext.RequestServices.GetRequiredService<LinkGenerator>();
+        var target = links.GetPathByPage(context.HttpContext, page, values: new { area = SiteMap.ProviderArea }) ?? "/";
+        if (IsAjax(context.Request))
+        {
+            context.Response.StatusCode = page == "/Login" ? StatusCodes.Status401Unauthorized : StatusCodes.Status403Forbidden;
+        }
+        else
+        {
+            context.Response.Redirect(target);
+        }
+        return Task.CompletedTask;
+    }
+
+    private static bool IsAjax(HttpRequest request) =>
+        string.Equals(request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.Ordinal);
 
     public static ProviderSecurityOptions ReadOptions(IConfiguration configuration)
     {

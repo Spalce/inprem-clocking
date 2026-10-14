@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 0 Foundation (in progress)
-- **Next step:** Phase 0 exit — the developer's manual checks (P0-6, P0-11, P0-12, P0-5 credential), then the Phase 0 exit review
+- **Next step:** Phase 1 / Step 1.2 — Organizations
 - **Branch:** `mt/phase0` (from `mt/integration` `1b59b6b`)
 
 ## Phase status
@@ -13,8 +13,8 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | Phase | Status | Exit checks passed | Merged into `mt/integration` |
 |---|---|---|---|
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
-| 0 Foundation | Steps done (0.1–0.8, 0.10; 0.9 moved to Phase 7); exit checks pending | — | — |
-| 1 Provider Console | Not started | — | — |
+| 0 Foundation | Implementation complete (0.1–0.8, 0.10; 0.9 moved to Phase 7). Deployment-dependent exit checks (P0-6 Level 3, P0-9 real copy, P0-11, P0-12) wait for the test-site deployment (developer's decision: deploy after all phases) | — | — |
+| 1 Provider Console | In progress (Step 1.1 done) | — | — |
 | 2 PayPal core | Not started | — | — |
 | 3 Website API | Not started | — | — |
 | 4 Invoices | Not started | — | — |
@@ -101,6 +101,33 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-14 — Phase 0 merged; Phase 1 started.** `mt/phase0` was fast-forwarded into `mt/integration` (local; not pushed), and `mt/phase1` branched from it.
+
+- **2026-10-14 — Phase 1 / Step 1.1 — Area, layout, authentication.**
+  - **Console layout** (`Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml`, styles in `wwwroot/provider/console.css`; approved CSS untouched).
+    - The menu has 10 items, each shown only to roles allowed to open it.
+    - Screens built later are short placeholder pages that say when they arrive.
+    - The "fewer than two owners" banner is on every page.
+    - Routes sit at the Admin site's root (`/`, `/Tenants`, `/Plans`, …; `/Provider/...` with `SiteMode=All`).
+  - **Roles:** policies `ProviderSupport`, `ProviderBilling` and `ProviderOwner` (roles nest: Owner ⊇ Billing ⊇ Support). Every Provider page needs at least Support, unless it is `[AllowAnonymous]`.
+    - **Default permissions** (design 5.5 has no matrix, so these are recorded here; change if needed): Support opens Dashboard, Organizations and Plans; Billing adds Billing and Webhook events; Owner adds Notifications, Jobs, Audit log, Provider users and Settings.
+    - Without a sign-in, you go to the provider login; with the wrong role, to the "No access" page (403).
+  - **Sessions:** every provider sign-in goes through `ProviderSession` (start, last-seen and two-factor times in the cookie).
+    - The session ends after 30 idle minutes, or 8 hours at most; a re-sign-in keeps the start time.
+    - Identity's periodic refresh keeps these times.
+  - **Re-authentication:** `[RequireRecentTwoFactor]` on a page makes its POST handlers need a code from the last 5 minutes. The `Reauthenticate` page then returns to local addresses only.
+  - **IP allow-list (D17):** `AdminSite:AllowedNetworks` (CIDR or single addresses, validated at startup). Outside addresses get 403 on an Admin site, and on console requests of a combined site. It is off when the list is empty and in Development.
+  - **C3-1:** the old SuperAdmin "Tenants" and "Invoices" links were removed from `Pages/Shared/_Sidebar.cshtml`. The `/Platform` pages themselves stay until step 1.7.
+  - **Tests (Integration +12):**
+    - role matrix: every signed-in console page × anonymous, organization admin, Support, Billing and Owner, against an independently written permission table, plus a check that every console page is in the matrix;
+    - menu per role; list pages have no POST forms except sign-out;
+    - re-authentication; idle and 8-hour limits;
+    - allow-list (Admin site, combined site, empty list, App site, invalid entry); sidebar.
+    - Mutations (longer idle time; Support allowed into Billing) were caught.
+  - **Also:** the Provider fixture installs the Hangfire tables (shared `HangfireSchema` helper). The tenant-admin journey now expects "No access".
+  - **Results:** Unit 87, Architecture 11, Baseline 320, Integration 82, UI 5.
+  - **Follow-up:** `[RequireRecentTwoFactor]` gets its end-to-end test with the first sensitive action (inviting provider users, step 1.4).
 
 _(date — phase/step — summary — tests — next)_
 

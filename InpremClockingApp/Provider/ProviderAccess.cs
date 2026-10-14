@@ -60,8 +60,11 @@ public sealed class ProviderAccessFilter : IAsyncPageFilter
         // Setup, invitation and approval links carry one-time tokens in the address: never send it on.
         context.HttpContext.Response.Headers["Referrer-Policy"] = "no-referrer";
 
-        var level = context.ActionDescriptor.HandlerTypeInfo.GetCustomAttributes(typeof(ProviderAccessAttribute), true)
-            .OfType<ProviderAccessAttribute>().FirstOrDefault()?.Level ?? ProviderAccessLevel.Console;
+        // [ProviderAccess] says it explicitly; otherwise [AllowAnonymous] pages are open and every
+        // other page is the console.
+        var handlerType = context.ActionDescriptor.HandlerTypeInfo;
+        var level = handlerType.GetCustomAttributes(typeof(ProviderAccessAttribute), true).OfType<ProviderAccessAttribute>().FirstOrDefault()?.Level
+            ?? (handlerType.IsDefined(typeof(Microsoft.AspNetCore.Authorization.AllowAnonymousAttribute), true) ? ProviderAccessLevel.Anonymous : ProviderAccessLevel.Console);
         var (outcome, _) = await _access.CheckAsync(context.HttpContext.User, level);
         switch (outcome)
         {

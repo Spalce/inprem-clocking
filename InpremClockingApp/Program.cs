@@ -167,6 +167,9 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+// Admin site IP allow-list (D17): outside addresses get 403 before anything else.
+app.UseMiddleware<AdminAllowList>();
+
 app.UseAuthentication();
 app.UseTenantContext();
 app.UseAuthorization();

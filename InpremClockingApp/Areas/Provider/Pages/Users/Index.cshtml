@@ -1,0 +1,10 @@
+@page
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = InpremClockingApp.Provider.ProviderPolicies.Owner)]
+@{
+    ViewData["Title"] = "Provider users";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<h1 class="pc-title">Provider users</h1>
+<p class="pc-subtitle">The provider team: owners, billing and support.</p>
+<partial name="/Areas/Provider/Pages/Shared/_ComingSoon.cshtml" model="@("step 1.4 (Provider users)")" />

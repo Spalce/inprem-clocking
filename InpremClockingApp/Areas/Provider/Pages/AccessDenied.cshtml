@@ -1,0 +1,15 @@
+@page
+@model AccessDeniedModel
+@{
+    ViewData["Title"] = "No access";
+}
+
+<div class="@ProviderUi.Card">
+    <h1 class="@ProviderUi.Title">No access</h1>
+    <p class="@ProviderUi.Lead" data-testid="access-denied">This account cannot open that part of the Provider Console.</p>
+    <p class="tw:text-center tw:text-sm">
+        <a asp-page="/Index" asp-area="Provider" class="@ProviderUi.Link">Back to the console</a>
+        &middot;
+        <a asp-page="/Login" asp-area="Provider" class="@ProviderUi.Link">Sign in with another account</a>
+    </p>
+</div>

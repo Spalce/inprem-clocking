@@ -24,12 +24,14 @@ public class EnrolTwoFactorModel : PageModel
     private readonly UserManager<AppUser> _users;
     private readonly SignInManager<AppUser> _signIn;
     private readonly ProviderSecurityService _provider;
+    private readonly ProviderSession _session;
 
-    public EnrolTwoFactorModel(UserManager<AppUser> users, SignInManager<AppUser> signIn, ProviderSecurityService provider)
+    public EnrolTwoFactorModel(UserManager<AppUser> users, SignInManager<AppUser> signIn, ProviderSecurityService provider, ProviderSession session)
     {
         _users = users;
         _signIn = signIn;
         _provider = provider;
+        _session = session;
     }
 
     [BindProperty] public string Code { get; set; } = "";
@@ -75,7 +77,7 @@ public class EnrolTwoFactorModel : PageModel
         await _provider.RecordTwoFactorEnrolledAsync(user.Id, HttpContext.RequestAborted);
 
         // A fresh sign-in that counts as two-factor (and drops any re-enrol marker).
-        await _signIn.SignInWithClaimsAsync(user, isPersistent: false, new[] { new Claim(ProviderAccessFilter.MfaClaimType, ProviderAccessFilter.MfaClaimValue) });
+        await _session.SignInAsync(user, twoFactor: true, User);
         return Page();
     }
 
@@ -87,8 +89,8 @@ public class EnrolTwoFactorModel : PageModel
             await _users.ResetAuthenticatorKeyAsync(user);
             key = await _users.GetAuthenticatorKeyAsync(user);
 
-            // The key change rotated the security stamp: keep this session valid.
-            await _signIn.RefreshSignInAsync(user);
+            // The key change rotated the security stamp: keep this session valid (same times, same marker).
+            await _session.SignInAsync(user, twoFactor: false, User, reEnrol: User.HasClaim(c => c.Type == ProviderAccessFilter.ReEnrolClaimType));
         }
 
         SharedKey = FormatKey(key!);

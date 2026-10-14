@@ -3,6 +3,7 @@ using Inprem.Platform.Application.Provider;
 using InpremClockingApp.Models.Identity;
 using InpremClockingApp.Provider;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -14,18 +15,20 @@ namespace InpremClockingApp.Areas.Provider.Pages;
 /// once, and the session can only reach the enrolment page until a new authenticator is
 /// confirmed and new recovery codes are issued. Audited; the owner and the other owners are told.
 /// </summary>
-[ProviderAccess(ProviderAccessLevel.Anonymous)]
+[AllowAnonymous]
 public class LoginWithRecoveryCodeModel : PageModel
 {
     private readonly SignInManager<AppUser> _signIn;
     private readonly UserManager<AppUser> _users;
     private readonly ProviderSecurityService _provider;
+    private readonly ProviderSession _session;
 
-    public LoginWithRecoveryCodeModel(SignInManager<AppUser> signIn, UserManager<AppUser> users, ProviderSecurityService provider)
+    public LoginWithRecoveryCodeModel(SignInManager<AppUser> signIn, UserManager<AppUser> users, ProviderSecurityService provider, ProviderSession session)
     {
         _signIn = signIn;
         _users = users;
         _provider = provider;
+        _session = session;
     }
 
     [BindProperty] public string RecoveryCode { get; set; } = "";
@@ -49,11 +52,7 @@ public class LoginWithRecoveryCodeModel : PageModel
 
         await _users.ResetAuthenticatorKeyAsync(user);
         await _provider.RecordSelfServiceRecoveryAsync(user.Id, HttpContext.RequestAborted);
-        await _signIn.SignInWithClaimsAsync(user, isPersistent: false, new[]
-        {
-            new Claim(ProviderAccessFilter.MfaClaimType, ProviderAccessFilter.MfaClaimValue),
-            new Claim(ProviderAccessFilter.ReEnrolClaimType, "1"),
-        });
+        await _session.SignInAsync(user, twoFactor: true, reEnrol: true);
         return RedirectToPage("/EnrolTwoFactor", new { area = "Provider" });
     }
 }

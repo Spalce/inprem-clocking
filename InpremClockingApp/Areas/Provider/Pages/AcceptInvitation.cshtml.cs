@@ -2,24 +2,27 @@ using Inprem.Platform.Application.Provider;
 using InpremClockingApp.Models.Identity;
 using InpremClockingApp.Provider;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace InpremClockingApp.Areas.Provider.Pages;
 
 /// <summary>The emailed setup or recovery link: set a password, then enrol two-factor.</summary>
-[ProviderAccess(ProviderAccessLevel.Anonymous)]
+[AllowAnonymous]
 public class AcceptInvitationModel : PageModel
 {
     private readonly ProviderSecurityService _provider;
     private readonly UserManager<AppUser> _users;
     private readonly SignInManager<AppUser> _signIn;
+    private readonly ProviderSession _session;
 
-    public AcceptInvitationModel(ProviderSecurityService provider, UserManager<AppUser> users, SignInManager<AppUser> signIn)
+    public AcceptInvitationModel(ProviderSecurityService provider, UserManager<AppUser> users, SignInManager<AppUser> signIn, ProviderSession session)
     {
         _provider = provider;
         _users = users;
         _signIn = signIn;
+        _session = session;
     }
 
     [BindProperty(SupportsGet = true)] public string Token { get; set; } = "";
@@ -51,7 +54,7 @@ public class AcceptInvitationModel : PageModel
 
         await _signIn.SignOutAsync();
         var user = await _users.FindByIdAsync(userId!);
-        await _signIn.SignInAsync(user!, isPersistent: false);
+        await _session.SignInAsync(user!, twoFactor: false);
         return RedirectToPage("/EnrolTwoFactor", new { area = "Provider" });
     }
 }
