@@ -40,6 +40,39 @@ public static class PublicApiEndpoints
             .Produces<IReadOnlyList<TimeZoneResponse>>()
             .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
+        // Registration (step 3.3).
+        api.MapPost("/signups", CreateSignupAsync)
+            .AllowAnonymous()
+            .RequireRateLimiting(PublicApiHosting.WriteRatePolicy)
+            .RequireIdempotency()
+            .WithName("createSignup")
+            .WithTags("Signup")
+            .Accepts<SignupRequest>("application/json")
+            .Produces<SignupCreatedResponse>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
+        api.MapGet("/signups/{signupId:guid}", GetSignupAsync)
+            .RequireAuthorization(PublicApiHosting.SignupPolicy)
+            .WithName("getSignup")
+            .WithTags("Signup")
+            .Produces<SignupStatusResponse>()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
+        api.MapPost("/signups/{signupId:guid}/resend-verification", ResendVerificationAsync)
+            .RequireAuthorization(PublicApiHosting.SignupPolicy)
+            .WithName("resendVerification")
+            .WithTags("Signup")
+            .Produces(StatusCodes.Status202Accepted)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
         api.MapGet("/slugs/{slug}/availability", GetSlugAvailabilityAsync)
             .AllowAnonymous()
             .WithName("getSlugAvailability")
@@ -92,6 +125,70 @@ public static class PublicApiEndpoints
         var check = await organizations.CheckSlugAsync(value, ct: http.RequestAborted);
         return Results.Ok(new SlugAvailabilityResponse(value, check.Available, check.Available ? null : check.Suggestion));
     }
+
+    // ------------------------------------------------------------- registration
+
+    private static string AppBase(HttpContext http) => $"{http.Request.Scheme}://{http.Request.Host}{http.Request.PathBase}";
+
+    private static async Task<IResult> CreateSignupAsync(HttpContext http, SignupRequest? body, Inprem.Platform.Application.PublicApi.SignupService signups)
+    {
+        if (body == null) return Problems.Validation(http, new Dictionary<string, string[]> { ["body"] = new[] { "A JSON body is required." } });
+        var result = await signups.CreateAsync(new Inprem.Platform.Application.PublicApi.SignupInput(
+            body.OrganizationName, body.Slug, body.TimeZone, body.Owner?.FirstName, body.Owner?.LastName, body.Owner?.Email, body.Owner?.Mobile,
+            body.Consent?.AcceptTerms == true, body.Consent?.AcceptPrivacyPolicy == true, body.Consent?.SmsOptIn == true,
+            body.PlanPriceId, body.Mode, body.CaptchaToken, http.Connection.RemoteIpAddress?.ToString()), AppBase(http), http.RequestAborted);
+
+        if (result.Error is { } error)
+        {
+            return error switch
+            {
+                Inprem.Platform.Application.PublicApi.SignupError.Validation => Problems.Validation(http, result.Errors!),
+                Inprem.Platform.Application.PublicApi.SignupError.Captcha => Problems.Create(http, StatusCodes.Status400BadRequest, Problems.CaptchaFailed, result.Message!),
+                Inprem.Platform.Application.PublicApi.SignupError.PlanNotAvailable => Problems.Create(http, StatusCodes.Status400BadRequest, Problems.PlanNotAvailable, result.Message!),
+                Inprem.Platform.Application.PublicApi.SignupError.SlugTaken => Problems.Create(http, StatusCodes.Status409Conflict, Problems.SlugTaken, result.Message!),
+                Inprem.Platform.Application.PublicApi.SignupError.EmailInUse => Problems.Create(http, StatusCodes.Status409Conflict, Problems.EmailInUse, result.Message!),
+                _ => Problems.Create(http, StatusCodes.Status500InternalServerError, Problems.InternalError, result.Message!),
+            };
+        }
+
+        var signup = result.Signup!;
+        return Results.Created($"{PublicApiHosting.Prefix}/signups/{signup.Id}", new SignupCreatedResponse(
+            signup.Id, result.Token!, result.TokenExpiresUtc!.Value, "PendingVerification",
+            signup.Mode == Inprem.Platform.Domain.PublicApi.SignupMode.Subscribe ? "checkout" : "verify_email"));
+    }
+
+    /// <summary>The signup token's own signup only; anything else is "not found".</summary>
+    private static bool OwnSignup(HttpContext http, Guid signupId) => PublicApiClaims.SignupOf(http.User) == signupId;
+
+    private static async Task<IResult> GetSignupAsync(HttpContext http, Guid signupId, Inprem.Platform.Application.PublicApi.SignupService signups)
+    {
+        var view = OwnSignup(http, signupId) ? await signups.GetAsync(signupId, http.RequestAborted) : null;
+        return view == null
+            ? Problems.Create(http, StatusCodes.Status404NotFound, Problems.NotFound, "No such signup.")
+            : Results.Ok(new SignupStatusResponse(view.SignupId, view.Status, view.SubscriptionStatus?.ToString()));
+    }
+
+    private static async Task<IResult> ResendVerificationAsync(HttpContext http, Guid signupId, Inprem.Platform.Application.PublicApi.SignupService signups)
+    {
+        if (!OwnSignup(http, signupId)) return Problems.Create(http, StatusCodes.Status404NotFound, Problems.NotFound, "No such signup.");
+        return await signups.ResendAsync(signupId, AppBase(http), http.RequestAborted) switch
+        {
+            Inprem.Platform.Application.PublicApi.ResendOutcome.Sent => Results.Accepted(),
+            Inprem.Platform.Application.PublicApi.ResendOutcome.AlreadyVerified => Problems.Create(http, StatusCodes.Status409Conflict, Problems.AlreadyVerified, "The email is already verified."),
+            Inprem.Platform.Application.PublicApi.ResendOutcome.LimitReached => Problems.Create(http, StatusCodes.Status409Conflict, Problems.ResendLimitReached, "At most 3 verification emails per hour. Please wait."),
+            _ => Problems.Create(http, StatusCodes.Status404NotFound, Problems.NotFound, "No such signup."),
+        };
+    }
+
+    public sealed record SignupOwner(string? FirstName, string? LastName, string? Email, string? Mobile);
+
+    public sealed record SignupConsent(bool AcceptTerms, bool AcceptPrivacyPolicy, bool SmsOptIn);
+
+    public sealed record SignupRequest(string? OrganizationName, string? Slug, string? TimeZone, SignupOwner? Owner, SignupConsent? Consent, Guid? PlanPriceId, string? Mode, string? CaptchaToken);
+
+    public sealed record SignupCreatedResponse(Guid SignupId, string SignupToken, DateTime SignupTokenExpiresAt, string Status, string NextAction);
+
+    public sealed record SignupStatusResponse(Guid SignupId, string Status, string? SubscriptionStatus);
 
     public sealed record HealthResponse(string Status);
 

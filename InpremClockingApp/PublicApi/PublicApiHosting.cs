@@ -60,6 +60,12 @@ public static class PublicApiHosting
     {
         services.AddOptions<PublicApiOptions>().Bind(configuration.GetSection(PublicApiOptions.Section));
 
+        // Registration (step 3.3): the verification email and the CAPTCHA (Cloudflare Turnstile, D30).
+        services.AddScoped<ISignupMail, SignupMail>();
+        services.AddOptions<Inprem.Platform.Infrastructure.PublicApi.CaptchaOptions>().Bind(configuration.GetSection(Inprem.Platform.Infrastructure.PublicApi.CaptchaOptions.Section));
+        services.AddHttpClient(Inprem.Platform.Infrastructure.PublicApi.TurnstileCaptchaVerifier.HttpClientName, c => c.Timeout = TimeSpan.FromSeconds(10));
+        services.AddScoped<ICaptchaVerifier, Inprem.Platform.Infrastructure.PublicApi.TurnstileCaptchaVerifier>();
+
         services.AddAuthentication().AddScheme<AuthenticationSchemeOptions, PublicApiTokenHandler>(TokenScheme, _ => { });
         services.AddAuthorization(options =>
         {

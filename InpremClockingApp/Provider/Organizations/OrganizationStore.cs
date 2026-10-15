@@ -180,15 +180,22 @@ public sealed class OrganizationStore : IOrganizationStore
 
         Plan? plan = input.PlanId == null ? null : await platform.Plans.Include(p => p.Prices).FirstAsync(p => p.Id == input.PlanId, ct);
         var price = plan?.Prices.First(p => p.Id == input.PlanPriceId);
-        var subscription = Subscription.Start(tenant.Id, plan, price, input.Mode, input.TrialDays, now);
+        var signup = provisioning.Signup;
+        var subscription = signup == null
+            ? Subscription.Start(tenant.Id, plan, price, input.Mode, input.TrialDays, now)
+            : signup.Mode == Inprem.Platform.Domain.PublicApi.SignupMode.Trial
+                ? Subscription.Start(tenant.Id, plan, price, BillingMode.PayPal, input.TrialDays, now)
+                : Subscription.StartAwaitingPayment(tenant.Id, plan!, price!, now);
 
-        platform.TenantProfiles.Add(TenantProfile.Create(tenant.Id, input.Slug, now));
+        platform.TenantProfiles.Add(signup == null ? TenantProfile.Create(tenant.Id, input.Slug, now) : TenantProfile.CreatePendingVerification(tenant.Id, input.Slug, now));
         platform.Subscriptions.Add(subscription);
+        if (signup != null)
+            platform.Signups.Add(Inprem.Platform.Domain.PublicApi.Signup.Create(signup.SignupId, tenant.Id, ownerId!, signup.Mode, price!.Id, signup.SmsOptIn, now));
         platform.TenantMemberships.Add(isNew
             ? TenantMembership.CreateActive(ownerId!, tenant.Id, MembershipRole.Owner, now)
             : TenantMembership.CreateInvited(ownerId!, tenant.Id, MembershipRole.Owner, provisioning.Actor, now));
         platform.AuditEntries.Add(AuditEntry.Record(provisioning.Actor, "organization.created", tenant.Id.ToString(),
-            $"{input.Name} ({input.Slug}), owner {input.OwnerEmail} ({(isNew ? "new account" : "existing account, invited")}), " +
+            $"{input.Name} ({input.Slug}){(signup == null ? "" : $", website signup ({signup.Mode})")}, owner {input.OwnerEmail} ({(isNew ? "new account" : "existing account, invited")}), " +
             $"{input.Mode}{(plan == null ? "" : $", plan {plan.Name}")}{(subscription.TrialEndsUtc != null ? $", trial until {subscription.TrialEndsUtc:yyyy-MM-dd}" : "")}",
             now, tenant.Id));
         await platform.SaveChangesAsync(ct);

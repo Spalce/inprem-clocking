@@ -165,6 +165,20 @@ public class SubscriptionLifecycleTests
     }
 
     [Fact]
+    public void A_Signup_Awaiting_Payment_Has_No_Access_Until_PayPal_Approves()
+    {
+        var (plan, price) = Catalog();
+        var s = Subscription.StartAwaitingPayment(9, plan, price, Now);
+        Assert.Equal((SubscriptionStatus.PendingActivation, BillingMode.PayPal, null), (s.Status, s.Mode, s.TrialEndsUtc));
+        Assert.False(s.HasFullAccess(Now));
+        Assert.True(s.AwaitActivation(PayPalId, price, Now));
+        Assert.True(s.HasFullAccess(Now));
+        Assert.True(s.Activate(PayPalId, price, Now, Now.AddMonths(1), Now));
+        price.Retire();
+        Assert.Throws<ArgumentException>(() => Subscription.StartAwaitingPayment(9, plan, price, Now));
+    }
+
+    [Fact]
     public void Free_Always_Has_Access_And_Console_Overrides_Work()
     {
         var free = Subscription.Start(1, null, null, BillingMode.Free, 0, Now);

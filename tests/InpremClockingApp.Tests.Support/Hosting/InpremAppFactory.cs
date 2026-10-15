@@ -90,6 +90,8 @@ internal class InpremAppFactory : WebApplicationFactory<Program>
 
             services.RemoveAll<Inprem.Platform.Application.Memberships.IEmailSender>();
             services.AddSingleton<Inprem.Platform.Application.Memberships.IEmailSender>(Emails);
+            services.RemoveAll<Inprem.Platform.Application.PublicApi.ICaptchaVerifier>();
+            services.AddSingleton<Inprem.Platform.Application.PublicApi.ICaptchaVerifier, FakeCaptchaVerifier>();
             services.RemoveAll<Inprem.Platform.Application.Billing.IPaymentProvider>();
             services.AddSingleton<Inprem.Platform.Application.Billing.IPaymentProvider>(PayPal);
 

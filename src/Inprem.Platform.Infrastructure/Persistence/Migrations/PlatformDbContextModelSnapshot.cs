@@ -799,6 +799,60 @@ namespace Inprem.Platform.Infrastructure.Persistence.Migrations
                     b.ToTable("IdempotencyRecords", "platform");
                 });
 
+            modelBuilder.Entity("Inprem.Platform.Domain.PublicApi.Signup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("OwnerUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<Guid>("PlanPriceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("ResendCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ResendWindowStartUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("SmsOptIn")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("TermsAcceptedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("VerifiedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlanPriceId");
+
+                    b.HasIndex("TenantId")
+                        .IsUnique();
+
+                    b.ToTable("Signups", "platform");
+                });
+
             modelBuilder.Entity("Inprem.Platform.Domain.Support.SupportSession", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1006,6 +1060,15 @@ namespace Inprem.Platform.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("PlanPriceId")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Inprem.Platform.Domain.PublicApi.Signup", b =>
+                {
+                    b.HasOne("Inprem.Platform.Domain.Billing.PlanPrice", null)
+                        .WithMany()
+                        .HasForeignKey("PlanPriceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Inprem.Platform.Domain.Billing.Plan", b =>

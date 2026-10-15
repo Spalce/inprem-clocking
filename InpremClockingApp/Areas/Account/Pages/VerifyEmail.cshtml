@@ -1,0 +1,38 @@
+@page "/Account/VerifyEmail"
+@model InpremClockingApp.Areas.Account.Pages.VerifyEmailModel
+@{
+    ViewData["Title"] = "Confirm your email";
+    var input = "tw:mb-4 tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:p-2 tw:text-sm";
+}
+
+<div class="tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:p-8 tw:shadow-sm" data-testid="verify-email">
+  @if (Model.Done)
+  {
+      <h1 class="tw:mb-2 tw:text-center tw:text-lg tw:font-semibold tw:text-slate-900">You are all set</h1>
+      <p class="tw:mb-4 tw:text-center tw:text-sm tw:text-slate-600" data-testid="done">Your email is confirmed and your password is saved. Sign in to start.</p>
+      <p class="tw:text-center tw:text-sm"><a href="/Identity/Account/Login" class="tw:font-medium tw:text-blue-700 tw:hover:underline">Sign in</a></p>
+  }
+  else if (Model.Email == null)
+  {
+      <h1 class="tw:mb-2 tw:text-center tw:text-lg tw:font-semibold tw:text-slate-900">Confirm your email</h1>
+      <p class="tw:text-center tw:text-sm tw:text-red-700" data-testid="error">@Model.Error</p>
+  }
+  else
+  {
+      <h1 class="tw:mb-2 tw:text-center tw:text-lg tw:font-semibold tw:text-slate-900">Confirm your email</h1>
+      <p class="tw:mb-6 tw:text-center tw:text-sm tw:text-slate-600">Choose the password for <strong>@Model.Email</strong>.</p>
+      @if (Model.Error != null)
+      {
+          <div class="tw:mb-4 tw:rounded-md tw:bg-red-50 tw:p-3 tw:text-sm tw:text-red-800" data-testid="error">@Model.Error</div>
+      }
+      <form method="post">
+        <input type="hidden" name="Signup" value="@Model.Signup" />
+        <input type="hidden" name="Code" value="@Model.Code" />
+        <label class="tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700" for="Password">Password</label>
+        <input type="password" id="Password" name="Password" autocomplete="new-password" class="@input" required />
+        <label class="tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700" for="ConfirmPassword">Password again</label>
+        <input type="password" id="ConfirmPassword" name="ConfirmPassword" autocomplete="new-password" class="@input" required />
+        <button type="submit" class="tw:w-full tw:cursor-pointer tw:rounded-md tw:border-0 tw:bg-blue-700 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-800" data-testid="confirm">Confirm and save password</button>
+      </form>
+  }
+</div>

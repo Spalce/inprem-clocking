@@ -41,7 +41,14 @@ public sealed record OrganizationEdit(string Name, string Slug, string TimeZoneI
 
 /// <summary>Everything the store creates in one transaction for a new organization.</summary>
 public sealed record OrganizationProvisioning(
-    NewOrganization Organization, string? ExistingOwnerUserId, Subscription Subscription, string Actor, DateTime NowUtc);
+    NewOrganization Organization, string? ExistingOwnerUserId, Subscription Subscription, string Actor, DateTime NowUtc,
+    SignupProvisioning? Signup = null);
+
+/// <summary>
+/// A website signup (Phase 3 step 3.3): the organization starts PendingVerification, the given
+/// subscription is used as it is, and the signup row is added in the same transaction.
+/// </summary>
+public sealed record SignupProvisioning(Guid SignupId, Inprem.Platform.Domain.PublicApi.SignupMode Mode, bool SmsOptIn);
 
 public sealed record ProvisionedOrganization(int TenantId, string OwnerUserId, bool OwnerIsNewAccount);
 

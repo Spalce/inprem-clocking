@@ -55,6 +55,7 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<BillingEvent> BillingEvents { get; set; } = null!;
     public DbSet<Inprem.Platform.Domain.PublicApi.ApiToken> ApiTokens { get; set; } = null!;
     public DbSet<Inprem.Platform.Domain.PublicApi.IdempotencyRecord> IdempotencyRecords { get; set; } = null!;
+    public DbSet<Inprem.Platform.Domain.PublicApi.Signup> Signups { get; set; } = null!;
     public DbSet<SupportSession> SupportSessions { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -290,6 +291,18 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
             token.HasIndex(t => t.TokenHash).IsUnique();
             token.HasIndex(t => t.SignupId);
             token.HasIndex(t => t.ExpiresUtc);
+        });
+
+        modelBuilder.Entity<Inprem.Platform.Domain.PublicApi.Signup>(signup =>
+        {
+            signup.ToTable("Signups");
+            signup.HasKey(s => s.Id);
+            signup.Property(s => s.Id).ValueGeneratedNever();
+            signup.Property(s => s.OwnerUserId).HasMaxLength(450);
+            signup.Property(s => s.Mode).HasConversion<string>().HasMaxLength(20);
+            signup.Property(s => s.Status).HasConversion<string>().HasMaxLength(30);
+            signup.HasIndex(s => s.TenantId).IsUnique();
+            signup.HasOne<PlanPrice>().WithMany().HasForeignKey(s => s.PlanPriceId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Inprem.Platform.Domain.PublicApi.IdempotencyRecord>(record =>

@@ -32,6 +32,8 @@ public class PublicApiFixture : IAsyncLifetime
     public TestClock Clock { get; } = new();
     public SeedCatalog Data { get; private set; } = null!;
     public IServiceProvider Services => _app.Services;
+    public CapturingEmailSender Emails => _app.Emails;
+    public FakePaymentProvider PayPal => _app.PayPal;
     public TestEndpoints Endpoints { get; } = new();
 
     public async Task InitializeAsync()

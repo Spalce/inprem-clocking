@@ -4,6 +4,7 @@ using System.Text;
 using Inprem.Platform.Application.Memberships;
 using Inprem.Platform.Application.PublicApi;
 using Inprem.Platform.Domain.PublicApi;
+using Microsoft.AspNetCore.DataProtection;
 
 namespace InpremClockingApp.PublicApi;
 
@@ -17,7 +18,8 @@ namespace InpremClockingApp.PublicApi;
 /// <item>A second request while the first is still running waits for it briefly, else 429.</item>
 /// <item>Server errors (5xx) are not kept: the same key can safely be retried.</item>
 /// </list>
-/// Keys are per endpoint and per caller (the token, or "public" for endpoints without one).
+/// Keys are per endpoint and per caller (the token, or "public" for endpoints without one). The
+/// stored answer is encrypted with data protection: an answer can hold a new token (POST /signups).
 /// </summary>
 public sealed class IdempotencyFilter : IEndpointFilter
 {
@@ -33,6 +35,7 @@ public sealed class IdempotencyFilter : IEndpointFilter
 
         var store = http.RequestServices.GetRequiredService<IPublicApiStore>();
         var clock = http.RequestServices.GetRequiredService<IClock>();
+        var protector = http.RequestServices.GetRequiredService<Microsoft.AspNetCore.DataProtection.IDataProtectionProvider>().CreateProtector("PublicApi.Idempotency.v1");
         var scope = $"{http.Request.Method} {(http.GetEndpoint() as RouteEndpoint)?.RoutePattern.RawText}|{http.User.FindFirstValue(PublicApiClaims.TokenId) ?? "public"}";
         var hash = await BodyHashAsync(http.Request);
 
@@ -50,7 +53,7 @@ public sealed class IdempotencyFilter : IEndpointFilter
                 }
                 if (existing.RequestHash != hash)
                     return Problems.Create(http, StatusCodes.Status422UnprocessableEntity, Problems.IdempotencyKeyReused, "This Idempotency-Key was already used with a different request.");
-                if (existing.IsComplete) return new StoredResult(existing);
+                if (existing.IsComplete) return new StoredResult(existing.StatusCode!.Value, existing.ContentType, existing.ResponseBody == null ? "" : protector.Unprotect(existing.ResponseBody));
                 if (DateTime.UtcNow > deadline)
                 {
                     http.Response.Headers.RetryAfter = "1";
@@ -73,13 +76,14 @@ public sealed class IdempotencyFilter : IEndpointFilter
         }
 
         var (status, contentType, body) = await CaptureAsync(http, outcome);
-        if (status >= 500 || body.Length > IdempotencyRecord.MaxBodyLength)
+        var kept = status < 500 ? protector.Protect(body) : null;
+        if (kept == null || kept.Length > IdempotencyRecord.MaxBodyLength)
         {
             await store.RemoveIdempotencyAsync(record, CancellationToken.None);
         }
         else
         {
-            record.Complete(status, contentType, body);
+            record.Complete(status, contentType, kept);
             await store.SaveChangesAsync(CancellationToken.None);
         }
         return new StoredResult(status, contentType, body);
@@ -123,10 +127,6 @@ public sealed class IdempotencyFilter : IEndpointFilter
         private readonly int _status;
         private readonly string? _contentType;
         private readonly string _body;
-
-        public StoredResult(IdempotencyRecord record) : this(record.StatusCode!.Value, record.ContentType, record.ResponseBody ?? "")
-        {
-        }
 
         public StoredResult(int status, string? contentType, string body)
         {

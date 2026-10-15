@@ -100,10 +100,26 @@ public sealed class Subscription
         };
     }
 
+    /// <summary>
+    /// A website signup that pays at once ("subscribe", Phase 3 step 3.3): PendingActivation with no
+    /// PayPal subscription yet. No access until PayPal confirms (<see cref="HasFullAccess"/>).
+    /// </summary>
+    public static Subscription StartAwaitingPayment(int tenantId, Plan plan, PlanPrice price, DateTime nowUtc)
+    {
+        Utc(nowUtc);
+        if (!plan.IsOffered) throw new ArgumentException("That plan is not offered any more.", nameof(plan));
+        if (price.PlanId != plan.Id || price.Status != PlanStatus.Active) throw new ArgumentException("That price is not an active price of the plan.", nameof(price));
+        return new Subscription
+        {
+            Id = Guid.NewGuid(), TenantId = tenantId, PlanId = plan.Id, PlanPriceId = price.Id, Mode = BillingMode.PayPal,
+            Status = SubscriptionStatus.PendingActivation, CreatedUtc = nowUtc, StatusChangedUtc = nowUtc,
+        };
+    }
+
     // ------------------------------------------------------------------ access
 
     /// <summary>
-    /// Full access (saving, kiosk): Free; a running trial; PendingActivation (PayPal approved);
+    /// Full access (saving, kiosk): Free; a running trial; PendingActivation once PayPal approved;
     /// Active; PastDue (PayPal is retrying); Canceled until the period ends; or a console
     /// free-access override. Otherwise read-only (reports and exports still work).
     /// </summary>
@@ -114,7 +130,9 @@ public sealed class Subscription
         return Status switch
         {
             SubscriptionStatus.Trialing => TrialEndsUtc > nowUtc,
-            SubscriptionStatus.PendingActivation or SubscriptionStatus.Active or SubscriptionStatus.PastDue => true,
+            // PendingActivation: only once PayPal approved (a signup that has not paid yet has no access).
+            SubscriptionStatus.PendingActivation => ExternalSubscriptionId != null,
+            SubscriptionStatus.Active or SubscriptionStatus.PastDue => true,
             SubscriptionStatus.Canceled => CurrentPeriodEndUtc > nowUtc,
             _ => false,
         };

@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 3 Website API (in progress; Phase 2's sandbox checks P2-1 and P2-4 still open)
-- **Next step:** Phase 3 / Step 3.3 — Registration (`POST /signups`, signup status, resend verification, email verification page)
+- **Next step:** Phase 3 / Step 3.4 — Checkout endpoints (`POST /checkout-sessions`, status, confirm, cancel)
 - **Branch:** `mt/phase3` (from `mt/integration` `9ac52c3`)
 
 ## Phase status
@@ -16,7 +16,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | 0 Foundation | Implementation complete (0.1–0.8, 0.10; 0.9 moved to Phase 7). Deployment-dependent exit checks (P0-6 Level 3, P0-9 real copy, P0-11, P0-12) wait for the test-site deployment (developer's decision: deploy after all phases) | — | — |
 | 1 Provider Console | Implementation complete (1.1–1.7), Phase 1 bundle rehearsed. Waiting: developer walkthrough (P1-1), onboarding under 3 minutes on staging (P1-3) | P1-2, P1-4, P1-5, P1-6, P1-7 (automated); P1-1 automated part | 2026-10-15 (`87ab80d`, developer's request, before the P1-1 walkthrough) |
 | 2 PayPal core | Implementation complete (2.1–2.9), Phase 2 bundle rehearsed. Waiting: PayPal sandbox run (P2-1, P2-4) | P2-2, P2-3, P2-5, P2-6, P2-7 (automated); P2-1 and P2-4 with the pretend PayPal | 2026-10-15 (`9ac52c3`, developer's request, before the sandbox run) |
-| 3 Website API | In progress (Steps 3.1–3.2 done) | — | — |
+| 3 Website API | In progress (Steps 3.1–3.3 done) | — | — |
 | 4 Invoices | Not started | — | — |
 | 5 Twilio | Not started | — | — |
 | 6 Staff alerts | Not started | — | — |
@@ -75,6 +75,9 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **PayPal sandbox smoke test of steps 2.2 to 2.8 not run yet.** Locally it also needs, besides the keys: `PayPal:ReturnUrlAllowList:0` = the app's https address (e.g. `https://localhost:7xxx`), `PayPal:PlanReturnUrl` = that address + `/Billing/PayPalReturn`, `PayPal:PlanCancelUrl` = that address + `/Billing`. It needs the sandbox keys (`PayPal:ClientId`, `PayPal:Secret`) in user-secrets; the client is tested against a pretend PayPal only.
 - **Low advisory GHSA-g4vj-cjjj-v7hg (NuGet.Packaging / NuGet.Protocol 6.11.0)** is reported in the app and test projects. It was not introduced by step 2.2 (it comes with the existing design-time packages). Low severity, so the CI gate does not fail; it is reviewed with the other packages in Phase 7.
 - **PayPal sandbox access from Ghana (2026-10-15).** The developer is in Ghana, where PayPal may only allow send-only personal accounts; it is unclear whether such an account can open developer.paypal.com. If not, the project owner creates the sandbox app on Inprem's PayPal Business account and shares the two sandbox keys privately. ngrok is not affected.
+- **CAPTCHA needs its secret (step 3.3).** Registration refuses every request until `Captcha:Secret` is set (fail closed). For local testing, Cloudflare publishes test keys: the secret `1x0000000000000000000000000000000AA` always passes and goes in user-secrets (`dotnet user-secrets set "Captcha:Secret" "<test secret>" --project InpremClockingApp`). The real secret comes from whoever runs the website's Cloudflare account (needs list, item 8).
+- **Owner email already has an account (step 3.3).** The draft's `email_in_use` (409) is used, as agreed. It tells a caller that an email has an account; CAPTCHA and the write rate limit make that slow to abuse. Revisit with the web team if they prefer an invitation instead (the console already invites existing accounts).
+- **Signup status "Active" (step 3.3).** `GET /signups/{id}` answers `Active` once the email is verified and the subscription is Trialing or Active, `Verified` when verified but not yet paid (subscribe mode), else `PendingVerification`.
 - **Draft API changes proposed (steps 3.1, 3.2).** In `docs/multitenancy/api/public-v1.draft.yaml`: `internal_error` added to the problem codes (the draft had no code for a 500); `limits.maxPeople` added to plans (staff and volunteers together, what plans have today; the draft's separate staff, volunteer and admin limits wait for the plan catalogue decision, PO-5). Confirm with the web team when the integration guide is handed over (step 3.7).
 - **Old billing tables still mapped (step 2.9).** `Models/Billing` (Subscription, Invoice and their enums) stays as table mappings in `ApplicationDbContext`, marked legacy, so the app's schema does not change before M6 (Phase 7) drops the tables. Nothing reads or writes them any more. This is a deviation from the step text's "remove Models/Billing": removing the mappings would make the next app migration drop the tables early.
 - **Old billing rows to review (step 2.9).** M5 moves paying Active/PastDue old subscriptions to Invoiced; others are left and counted (`LeftForReview`). Unpaid or void old invoices stay for Phase 4. Locally: both paying old subscriptions moved, 1 paid invoice became a payment, 1 void invoice left.
@@ -116,6 +119,32 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-15 — Local database: platform migration M1i applied.** Backup `DB_A65635_inpremdb_before_M1i_20261015.bak` taken first and verified; verify `1|1|1|0|0`; app data fingerprint unchanged.
+
+- **2026-10-15 — Phase 3 / Step 3.3 — Registration (J1, J2).**
+  - **`POST /signups`** (anonymous; the write rate limit; `Idempotency-Key`; CAPTCHA):
+    - **Checks:** field errors keyed by JSON path (organizationName, slug, timeZone, owner.firstName, owner.lastName, owner.email, owner.mobile in E.164, both consents, planPriceId, mode, captchaToken); CAPTCHA → `captcha_failed`; price not public or not offered, or a trial on a plan without one → `plan_not_available`; slug taken → 409 `slug_taken`; owner email with an account → 409 `email_in_use`.
+    - **One transaction** (the console's `ProvisionAsync`, extended): organization; owner account without a password; Owner membership; profile **PendingVerification**; subscription (trial: Trialing for the plan's trial days; subscribe: **PendingActivation without access** until PayPal approves, `Subscription.StartAwaitingPayment`); the **`Signup`** row (migration **M1i**).
+    - Then a signup token (2 hours, linked to the organization) and the verification email.
+    - **Answers:** 201 with `signupId`, the token, its expiry, `PendingVerification` and `nextAction` (`verify_email` or `checkout`). No personal data.
+  - **`GET /signups/{id}`** and **`POST /signups/{id}/resend-verification`** (signup token of that signup only; another signup is 404): status and subscription status; at most 3 emails per hour (`resend_limit_reached`); `already_verified`.
+  - **Verification page `/Account/VerifyEmail`** (App site, anonymous): the owner confirms the email (Identity's confirmation token, 24 hours) and chooses a password.
+    - The password is checked first, so a weak one does not use up the link.
+    - Then the organization becomes **Active** (`signup.verified` audited). Back-office access is possible only after this (D22): before, the owner has no password.
+  - **CAPTCHA:** `ICaptchaVerifier`, Cloudflare Turnstile in Infrastructure (`Captcha:Secret`; fails closed); a test double in the test host.
+  - **Stored idempotent answers are now encrypted** (data protection): the signup answer contains the token.
+  - **Domain:** `OrganizationStatus.PendingVerification`; `TenantProfile.CreatePendingVerification` and `Verified`. PendingActivation has access only once PayPal approved (so an unpaid signup has none).
+  - **Tests:**
+    - Unit +1: awaiting payment has no access until PayPal approves.
+    - Integration +6 (`SignupTests`):
+      - J1 end to end: signup, everything created as described, status polling, email link, weak password refused, verified, Active, the owner signs in, the link done;
+      - J2 waits for payment without access;
+      - every error code;
+      - idempotency (one organization) with the stored answer encrypted;
+      - token scope (another signup 404, no token, wrong kind) and expiry after 2 hours;
+      - resend limit and already verified.
+  - **Results:** Unit 162, Architecture 11, Baseline 312, Integration 174, UI 5. No model drift.
 
 - **2026-10-15 — Phase 3 / Step 3.2 — Public read endpoints.**
   - **`GET /plans`:** public, offered plans with their active prices (cheapest first): id, name, description, trial days, features (one per line in the console), `limits.maxPeople`, and prices as `{ amount: "29.00", currency }`. Cached for 5 minutes in the app and by the browser (`Cache-Control: public, max-age=300`).

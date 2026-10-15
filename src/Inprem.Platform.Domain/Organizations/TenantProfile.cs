@@ -8,6 +8,9 @@ public enum OrganizationStatus
 
     /// <summary>Suspended from the Provider Console (with a reason). Enforced as read-only from Phase 2 (C3-3).</summary>
     Suspended,
+
+    /// <summary>Signed up on the website; the owner has not verified their email yet (Phase 3, D22).</summary>
+    PendingVerification,
 }
 
 /// <summary>
@@ -74,6 +77,26 @@ public sealed class TenantProfile
     }
 
     public void Suspend(string reason, DateTime nowUtc) => ChangeStatus(OrganizationStatus.Suspended, reason, nowUtc);
+
+    /// <summary>A website signup (Phase 3): the organization waits until its owner verifies their email (D22).</summary>
+    public static TenantProfile CreatePendingVerification(int tenantId, string slug, DateTime nowUtc)
+    {
+        var profile = Create(tenantId, slug, nowUtc);
+        profile.Status = OrganizationStatus.PendingVerification;
+        profile.StatusReason = "Signed up on the website; waiting for the owner to verify their email.";
+        profile.StatusChangedUtc = nowUtc;
+        return profile;
+    }
+
+    /// <summary>The owner verified their email: PendingVerification → Active (nothing else changes).</summary>
+    public bool Verified(DateTime nowUtc)
+    {
+        if (Status != OrganizationStatus.PendingVerification) return false;
+        Status = OrganizationStatus.Active;
+        StatusReason = "Owner verified their email.";
+        StatusChangedUtc = nowUtc;
+        return true;
+    }
 
     public void Reactivate(string reason, DateTime nowUtc) => ChangeStatus(OrganizationStatus.Active, reason, nowUtc);
 
