@@ -140,6 +140,9 @@ public class ProviderFixture : IAsyncLifetime
     public TestClock Clock { get; } = new();
     public SeedCatalog Data { get; private set; } = null!;
     public CapturingEmailSender Emails => _app.Emails;
+
+    /// <summary>The pretend PayPal (nothing reaches PayPal in tests).</summary>
+    public FakePaymentProvider PayPal => _app.PayPal;
     public IServiceProvider Services => _app.Services;
     public string ConnectionString => _db.ConnectionString;
 

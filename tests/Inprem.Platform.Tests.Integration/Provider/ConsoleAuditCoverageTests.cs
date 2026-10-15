@@ -41,6 +41,7 @@ public class ConsoleAuditCoverageTests
         ["Plans.DetailsModel.OnPostRetireAsync"] = ("plan.retired", "PlanPagesTests"),
         ["Plans.DetailsModel.OnPostReactivateAsync"] = ("plan.reactivated", "PlanPagesTests"),
         ["Plans.DetailsModel.OnPostRetirePriceAsync"] = ("plan.price-retired", "PlanPagesTests"),
+        ["Plans.DetailsModel.OnPostPublishAsync"] = ("plan.published / plan.publish-failed", "PlanPublishTests"),
 
         // Organizations.
         ["Tenants.NewModel.OnPostAsync"] = ("organization.created", "OrganizationPagesTests"),

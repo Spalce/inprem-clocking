@@ -66,6 +66,8 @@ public sealed class PayPalPaymentProvider : IPaymentProvider
     public async Task<string> CreatePlanAsync(NewBillingPlan plan, string requestId, CancellationToken ct = default)
     {
         RequireConfigured();
+        if (_options.PlanReturnUrl == null)
+            throw new PaymentProviderException("PayPal:PlanReturnUrl is not set: every PayPal plan carries our return page as a fallback (docs/multitenancy/paypal-notes.md).");
         var request = new Sdk.PlanRequest
         {
             ProductId = plan.ProductId,
@@ -91,7 +93,7 @@ public sealed class PayPalPaymentProvider : IPaymentProvider
             },
             // Fallback (developer's choice, step 2.2): if PayPal ever stops honouring the deprecated
             // application_context addresses of a subscription, the buyer still comes back to our app.
-            MerchantPreferences = _options.PlanReturnUrl == null ? null : new Sdk.MerchantPreferences { ReturnUrl = _options.PlanReturnUrl, CancelUrl = _options.PlanCancelUrl ?? _options.PlanReturnUrl },
+            MerchantPreferences = new Sdk.MerchantPreferences { ReturnUrl = _options.PlanReturnUrl, CancelUrl = _options.PlanCancelUrl ?? _options.PlanReturnUrl },
         };
 
         var created = await CallAsync("create a billing plan", () => _sdk.Value.SubscriptionsController.CreateBillingPlanAsync(

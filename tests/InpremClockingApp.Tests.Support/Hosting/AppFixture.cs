@@ -23,6 +23,9 @@ public class AppFixture : IAsyncLifetime
     /// <summary>Emails the app sent (nothing is really sent in tests).</summary>
     public CapturingEmailSender Emails => Factory.Emails;
 
+    /// <summary>The pretend PayPal (nothing reaches PayPal in tests).</summary>
+    public FakePaymentProvider PayPal => Factory.PayPal;
+
     /// <summary>The app's service provider (create a scope before resolving scoped services).</summary>
     public IServiceProvider Services => Factory.Services;
 

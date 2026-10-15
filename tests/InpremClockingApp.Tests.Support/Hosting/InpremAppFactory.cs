@@ -22,6 +22,7 @@ namespace InpremClockingApp.Tests.Support.Hosting;
 /// test database's platform.DataProtectionKeys, as in a real deployment);</item>
 /// <item>no job server runs (<c>Jobs:RunServer</c> is false in appsettings.json) unless a test sets it;</item>
 /// <item>the platform's email sender is replaced by <see cref="CapturingEmailSender"/> (<see cref="Emails"/>);</item>
+/// <item>PayPal is replaced by <see cref="FakePaymentProvider"/> (<see cref="PayPal"/>): nothing reaches PayPal;</item>
 /// <item>optional extra settings (e.g. <c>Site:SiteMode</c>) override appsettings.json.</item>
 /// </list>
 /// </summary>
@@ -37,6 +38,9 @@ internal class InpremAppFactory : WebApplicationFactory<Program>
 
     /// <summary>Every email the app sent through the platform's IEmailSender.</summary>
     public CapturingEmailSender Emails { get; } = new();
+
+    /// <summary>The pretend PayPal every test host uses.</summary>
+    public FakePaymentProvider PayPal { get; } = new();
 
     public InpremAppFactory(
         string connectionString,
@@ -86,6 +90,8 @@ internal class InpremAppFactory : WebApplicationFactory<Program>
 
             services.RemoveAll<Inprem.Platform.Application.Memberships.IEmailSender>();
             services.AddSingleton<Inprem.Platform.Application.Memberships.IEmailSender>(Emails);
+            services.RemoveAll<Inprem.Platform.Application.Billing.IPaymentProvider>();
+            services.AddSingleton<Inprem.Platform.Application.Billing.IPaymentProvider>(PayPal);
 
             _configureServices?.Invoke(services);
         });

@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 2 PayPal core (in progress)
-- **Next step:** Phase 2 / Step 2.3 — Plan sync ("Publish to PayPal"); a sandbox smoke test of step 2.2 once the developer has put the PayPal sandbox keys in user-secrets
+- **Next step:** Phase 2 / Step 2.4 — Checkout (start, confirm, activate exactly once; plan change and cancel); the sandbox smoke test of steps 2.2–2.3 once the developer has put the PayPal sandbox keys in user-secrets
 - **Branch:** `mt/phase2` (from `mt/integration` `87ab80d`)
 
 ## Phase status
@@ -15,7 +15,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
 | 0 Foundation | Implementation complete (0.1–0.8, 0.10; 0.9 moved to Phase 7). Deployment-dependent exit checks (P0-6 Level 3, P0-9 real copy, P0-11, P0-12) wait for the test-site deployment (developer's decision: deploy after all phases) | — | — |
 | 1 Provider Console | Implementation complete (1.1–1.7), Phase 1 bundle rehearsed. Waiting: developer walkthrough (P1-1), onboarding under 3 minutes on staging (P1-3) | P1-2, P1-4, P1-5, P1-6, P1-7 (automated); P1-1 automated part | 2026-10-15 (`87ab80d`, developer's request, before the P1-1 walkthrough) |
-| 2 PayPal core | In progress (Steps 2.1–2.2 done) | — | — |
+| 2 PayPal core | In progress (Steps 2.1–2.3 done) | — | — |
 | 3 Website API | Not started | — | — |
 | 4 Invoices | Not started | — | — |
 | 5 Twilio | Not started | — | — |
@@ -72,7 +72,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **Rehearsed on synthetic data only (step 0.10).** The Phase 0 bundle was rehearsed with rollback (R2 and R3) on a disposable database with synthetic data, at about the size of the real one. Before a shared or production database, it must be repeated on a restored copy of that database (`rehearse-phase0.ps1 -Existing`). The CTO then signs it (design 11.2–11.4); see `docs/multitenancy/rehearsal-phase0.md`.
 - **M1 is M1a + M1b (step 0.10).** The step's "empty platform tables" already exist from step 0.7: provider users, invitations (named `ProviderInvitations`), audit and recovery records. No duplicate migration was added.
 - **`appsettings.Production.json` on the server (step 0.10).** `prepare-site.ps1` never ships it (a local publish would include the developer's copy). Upload with Web Deploy *without* "remove additional files", or move the connection string into the host's settings.
-- **PayPal sandbox smoke test of step 2.2 not run yet.** It needs the sandbox keys (`PayPal:ClientId`, `PayPal:Secret`) in user-secrets; the client is tested against a pretend PayPal only.
+- **PayPal sandbox smoke test of steps 2.2 and 2.3 not run yet.** It needs the sandbox keys (`PayPal:ClientId`, `PayPal:Secret`) in user-secrets; the client is tested against a pretend PayPal only.
 - **Low advisory GHSA-g4vj-cjjj-v7hg (NuGet.Packaging / NuGet.Protocol 6.11.0)** is reported in the app and test projects. It was not introduced by step 2.2 (it comes with the existing design-time packages). Low severity, so the CI gate does not fail; it is reviewed with the other packages in Phase 7.
 - **P1-1 walkthrough still open.** Phase 1 was merged into `mt/integration` at the developer's request before the walkthrough. Record it here when done.
 - **Existing organizations are on Free (step 2.1, D26).** M1f gives every organization without a subscription a Free one, so billing enforcement (step 2.7) changes nothing for them. Moving one to a paid plan is a console action (step 2.8). Decide per organization before go-live.
@@ -108,6 +108,20 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-15 — Phase 2 / Step 2.3 — Plan sync ("Publish to PayPal").**
+  - **`PlanPublisher`** (Application): a PayPal product for the plan (once) and a PayPal billing plan for every active price that has none.
+    - Each PayPal id is saved as soon as PayPal returns it. Request ids come from our own ids (`inprem-product-{plan}`, `inprem-plan-{price}`), so publishing again after a failure finishes the rest without creating anything twice.
+    - One audit entry per publish: `plan.published`, or `plan.publish-failed` with what was done and PayPal's debug id.
+    - Refused for retired plans, when nothing is left to publish, and when PayPal is not configured.
+  - **Price changes:** prices were already fixed once created (one active price per cycle). A new amount means retiring the old price and adding a new one; publishing then creates a new PayPal plan under the same product. Organizations on the old price keep it until they are moved deliberately (plan change, step 2.4).
+  - **The fallback is enforced:** the PayPal client refuses to create a plan without `PayPal:PlanReturnUrl` (the developer's "both" decision, step 2.2).
+  - **Plan page:** "Publish to PayPal" button (Billing and Owners, only when something is left to publish and PayPal is configured; confirm dialog); the PayPal product and each price's PayPal plan are shown; a note when PayPal is not configured.
+  - **Test host:** `FakePaymentProvider` replaces PayPal in every test host. It works in memory, keeps PayPal's request-id behaviour, and can fail the next calls or fail after N calls.
+  - **Tests:**
+    - Integration +4: `PlanPublishTests` (product and plans, nothing twice, a new price later, a failure halfway then finished, Support refused, the button hidden without PayPal); the plan without the fallback page refused.
+    - The audit coverage list has the new handler.
+  - **Results:** Unit 161, Architecture 11, Baseline 312, Integration 122, UI 5.
 
 - **2026-10-15 — Phase 2 / Step 2.2 — PayPal client.**
   - **Verified first** (step text): PayPal's API description marks the create-subscription `application_context` (return and cancel addresses) deprecated, with no replacement. **Developer's decision: both** — the per-subscription addresses, plus our fixed return and cancel pages on every PayPal plan as a fallback. Details: `docs/multitenancy/paypal-notes.md`.

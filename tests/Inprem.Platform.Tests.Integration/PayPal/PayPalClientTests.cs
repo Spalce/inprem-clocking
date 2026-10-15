@@ -273,6 +273,16 @@ public class PayPalClientTests
         Assert.Equal(Origin + "/Billing/PayPalReturn", plan["merchant_preferences"]!["return_url"]!.GetValue<string>()); // the fallback
     }
 
+    [Fact]
+    public async Task A_Plan_Is_Not_Created_Without_Our_Fallback_Return_Page()
+    {
+        var (paypal, fake, _, sp) = Create(new() { ["PayPal:PlanReturnUrl"] = null, ["PayPal:PlanCancelUrl"] = null });
+        using var __ = sp;
+        var e = await Assert.ThrowsAsync<PaymentProviderException>(() => paypal.CreatePlanAsync(new NewBillingPlan("PROD-1", "X", null, BillingCycle.Monthly, 1m, "USD"), "r"));
+        Assert.Contains("PlanReturnUrl", e.Message);
+        Assert.Empty(fake.To("/v1/billing/plans"));
+    }
+
     // ------------------------------------------------------------- webhooks
 
     private static readonly Dictionary<string, string> GoodHeaders = new()
