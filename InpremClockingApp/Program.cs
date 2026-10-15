@@ -1,4 +1,5 @@
 using Inprem.Platform.Infrastructure.PayPal;
+using InpremClockingApp.PublicApi;
 using InpremClockingApp.Data;
 using InpremClockingApp.Helpers;
 using InpremClockingApp.Hosting;
@@ -56,6 +57,10 @@ builder.Services.AddPayPal(builder.Configuration);
 builder.Services.AddScoped<Inprem.Platform.Application.Billing.IBillingEventQueue, InpremClockingApp.Billing.HangfireBillingEventQueue>();
 builder.Services.AddScoped<InpremClockingApp.Billing.BillingEventJob>();
 builder.Services.AddScoped<InpremClockingApp.Billing.BillingReconciliationJob>();
+
+// The website API (multi-tenancy Phase 3): /api/public/v1 on the App site, its own tokens, CORS,
+// rate limits and (staging only) the OpenAPI document. See InpremClockingApp/PublicApi.
+builder.Services.AddPublicApi(builder.Configuration);
 
 builder.Services.AddDefaultIdentity<AppUser>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddRoles<AppRole>()
@@ -163,6 +168,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+app.UsePublicApi();
 
 // Admin site IP allow-list (D17): outside addresses get 403 before anything else.
 app.UseMiddleware<AdminAllowList>();
@@ -178,6 +184,7 @@ app.UseEndpoints(endpoints =>
 {
     endpoints.MapRazorPages();
     endpoints.MapControllers();
+    endpoints.MapPublicApi();
     endpoints.MapProviderHealth();
     endpoints.MapJobsDashboard();
 });

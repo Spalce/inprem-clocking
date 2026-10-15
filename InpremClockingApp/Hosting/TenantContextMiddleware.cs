@@ -50,7 +50,9 @@ public sealed class TenantContextMiddleware
         var user = context.User;
         if (user.Identity?.IsAuthenticated != true ||
             string.Equals(context.GetRouteValue("area") as string, SiteMap.ProviderArea, StringComparison.OrdinalIgnoreCase) ||
-            context.GetEndpoint()?.Metadata.GetMetadata<ProviderEndpointMetadata>() != null)
+            context.GetEndpoint()?.Metadata.GetMetadata<ProviderEndpointMetadata>() != null ||
+            // The website API (Phase 3) has its own tokens: a back-office cookie gives it no organization.
+            context.GetEndpoint()?.Metadata.GetMetadata<PublicApi.PublicApiEndpointMetadata>() != null)
         {
             await _next(context);
             return;

@@ -53,6 +53,8 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<CheckoutSession> CheckoutSessions { get; set; } = null!;
     public DbSet<Payment> Payments { get; set; } = null!;
     public DbSet<BillingEvent> BillingEvents { get; set; } = null!;
+    public DbSet<Inprem.Platform.Domain.PublicApi.ApiToken> ApiTokens { get; set; } = null!;
+    public DbSet<Inprem.Platform.Domain.PublicApi.IdempotencyRecord> IdempotencyRecords { get; set; } = null!;
     public DbSet<SupportSession> SupportSessions { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -276,6 +278,30 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
             billingEvent.Ignore(e => e.Status);
             billingEvent.HasIndex(e => e.ReceivedUtc);
             billingEvent.HasIndex(e => e.ResourceId);
+        });
+
+        modelBuilder.Entity<Inprem.Platform.Domain.PublicApi.ApiToken>(token =>
+        {
+            token.ToTable("ApiTokens");
+            token.HasKey(t => t.Id);
+            token.Property(t => t.Id).ValueGeneratedNever();
+            token.Property(t => t.Kind).HasConversion<string>().HasMaxLength(20);
+            token.Property(t => t.TokenHash).HasMaxLength(64).IsUnicode(false);
+            token.HasIndex(t => t.TokenHash).IsUnique();
+            token.HasIndex(t => t.SignupId);
+            token.HasIndex(t => t.ExpiresUtc);
+        });
+
+        modelBuilder.Entity<Inprem.Platform.Domain.PublicApi.IdempotencyRecord>(record =>
+        {
+            record.ToTable("IdempotencyRecords");
+            record.HasKey(r => new { r.Scope, r.Key });
+            record.Property(r => r.Scope).HasMaxLength(200);
+            record.Property(r => r.Key).HasMaxLength(100);
+            record.Property(r => r.RequestHash).HasMaxLength(64).IsUnicode(false);
+            record.Property(r => r.ContentType).HasMaxLength(100);
+            record.Ignore(r => r.IsComplete);
+            record.HasIndex(r => r.ExpiresUtc);
         });
 
         modelBuilder.Entity<SupportSession>(session =>

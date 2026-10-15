@@ -546,6 +546,7 @@ components:
             - idempotency_key_reused
             - rate_limited
             - payment_provider_unavailable
+            - internal_error
         errors:
           type: object
           description: Field-level messages, keyed by JSON property path.

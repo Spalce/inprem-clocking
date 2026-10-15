@@ -36,7 +36,7 @@ public sealed class BillingEnforcementMiddleware
     {
         new("/Identity/Account/Login"), new("/Identity/Account/LoginWith2fa"), new("/Identity/Account/LoginWithRecoveryCode"),
         new("/Identity/Account/Logout"), new("/Identity/Account/ForgotPassword"), new("/Identity/Account/ResetPassword"),
-        new("/Identity/Account/Manage"), new("/Account"), new("/Billing"), new("/api/billing"), new("/webhooks"),
+        new("/Identity/Account/Manage"), new("/Account"), new("/Billing"), new("/api/billing"), new("/webhooks"), new("/api/public"),
     };
 
     private readonly RequestDelegate _next;

@@ -4,9 +4,9 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 
 ## Current position
 
-- **Phase:** 2 PayPal core (implementation and bundle done; two exit checks wait for the PayPal sandbox run)
-- **Next step:** PayPal sandbox end-to-end run (P2-1, P2-4) once the developer has the sandbox keys and an ngrok address; then merge `mt/phase2` into `mt/integration` and start Phase 3 / Step 3.1
-- **Branch:** `mt/phase2` (from `mt/integration` `87ab80d`)
+- **Phase:** 3 Website API (in progress; Phase 2's sandbox checks P2-1 and P2-4 still open)
+- **Next step:** Phase 3 / Step 3.2 — Public read endpoints (plans, time zones, slug availability)
+- **Branch:** `mt/phase3` (from `mt/integration` `9ac52c3`)
 
 ## Phase status
 
@@ -15,8 +15,8 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
 | 0 Foundation | Implementation complete (0.1–0.8, 0.10; 0.9 moved to Phase 7). Deployment-dependent exit checks (P0-6 Level 3, P0-9 real copy, P0-11, P0-12) wait for the test-site deployment (developer's decision: deploy after all phases) | — | — |
 | 1 Provider Console | Implementation complete (1.1–1.7), Phase 1 bundle rehearsed. Waiting: developer walkthrough (P1-1), onboarding under 3 minutes on staging (P1-3) | P1-2, P1-4, P1-5, P1-6, P1-7 (automated); P1-1 automated part | 2026-10-15 (`87ab80d`, developer's request, before the P1-1 walkthrough) |
-| 2 PayPal core | Implementation complete (2.1–2.9), Phase 2 bundle rehearsed. Waiting: PayPal sandbox run (P2-1, P2-4) | P2-2, P2-3, P2-5, P2-6, P2-7 (automated); P2-1 and P2-4 with the pretend PayPal | — |
-| 3 Website API | Not started | — | — |
+| 2 PayPal core | Implementation complete (2.1–2.9), Phase 2 bundle rehearsed. Waiting: PayPal sandbox run (P2-1, P2-4) | P2-2, P2-3, P2-5, P2-6, P2-7 (automated); P2-1 and P2-4 with the pretend PayPal | 2026-10-15 (`9ac52c3`, developer's request, before the sandbox run) |
+| 3 Website API | In progress (Step 3.1 done) | — | — |
 | 4 Invoices | Not started | — | — |
 | 5 Twilio | Not started | — | — |
 | 6 Staff alerts | Not started | — | — |
@@ -74,6 +74,8 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **`appsettings.Production.json` on the server (step 0.10).** `prepare-site.ps1` never ships it (a local publish would include the developer's copy). Upload with Web Deploy *without* "remove additional files", or move the connection string into the host's settings.
 - **PayPal sandbox smoke test of steps 2.2 to 2.8 not run yet.** Locally it also needs, besides the keys: `PayPal:ReturnUrlAllowList:0` = the app's https address (e.g. `https://localhost:7xxx`), `PayPal:PlanReturnUrl` = that address + `/Billing/PayPalReturn`, `PayPal:PlanCancelUrl` = that address + `/Billing`. It needs the sandbox keys (`PayPal:ClientId`, `PayPal:Secret`) in user-secrets; the client is tested against a pretend PayPal only.
 - **Low advisory GHSA-g4vj-cjjj-v7hg (NuGet.Packaging / NuGet.Protocol 6.11.0)** is reported in the app and test projects. It was not introduced by step 2.2 (it comes with the existing design-time packages). Low severity, so the CI gate does not fail; it is reviewed with the other packages in Phase 7.
+- **PayPal sandbox access from Ghana (2026-10-15).** The developer is in Ghana, where PayPal may only allow send-only personal accounts; it is unclear whether such an account can open developer.paypal.com. If not, the project owner creates the sandbox app on Inprem's PayPal Business account and shares the two sandbox keys privately. ngrok is not affected.
+- **Draft API change proposed (step 3.1).** `internal_error` was added to the problem codes in `docs/multitenancy/api/public-v1.draft.yaml` (the draft had no code for a 500). Confirm with the web team when the integration guide is handed over (step 3.7).
 - **Old billing tables still mapped (step 2.9).** `Models/Billing` (Subscription, Invoice and their enums) stays as table mappings in `ApplicationDbContext`, marked legacy, so the app's schema does not change before M6 (Phase 7) drops the tables. Nothing reads or writes them any more. This is a deviation from the step text's "remove Models/Billing": removing the mappings would make the next app migration drop the tables early.
 - **Old billing rows to review (step 2.9).** M5 moves paying Active/PastDue old subscriptions to Invoiced; others are left and counted (`LeftForReview`). Unpaid or void old invoices stay for Phase 4. Locally: both paying old subscriptions moved, 1 paid invoice became a payment, 1 void invoice left.
 - **People limit not enforced yet (step 2.7).** `AccessStatus.CanAddPeople` knows the plan's limit (or the console override), but refusing a new staff member or volunteer means touching the approved add-person flows (a C3 change). Decide with the developer whether, and how, before plans with limits are sold.
@@ -114,6 +116,30 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-15 — Phase 2 merged; Phase 3 started.** `mt/phase2` fast-forwarded into `mt/integration` (`9ac52c3`) and pushed, at the developer's request (P2-1 and P2-4 wait for the PayPal sandbox run). Branch `mt/phase3` from there.
+
+- **2026-10-15 — Local database: platform migration M1h applied.** Backup `DB_A65635_inpremdb_before_M1h_20261015.bak` taken first and verified; verify `1|2|1|0|0`; app data fingerprint unchanged.
+
+- **2026-10-15 — Phase 3 / Step 3.1 — Website API skeleton.**
+  - **`/api/public/v1`** (minimal API group, `InpremClockingApp/PublicApi`): mapped only where the App site is served, and on its host when one is set. Step 3.1 has `GET /health`.
+  - **Tokens:** `ApiToken` (migration **M1h**) for signup tokens (2 hours) and billing-access tokens (30 minutes).
+    - The value is 32 random bytes, returned once; only its SHA-256 hash is stored.
+    - `PublicApiTokens` issues and checks them. The `PublicApiToken` authentication scheme answers 401 with `token_missing`, `token_invalid` or `token_expired`; a token of the wrong kind is answered as invalid.
+    - **The back-office cookie is ignored:** every protected endpoint's policy names the token scheme. The tenant-context and read-only middleware skip the API. Tested with a signed-in browser.
+  - **CORS:** only `Site:PublicWebsiteOrigins`, GET and POST, the needed headers, `Retry-After` exposed, no credentials.
+  - **Rate limits** (built-in limiter, one-minute windows):
+    - per address by default; per token with a bearer token; a higher limit per valid `X-Api-Key` (`PublicApi:ApiKeyHashes`, stored as hashes); per address for the write endpoints;
+    - 429 `rate_limited` with `Retry-After`.
+  - **Problem details:** `application/problem+json` with a stable `code`, `traceId`, and a type URL per code. Unexpected exceptions become a 500 `internal_error` with no details; the code was added to the draft (see the follow-up).
+  - **Idempotency** (`IdempotencyFilter`, `IdempotencyRecord` in M1h): the `Idempotency-Key` header is required.
+    - Same key and body within 24 hours → the first answer again, without running twice (also at the same moment). Same key, other body → 422 `idempotency_key_reused`.
+    - 5xx answers are not kept, so a retry is safe. A second request while the first is still running waits up to 10 seconds, then gets 429.
+  - **OpenAPI** from the code (Swashbuckle 6.9.0) at `/api/public/docs` when `PublicApi:EnableDocs` (staging only).
+  - **Contract test:** every generated operation is in the agreed draft with the same operationId and only its response codes; the problem codes are exactly the draft's list.
+  - **`IPublicApiEndpointContributor`:** lets tests add endpoints inside the real API group (no app use).
+  - **Tests:** Integration +7 (`ApiSkeletonTests`): health; tokens (missing, invalid, wrong kind, billing scope, expiry after 30 minutes, stored only as hashes, cookie-only refused); CORS (website allowed, others not, no credentials); 429 with Retry-After and the API key limit; idempotency (same answer, one run, 5 at once, 422, 5xx retried, free after 24 hours); a 500 without details; OpenAPI published and matching the draft.
+  - **Results:** Unit 161, Architecture 11, Baseline 312, Integration 164, UI 5. No model drift.
 
 - **2026-10-15 — Phase 2 bundle and exit review.**
   - **Bundles:** `scripts/migrations/phase2-up.sql` and `phase2-down.sql`, generated by `build-phase2-bundle.ps1` from M1f, M1g and M5. They have the earlier guards and also refuse a database without the complete Phase 1 schema. CI checks they are up to date.
