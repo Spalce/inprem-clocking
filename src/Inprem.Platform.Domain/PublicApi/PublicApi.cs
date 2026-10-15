@@ -116,3 +116,39 @@ public sealed class IdempotencyRecord
         ResponseBody = body;
     }
 }
+
+/// <summary>
+/// The one-time code in an emailed billing link (Phase 3 step 3.5): 15 minutes, single use; only
+/// its SHA-256 hash is stored.
+/// </summary>
+public sealed class BillingAccessCode
+{
+    public static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(15);
+
+    private BillingAccessCode()
+    {
+        CodeHash = "";
+    }
+
+    public Guid Id { get; private set; }
+    public int TenantId { get; private set; }
+    public string CodeHash { get; private set; }
+    public DateTime CreatedUtc { get; private set; }
+    public DateTime ExpiresUtc { get; private set; }
+    public DateTime? UsedUtc { get; private set; }
+
+    public static BillingAccessCode Issue(int tenantId, string codeHash, DateTime nowUtc)
+    {
+        if (nowUtc.Kind != DateTimeKind.Utc) throw new ArgumentException("Times are stored in UTC.", nameof(nowUtc));
+        if (codeHash.Length != 64) throw new ArgumentException("A SHA-256 hex hash is expected.", nameof(codeHash));
+        return new BillingAccessCode { Id = Guid.NewGuid(), TenantId = tenantId, CodeHash = codeHash, CreatedUtc = nowUtc, ExpiresUtc = nowUtc + Lifetime };
+    }
+
+    /// <summary>Uses the code: false if it was used already or has expired.</summary>
+    public bool TryUse(DateTime nowUtc)
+    {
+        if (UsedUtc != null || nowUtc >= ExpiresUtc) return false;
+        UsedUtc = nowUtc;
+        return true;
+    }
+}

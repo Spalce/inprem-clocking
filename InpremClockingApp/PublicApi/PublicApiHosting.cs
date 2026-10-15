@@ -66,6 +66,10 @@ public static class PublicApiHosting
         services.AddHttpClient(Inprem.Platform.Infrastructure.PublicApi.TurnstileCaptchaVerifier.HttpClientName, c => c.Timeout = TimeSpan.FromSeconds(10));
         services.AddScoped<ICaptchaVerifier, Inprem.Platform.Infrastructure.PublicApi.TurnstileCaptchaVerifier>();
 
+        // Existing customers (step 3.5): billing links are sent by a background job.
+        services.AddScoped<IBillingAccessQueue, HangfireBillingAccessQueue>();
+        services.AddScoped<BillingAccessJob>();
+
         services.AddAuthentication().AddScheme<AuthenticationSchemeOptions, PublicApiTokenHandler>(TokenScheme, _ => { });
         services.AddAuthorization(options =>
         {

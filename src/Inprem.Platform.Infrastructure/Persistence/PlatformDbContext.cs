@@ -56,6 +56,7 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<Inprem.Platform.Domain.PublicApi.ApiToken> ApiTokens { get; set; } = null!;
     public DbSet<Inprem.Platform.Domain.PublicApi.IdempotencyRecord> IdempotencyRecords { get; set; } = null!;
     public DbSet<Inprem.Platform.Domain.PublicApi.Signup> Signups { get; set; } = null!;
+    public DbSet<Inprem.Platform.Domain.PublicApi.BillingAccessCode> BillingAccessCodes { get; set; } = null!;
     public DbSet<SupportSession> SupportSessions { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -303,6 +304,16 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
             signup.Property(s => s.Status).HasConversion<string>().HasMaxLength(30);
             signup.HasIndex(s => s.TenantId).IsUnique();
             signup.HasOne<PlanPrice>().WithMany().HasForeignKey(s => s.PlanPriceId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Inprem.Platform.Domain.PublicApi.BillingAccessCode>(code =>
+        {
+            code.ToTable("BillingAccessCodes");
+            code.HasKey(c => c.Id);
+            code.Property(c => c.Id).ValueGeneratedNever();
+            code.Property(c => c.CodeHash).HasMaxLength(64).IsUnicode(false);
+            code.HasIndex(c => c.CodeHash).IsUnique();
+            code.HasIndex(c => new { c.TenantId, c.CreatedUtc });
         });
 
         modelBuilder.Entity<Inprem.Platform.Domain.PublicApi.IdempotencyRecord>(record =>

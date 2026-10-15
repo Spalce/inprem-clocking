@@ -23,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<Billing.BillingAccountService>();
         services.AddScoped<PublicApi.PublicApiTokens>();
         services.AddScoped<PublicApi.SignupService>();
+        services.AddScoped<PublicApi.BillingAccessService>();
         services.AddScoped<Organizations.OrganizationService>();
         services.AddScoped<Support.SupportSessionService>();
         services.AddScoped<Audit.AuditLogService>();

@@ -119,6 +119,63 @@ public static class PublicApiEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
+        // Existing customers (step 3.5).
+        api.MapPost("/billing-access/requests", RequestBillingAccessAsync)
+            .AllowAnonymous()
+            .RequireRateLimiting(PublicApiHosting.WriteRatePolicy)
+            .WithName("requestBillingAccess")
+            .WithTags("Billing access")
+            .Accepts<BillingAccessRequest>("application/json")
+            .Produces<AcceptedResponse>(StatusCodes.Status202Accepted)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
+        api.MapPost("/billing-access/sessions", CreateBillingAccessSessionAsync)
+            .AllowAnonymous()
+            .RequireRateLimiting(PublicApiHosting.WriteRatePolicy)
+            .WithName("createBillingAccessSession")
+            .WithTags("Billing access")
+            .Accepts<BillingAccessSessionRequest>("application/json")
+            .Produces<BillingAccessSessionResponse>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
+        api.MapGet("/account/subscription", GetAccountSubscriptionAsync)
+            .RequireAuthorization(PublicApiHosting.BillingPolicy)
+            .WithName("getAccountSubscription")
+            .WithTags("Account")
+            .Produces<AccountSubscriptionResponse>()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
+        api.MapGet("/account/invoices", () => Results.Ok(Array.Empty<object>())) // invoices arrive in Phase 4
+            .RequireAuthorization(PublicApiHosting.BillingPolicy)
+            .WithName("listAccountInvoices")
+            .WithTags("Account")
+            .Produces<IReadOnlyList<object>>()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
+        api.MapPost("/account/subscription/cancel", CancelAccountSubscriptionAsync)
+            .RequireAuthorization(PublicApiHosting.BillingPolicy)
+            .WithName("cancelAccountSubscription")
+            .WithTags("Account")
+            .Produces<CancellationScheduledResponse>()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests)
+            .ProducesProblem(StatusCodes.Status502BadGateway);
+
+        api.MapPost("/account/subscription/keep", (HttpContext http) =>
+                // A PayPal cancellation is final (PayPal cannot reactivate a cancelled subscription): to stay, subscribe again.
+                Problems.Create(http, StatusCodes.Status409Conflict, Problems.CannotKeep, "A cancellation cannot be withdrawn. To stay, subscribe again (checkout with purpose resubscribe)."))
+            .RequireAuthorization(PublicApiHosting.BillingPolicy)
+            .WithName("keepAccountSubscription")
+            .WithTags("Account")
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
         api.MapGet("/slugs/{slug}/availability", GetSlugAvailabilityAsync)
             .AllowAnonymous()
             .WithName("getSlugAvailability")
@@ -306,6 +363,76 @@ public static class PublicApiEndpoints
     public sealed record PlanSummaryResponse(Guid PlanId, Guid PlanPriceId, string Name, string BillingCycle, MoneyResponse Price);
 
     public sealed record CheckoutStatusResponse(Guid CheckoutSessionId, string Status, string? SubscriptionStatus, PlanSummaryResponse? Plan, DateOnly? NextBillingDate, string Message);
+
+    // ----------------------------------------------------------- billing access
+
+    /// <summary>Every billing-access request takes at least this long, so known and unknown emails cannot be told apart by timing.</summary>
+    public static readonly TimeSpan BillingAccessMinimumTime = TimeSpan.FromMilliseconds(400);
+
+    public const string BillingAccessAcceptedMessage = "If this email belongs to an organization owner, we have sent a link to manage the subscription.";
+
+    private static async Task<IResult> RequestBillingAccessAsync(HttpContext http, BillingAccessRequest? body, Inprem.Platform.Application.PublicApi.BillingAccessService access, IConfiguration configuration)
+    {
+        var started = System.Diagnostics.Stopwatch.StartNew();
+        var outcome = await access.RequestAsync(body?.Email, body?.CaptchaToken, http.Connection.RemoteIpAddress?.ToString(), configuration["Links:WebsiteBaseUrl"], http.RequestAborted);
+        var wait = BillingAccessMinimumTime - started.Elapsed;
+        if (wait > TimeSpan.Zero) await Task.Delay(wait, http.RequestAborted);
+        return outcome switch
+        {
+            Inprem.Platform.Application.PublicApi.BillingAccessRequestOutcome.Invalid => Problems.Validation(http, new Dictionary<string, string[]> { ["email"] = new[] { "Give a valid email address." } }),
+            Inprem.Platform.Application.PublicApi.BillingAccessRequestOutcome.Captcha => Problems.Create(http, StatusCodes.Status400BadRequest, Problems.CaptchaFailed, "The CAPTCHA check failed. Please try again."),
+            _ => Results.Json(new AcceptedResponse(BillingAccessAcceptedMessage), statusCode: StatusCodes.Status202Accepted),
+        };
+    }
+
+    private static async Task<IResult> CreateBillingAccessSessionAsync(HttpContext http, BillingAccessSessionRequest? body, Inprem.Platform.Application.PublicApi.BillingAccessService access)
+    {
+        var session = await access.ExchangeAsync(body?.Code, http.RequestAborted);
+        return session is { } s
+            ? Results.Json(new BillingAccessSessionResponse(s.Token, s.ExpiresUtc, s.OrganizationName), statusCode: StatusCodes.Status201Created)
+            : Problems.Create(http, StatusCodes.Status400BadRequest, Problems.InvalidCode, "This link is not valid, was already used or has expired. Ask for a new one.");
+    }
+
+    private static async Task<IResult> GetAccountSubscriptionAsync(HttpContext http, BillingAccountService billing) =>
+        Results.Ok(AccountSubscription(await billing.GetAsync(PublicApiClaims.TenantOf(http.User)!.Value, http.RequestAborted)));
+
+    private static AccountSubscriptionResponse AccountSubscription(BillingOverview o)
+    {
+        var s = o.Subscription;
+        return new AccountSubscriptionResponse(
+            s?.Status.ToString(),
+            o.Plan != null && o.Price != null ? new PlanSummaryResponse(o.Plan.Id, o.Price.Id, o.Plan.Name, o.Price.Cycle.ToString(), Money(o.Price.Amount, o.Price.Currency)) : null,
+            s?.Mode.ToString(), s?.TrialEndsUtc, s?.CurrentPeriodEndUtc, s?.CancelAtPeriodEnd ?? false,
+            Money(s?.OutstandingBalance ?? 0m, o.Price?.Currency ?? "USD"));
+    }
+
+    private static async Task<IResult> CancelAccountSubscriptionAsync(HttpContext http, CheckoutService checkout, BillingAccountService billing)
+    {
+        var tenantId = PublicApiClaims.TenantOf(http.User)!.Value;
+        var before = await billing.GetAsync(tenantId, http.RequestAborted);
+        if (!before.PaysByPayPal) return Problems.Create(http, StatusCodes.Status409Conflict, Problems.SubscriptionNotCancellable, "There is no active PayPal subscription to cancel.");
+
+        var result = await checkout.CancelSubscriptionAsync(tenantId, "Cancelled by the owner on the website", TokenActor(http), http.RequestAborted);
+        if (!result.Succeeded)
+            return result.Error?.Contains("PayPal is not answering", StringComparison.Ordinal) == true
+                ? Problems.Create(http, StatusCodes.Status502BadGateway, Problems.PaymentProviderUnavailable, result.Error)
+                : Problems.Create(http, StatusCodes.Status409Conflict, Problems.SubscriptionNotCancellable, result.Error ?? "The subscription cannot be cancelled.");
+
+        var after = (await billing.GetAsync(tenantId, http.RequestAborted)).Subscription!;
+        return Results.Ok(new CancellationScheduledResponse(after.Status.ToString(), true, after.CurrentPeriodEndUtc ?? DateTime.UtcNow));
+    }
+
+    public sealed record BillingAccessRequest(string? Email, string? CaptchaToken);
+
+    public sealed record AcceptedResponse(string Message);
+
+    public sealed record BillingAccessSessionRequest(string? Code);
+
+    public sealed record BillingAccessSessionResponse(string BillingAccessToken, DateTime ExpiresAt, string OrganizationName);
+
+    public sealed record AccountSubscriptionResponse(string? Status, PlanSummaryResponse? Plan, string? BillingMode, DateTime? TrialEndsAt, DateTime? CurrentPeriodEnd, bool CancelAtPeriodEnd, MoneyResponse OutstandingBalance);
+
+    public sealed record CancellationScheduledResponse(string Status, bool CancelAtPeriodEnd, DateTime AccessEndsAt);
 
     public sealed record SignupOwner(string? FirstName, string? LastName, string? Email, string? Mobile);
 

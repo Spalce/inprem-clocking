@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 3 Website API (in progress; Phase 2's sandbox checks P2-1 and P2-4 still open)
-- **Next step:** Phase 3 / Step 3.5 — Existing customers (billing-access links, account subscription and invoices)
+- **Next step:** Phase 3 / Step 3.6 — Demo website page (`wwwroot/demo-site/`, behind `Demo:EnableDemoSite`) with UI tests of J1–J5
 - **Branch:** `mt/phase3` (from `mt/integration` `9ac52c3`)
 
 ## Phase status
@@ -16,7 +16,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | 0 Foundation | Implementation complete (0.1–0.8, 0.10; 0.9 moved to Phase 7). Deployment-dependent exit checks (P0-6 Level 3, P0-9 real copy, P0-11, P0-12) wait for the test-site deployment (developer's decision: deploy after all phases) | — | — |
 | 1 Provider Console | Implementation complete (1.1–1.7), Phase 1 bundle rehearsed. Waiting: developer walkthrough (P1-1), onboarding under 3 minutes on staging (P1-3) | P1-2, P1-4, P1-5, P1-6, P1-7 (automated); P1-1 automated part | 2026-10-15 (`87ab80d`, developer's request, before the P1-1 walkthrough) |
 | 2 PayPal core | Implementation complete (2.1–2.9), Phase 2 bundle rehearsed. Waiting: PayPal sandbox run (P2-1, P2-4) | P2-2, P2-3, P2-5, P2-6, P2-7 (automated); P2-1 and P2-4 with the pretend PayPal | 2026-10-15 (`9ac52c3`, developer's request, before the sandbox run) |
-| 3 Website API | In progress (Steps 3.1–3.4 done) | — | — |
+| 3 Website API | In progress (Steps 3.1–3.5 done) | — | — |
 | 4 Invoices | Not started | — | — |
 | 5 Twilio | Not started | — | — |
 | 6 Staff alerts | Not started | — | — |
@@ -75,6 +75,9 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **PayPal sandbox smoke test of steps 2.2 to 2.8 not run yet.** Locally it also needs, besides the keys: `PayPal:ReturnUrlAllowList:0` = the app's https address (e.g. `https://localhost:7xxx`), `PayPal:PlanReturnUrl` = that address + `/Billing/PayPalReturn`, `PayPal:PlanCancelUrl` = that address + `/Billing`. It needs the sandbox keys (`PayPal:ClientId`, `PayPal:Secret`) in user-secrets; the client is tested against a pretend PayPal only.
 - **Low advisory GHSA-g4vj-cjjj-v7hg (NuGet.Packaging / NuGet.Protocol 6.11.0)** is reported in the app and test projects. It was not introduced by step 2.2 (it comes with the existing design-time packages). Low severity, so the CI gate does not fail; it is reviewed with the other packages in Phase 7.
 - **PayPal sandbox access from Ghana (2026-10-15).** The developer is in Ghana, where PayPal may only allow send-only personal accounts; it is unclear whether such an account can open developer.paypal.com. If not, the project owner creates the sandbox app on Inprem's PayPal Business account and shares the two sandbox keys privately. ngrok is not affected.
+- **"Keep" cannot withdraw a cancellation (step 3.5).** Cancelling cancels the PayPal subscription at once, and PayPal cannot reactivate a cancelled subscription. The organization keeps access to the period end either way. So `POST /account/subscription/keep` always answers 409 `cannot_keep` and points to a checkout with purpose `resubscribe`. An "undo" would need cancelling to be scheduled for the period end instead; decide with the web team whether that is wanted.
+- **`GET /account/invoices` is empty until Phase 4** (PayPal Invoicing). Payments are on the in-app Billing page meanwhile.
+- **Billing links need `Links:WebsiteBaseUrl` (step 3.5).** Without it the job sends nothing (and the API still answers 202). Set it to the website's address (e.g. `https://inpremclockin.org`); the website's billing page then receives `?code=…`.
 - **Website return addresses must be on the PayPal allow-list (step 3.4).** The website's return and cancel URLs are checked against `PayPal:ReturnUrlAllowList` (refused with `return_url_not_allowed`). When the website goes live, add its origins there too, next to the app's (`https://inpremclockin.org`, `https://www.inpremclockin.org`, staging).
 - **CAPTCHA needs its secret (step 3.3).** Registration refuses every request until `Captcha:Secret` is set (fail closed). For local testing, Cloudflare publishes test keys: the secret `1x0000000000000000000000000000000AA` always passes and goes in user-secrets (`dotnet user-secrets set "Captcha:Secret" "<test secret>" --project InpremClockingApp`). The real secret comes from whoever runs the website's Cloudflare account (needs list, item 8).
 - **Owner email already has an account (step 3.3).** The draft's `email_in_use` (409) is used, as agreed. It tells a caller that an email has an account; CAPTCHA and the write rate limit make that slow to abuse. Revisit with the web team if they prefer an invitation instead (the console already invites existing accounts).
@@ -120,6 +123,25 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-15 — Local database: platform migration M1j applied.** Backup `DB_A65635_inpremdb_before_M1j_20261015.bak` taken first and verified; verify `1|1|1|0`; app data fingerprint unchanged.
+
+- **2026-10-15 — Phase 3 / Step 3.5 — Existing customers (J3, J4; D27).**
+  - **`POST /billing-access/requests`** (anonymous; CAPTCHA; write rate limit): checks the email's form and the CAPTCHA (the same for every email), then always queues the same background job and answers **202 with the same body**, in **at least 400 ms**.
+    - **Nothing in the request depends on whether the email exists**: the lookup happens in the job (`BillingAccessJob`, Hangfire).
+    - The job: for an active **Owner** of one or more organizations, one code per organization (at most 3 per organization per hour) and one email with a link per organization to `{Links:WebsiteBaseUrl}/billing?code=…`. Other emails (unknown, or admins who are not owners): nothing sent, nothing stored.
+  - **`POST /billing-access/sessions`:** exchanges the code (single use, 15 minutes; `BillingAccessCode`, migration **M1j**, stored as a hash) for a 30-minute billing-access token for that organization, with its name. A bad, used or expired code → 400 `invalid_code`.
+  - **`GET /account/subscription`** (billing token): status, plan summary, billing mode, trial end, period end, cancel-at-period-end, outstanding balance.
+  - **`GET /account/invoices`:** empty until Phase 4.
+  - **`POST /account/subscription/cancel`:** the Phase 2 cancel (PayPal first; access to the period end) → status, cancel-at-period-end, access end. Nothing to cancel → 409 `subscription_not_cancellable`; PayPal down → 502.
+  - **`POST /account/subscription/keep`:** 409 `cannot_keep` (see the follow-up).
+  - Audited: `billing-access.link-sent`, `billing-access.session-started` (per organization; never the email of an unknown request).
+  - **Test host:** the billing-link queue keeps the jobs and the test runs them, as the job server would, so timing is measured on the real request path.
+  - **Tests:** Integration +3 (`BillingAccessTests`):
+    - **P3-3:** owner, admin and unknown email get the same status and body; all take at least 400 ms, known and unknown within 250 ms of each other. Only the owner gets a link (to the website), only one code is stored, as a hash. Bad email and failed CAPTCHA give their codes.
+    - The code works once, expires after 15 minutes, at most 3 links an hour.
+    - The billing token reads its organization's subscription, empty invoices, cancels (then 409), keep (409), and a signup token is refused.
+  - **Results:** Unit 162, Architecture 11, Baseline 312, Integration 182, UI 5. No model drift.
 
 - **2026-10-15 — Phase 3 / Step 3.4 — Checkout endpoints (J2, J5).**
   - **`POST /checkout-sessions`** (signup or billing-access token; `Idempotency-Key`): body `planPriceId`, `purpose`, `returnUrl`, `cancelUrl`. Calls the Phase 2 `CheckoutService.StartAsync` for the token's organization. Answers 201 `{ checkoutSessionId, approvalUrl, expiresAt }`.

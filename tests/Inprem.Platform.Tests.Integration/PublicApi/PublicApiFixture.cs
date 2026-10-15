@@ -34,6 +34,9 @@ public class PublicApiFixture : IAsyncLifetime
     public IServiceProvider Services => _app.Services;
     public CapturingEmailSender Emails => _app.Emails;
     public FakePaymentProvider PayPal => _app.PayPal;
+
+    /// <summary>Runs the billing-link emails the API queued.</summary>
+    public Task RunBillingAccessJobsAsync() => ((InlineBillingAccessQueue)Services.GetRequiredService<Inprem.Platform.Application.PublicApi.IBillingAccessQueue>()).RunAllAsync();
     public TestEndpoints Endpoints { get; } = new();
 
     public async Task InitializeAsync()
@@ -43,6 +46,7 @@ public class PublicApiFixture : IAsyncLifetime
         {
             ["Site:SiteMode"] = "All",
             ["Site:PublicWebsiteOrigins:0"] = WebsiteOrigin,
+            ["Links:WebsiteBaseUrl"] = WebsiteOrigin,
             ["PublicApi:EnableDocs"] = "true",
             ["PublicApi:PublicPerMinute"] = PublicPerMinute.ToString(),
             ["PublicApi:TokenPerMinute"] = "1000",

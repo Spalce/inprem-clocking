@@ -39,6 +39,9 @@ internal class InpremAppFactory : WebApplicationFactory<Program>
     /// <summary>Every email the app sent through the platform's IEmailSender.</summary>
     public CapturingEmailSender Emails { get; } = new();
 
+    /// <summary>The billing-link jobs the app queued (run them with RunAllAsync).</summary>
+    public InlineBillingAccessQueue? BillingAccess { get; private set; }
+
     /// <summary>The pretend PayPal every test host uses.</summary>
     public FakePaymentProvider PayPal { get; } = new();
 
@@ -90,6 +93,8 @@ internal class InpremAppFactory : WebApplicationFactory<Program>
 
             services.RemoveAll<Inprem.Platform.Application.Memberships.IEmailSender>();
             services.AddSingleton<Inprem.Platform.Application.Memberships.IEmailSender>(Emails);
+            services.RemoveAll<Inprem.Platform.Application.PublicApi.IBillingAccessQueue>();
+            services.AddSingleton<Inprem.Platform.Application.PublicApi.IBillingAccessQueue>(sp => BillingAccess ??= new InlineBillingAccessQueue(sp.GetRequiredService<IServiceScopeFactory>()));
             services.RemoveAll<Inprem.Platform.Application.PublicApi.ICaptchaVerifier>();
             services.AddSingleton<Inprem.Platform.Application.PublicApi.ICaptchaVerifier, FakeCaptchaVerifier>();
             services.RemoveAll<Inprem.Platform.Application.Billing.IPaymentProvider>();

@@ -760,6 +760,39 @@ namespace Inprem.Platform.Infrastructure.Persistence.Migrations
                     b.ToTable("ApiTokens", "platform");
                 });
 
+            modelBuilder.Entity("Inprem.Platform.Domain.PublicApi.BillingAccessCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UsedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CodeHash")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "CreatedUtc");
+
+                    b.ToTable("BillingAccessCodes", "platform");
+                });
+
             modelBuilder.Entity("Inprem.Platform.Domain.PublicApi.IdempotencyRecord", b =>
                 {
                     b.Property<string>("Scope")
