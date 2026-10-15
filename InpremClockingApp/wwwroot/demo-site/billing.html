@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your subscription - Inprem Clock-in (demo website)</title>
+<link rel="stylesheet" href="demo.css">
+<script src="demo.js"></script>
+</head>
+<body>
+<header><a href="index.html"><strong>Inprem Clock-in</strong></a> <span class="tag">demo website</span> <nav><a href="index.html">Pricing</a> <a href="manage.html">Manage my subscription</a></nav></header>
+<main>
+<h1>Your subscription</h1>
+<div id="box" class="card" data-testid="subscription"><p class="muted">Loading…</p></div>
+<p id="error" class="error" data-testid="error"></p>
+<script>
+(async () => {
+  const box = document.getElementById("box"), error = document.getElementById("error");
+  const code = new URLSearchParams(location.search).get("code");
+  if (code) {
+    const s = await demo.call("POST", "/billing-access/sessions", { body: { code } });
+    if (s.status !== 201) { box.innerHTML = ""; error.textContent = demo.problem(s); return; }
+    demo.save("token", s.body.billingAccessToken);
+    demo.save("organization", s.body.organizationName);
+    history.replaceState(null, "", "billing.html"); // the code is used: off the address bar
+  }
+  const token = demo.load("token");
+  const sub = await demo.call("GET", "/account/subscription", { token });
+  if (sub.status !== 200) { box.innerHTML = ""; error.textContent = demo.problem(sub); return; }
+  const s = sub.body;
+  box.innerHTML = "<h2></h2><p data-testid='status'></p><div id='actions'></div>";
+  box.querySelector("h2").textContent = demo.load("organization") || "Your organization";
+  box.querySelector("[data-testid=status]").textContent = s.status + (s.plan ? " - " + s.plan.name + ", " + demo.money(s.plan.price) : "")
+    + (s.cancelAtPeriodEnd && s.currentPeriodEnd ? " - access until " + s.currentPeriodEnd.slice(0, 10) : "");
+  box.querySelector("[data-testid=status]").dataset.status = s.status;
+  const actions = box.querySelector("#actions");
+
+  const purpose = s.status === "Trialing" ? "convert" : ["Expired", "Canceled", "Suspended"].includes(s.status) ? "resubscribe" : (s.status === "Active" || s.status === "PastDue") && s.billingMode === "PayPal" ? "change_plan" : null;
+  if (purpose) {
+    const plans = await demo.call("GET", "/plans");
+    for (const plan of plans.body || []) for (const price of plan.prices) {
+      if (purpose === "change_plan" && s.plan && price.planPriceId === s.plan.planPriceId) continue;
+      const b = document.createElement("button");
+      b.dataset.testid = "pay";
+      b.textContent = (purpose === "change_plan" ? "Change to " : "Pay ") + plan.name + " " + demo.money(price.price) + " / " + price.billingCycle.toLowerCase();
+      b.onclick = async () => {
+        const c = await demo.call("POST", "/checkout-sessions", { token, key: demo.uuid(), body: { planPriceId: price.planPriceId, purpose, returnUrl: demo.here("return.html"), cancelUrl: demo.here("cancel.html") } });
+        if (c.status !== 201) { error.textContent = demo.problem(c); return; }
+        demo.save("checkout", c.body.checkoutSessionId);
+        location.href = c.body.approvalUrl;
+      };
+      actions.appendChild(b);
+      actions.appendChild(document.createTextNode(" "));
+    }
+  }
+  if ((s.status === "Active" || s.status === "PastDue") && s.billingMode === "PayPal") {
+    const b = document.createElement("button");
+    b.className = "secondary";
+    b.dataset.testid = "cancel-subscription";
+    b.textContent = "Cancel the subscription";
+    b.onclick = async () => {
+      const r = await demo.call("POST", "/account/subscription/cancel", { token });
+      if (r.status !== 200) { error.textContent = demo.problem(r); return; }
+      box.querySelector("[data-testid=status]").textContent = "Cancelled - access until " + r.body.accessEndsAt.slice(0, 10);
+      box.querySelector("[data-testid=status]").dataset.status = r.body.status;
+      b.remove();
+    };
+    actions.appendChild(b);
+  }
+})();
+</script>
+</main>
+<footer>This page stands in for the marketing website (decision D29). It uses only the public website API.</footer>
+</body>
+</html>

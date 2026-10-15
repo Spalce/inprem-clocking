@@ -187,9 +187,15 @@ public sealed class CheckoutSession
 
     private static string NewReference() => "chk_" + Convert.ToHexString(RandomNumberGenerator.GetBytes(12)).ToLowerInvariant();
 
+    /// <summary>
+    /// An absolute https address; plain http only for this computer's own address (loopback, for
+    /// local runs and the browser tests). Which origins are allowed at all is the payment provider's
+    /// allow-list (PayPal's accepts https origins only).
+    /// </summary>
     private static void AbsoluteHttps(string url, string name)
     {
-        if (string.IsNullOrWhiteSpace(url) || url.Length > 2000 || !Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
+        if (string.IsNullOrWhiteSpace(url) || url.Length > 2000 || !Uri.TryCreate(url, UriKind.Absolute, out var uri)
+            || !(uri.Scheme == Uri.UriSchemeHttps || (uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback)))
             throw new ArgumentException("An absolute https address is required.", name);
     }
 }

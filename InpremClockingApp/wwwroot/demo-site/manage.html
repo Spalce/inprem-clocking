@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Manage my subscription - Inprem Clock-in (demo website)</title>
+<link rel="stylesheet" href="demo.css">
+<script src="demo.js"></script>
+</head>
+<body>
+<header><a href="index.html"><strong>Inprem Clock-in</strong></a> <span class="tag">demo website</span> <nav><a href="index.html">Pricing</a> <a href="manage.html">Manage my subscription</a></nav></header>
+<main>
+<h1>Manage my subscription</h1>
+<form id="ask" class="card">
+  <p>Enter the owner's email. We send a link that works once, for 15 minutes.</p>
+  <label for="email">Email</label><input type="email" id="email" required>
+  <div id="captcha"></div>
+  <button type="submit" data-testid="send-link">Send me a link</button>
+  <p id="answer" data-testid="answer"></p>
+</form>
+<script>
+(async () => {
+  await demo.addCaptchaWidget(document.getElementById("captcha"));
+  document.getElementById("ask").addEventListener("submit", async e => {
+    e.preventDefault();
+    const r = await demo.call("POST", "/billing-access/requests", { body: { email: document.getElementById("email").value, captchaToken: await demo.captcha() } });
+    document.getElementById("answer").textContent = r.status === 202 ? r.body.message : demo.problem(r);
+  });
+})();
+</script>
+</main>
+<footer>This page stands in for the marketing website (decision D29). It uses only the public website API.</footer>
+</body>
+</html>

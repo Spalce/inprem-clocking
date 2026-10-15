@@ -15,7 +15,10 @@ public class KestrelAppFixture : AppFixture
 {
     public Uri ServerAddress => ((KestrelAppFactory)Factory).ServerAddress;
 
-    private protected override InpremAppFactory CreateFactory(string connectionString) => new KestrelAppFactory(connectionString);
+    /// <summary>Settings for this fixture's app (a subclass overrides it, e.g. to switch the demo website on).</summary>
+    protected virtual IReadOnlyDictionary<string, string?> Settings => new Dictionary<string, string?>();
+
+    private protected override InpremAppFactory CreateFactory(string connectionString) => new KestrelAppFactory(connectionString, Settings);
 
     private protected override void StartServer(InpremAppFactory factory) => ((KestrelAppFactory)factory).StartKestrel();
 
@@ -23,7 +26,7 @@ public class KestrelAppFixture : AppFixture
     {
         private IHost? _kestrelHost;
 
-        public KestrelAppFactory(string connectionString) : base(connectionString)
+        public KestrelAppFactory(string connectionString, IReadOnlyDictionary<string, string?> settings) : base(connectionString, settings)
         {
         }
 

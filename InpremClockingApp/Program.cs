@@ -61,6 +61,7 @@ builder.Services.AddScoped<InpremClockingApp.Billing.BillingReconciliationJob>()
 // The website API (multi-tenancy Phase 3): /api/public/v1 on the App site, its own tokens, CORS,
 // rate limits and (staging only) the OpenAPI document. See InpremClockingApp/PublicApi.
 builder.Services.AddPublicApi(builder.Configuration);
+builder.Services.AddDemoSite(builder.Configuration);
 
 builder.Services.AddDefaultIdentity<AppUser>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddRoles<AppRole>()
@@ -165,6 +166,7 @@ else
 }
 
 app.UseHttpsRedirection();
+app.UseDemoSiteGate(); // /demo-site is served only when Demo:EnableDemoSite (Phase 3, D29)
 app.UseStaticFiles();
 
 app.UseRouting();
@@ -185,6 +187,7 @@ app.UseEndpoints(endpoints =>
     endpoints.MapRazorPages();
     endpoints.MapControllers();
     endpoints.MapPublicApi();
+    endpoints.MapDemoSite();
     endpoints.MapProviderHealth();
     endpoints.MapJobsDashboard();
 });

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign up - Inprem Clock-in (demo website)</title>
+<link rel="stylesheet" href="demo.css">
+<script src="demo.js"></script>
+</head>
+<body>
+<header><a href="index.html"><strong>Inprem Clock-in</strong></a> <span class="tag">demo website</span> <nav><a href="index.html">Pricing</a> <a href="manage.html">Manage my subscription</a></nav></header>
+<main>
+<h1>Register your organization</h1>
+<form id="signup" class="card">
+  <label for="org">Organization name</label><input type="text" id="org" required>
+  <label for="slug">Web name (lower-case letters, digits, dashes)</label><input type="text" id="slug" required>
+  <span id="slug-hint" class="muted"></span>
+  <label for="tz">Time zone</label><select id="tz"></select>
+  <label for="first">Your first name</label><input type="text" id="first" required>
+  <label for="last">Your last name</label><input type="text" id="last" required>
+  <label for="email">Your email</label><input type="email" id="email" required>
+  <label for="mobile">Mobile (optional, e.g. +15551234567)</label><input type="tel" id="mobile">
+  <label class="check"><input type="checkbox" id="terms"> I accept the terms</label>
+  <label class="check"><input type="checkbox" id="privacy"> I accept the privacy policy</label>
+  <label class="check"><input type="checkbox" id="mode-subscribe"> Subscribe now with PayPal (instead of the free trial)</label>
+  <div id="captcha"></div>
+  <button type="submit" data-testid="register">Register</button>
+  <p id="error" class="error" data-testid="error"></p>
+</form>
+<div id="done" class="card" hidden data-testid="check-email"><h2>Check your email</h2><p>We sent you a link to confirm your email and choose your password.</p></div>
+<script>
+(async () => {
+  const params = new URLSearchParams(location.search);
+  const key = demo.uuid(); // one per page view: a double click registers once
+  if (params.get("trial") === "0") { document.getElementById("mode-subscribe").checked = true; document.getElementById("mode-subscribe").disabled = true; }
+  const zones = await demo.call("GET", "/timezones");
+  for (const z of zones.body || []) { const o = document.createElement("option"); o.value = z.id; o.textContent = z.displayName; document.getElementById("tz").appendChild(o); }
+  await demo.addCaptchaWidget(document.getElementById("captcha"));
+
+  document.getElementById("slug").addEventListener("change", async e => {
+    const r = await demo.call("GET", "/slugs/" + encodeURIComponent(e.target.value) + "/availability");
+    document.getElementById("slug-hint").textContent = r.status !== 200 ? demo.problem(r) : r.body.available ? "Available." : "Taken. Try " + r.body.suggestion + ".";
+  });
+
+  document.getElementById("signup").addEventListener("submit", async e => {
+    e.preventDefault();
+    const subscribe = document.getElementById("mode-subscribe").checked;
+    const result = await demo.call("POST", "/signups", { key, body: {
+      organizationName: document.getElementById("org").value, slug: document.getElementById("slug").value, timeZone: document.getElementById("tz").value,
+      owner: { firstName: document.getElementById("first").value, lastName: document.getElementById("last").value, email: document.getElementById("email").value, mobile: document.getElementById("mobile").value || null },
+      consent: { acceptTerms: document.getElementById("terms").checked, acceptPrivacyPolicy: document.getElementById("privacy").checked, smsOptIn: false },
+      planPriceId: params.get("price"), mode: subscribe ? "subscribe" : "trial", captchaToken: await demo.captcha() } });
+    if (result.status !== 201) { document.getElementById("error").textContent = demo.problem(result); return; }
+    demo.save("token", result.body.signupToken);
+    if (result.body.nextAction !== "checkout") { document.getElementById("signup").hidden = true; document.getElementById("done").hidden = false; return; }
+
+    const checkout = await demo.call("POST", "/checkout-sessions", { token: result.body.signupToken, key: demo.uuid(), body: {
+      planPriceId: params.get("price"), purpose: "new", returnUrl: demo.here("return.html"), cancelUrl: demo.here("cancel.html") } });
+    if (checkout.status !== 201) { document.getElementById("error").textContent = demo.problem(checkout); return; }
+    demo.save("checkout", checkout.body.checkoutSessionId);
+    location.href = checkout.body.approvalUrl; // to PayPal
+  });
+})();
+</script>
+</main>
+<footer>This page stands in for the marketing website (decision D29). It uses only the public website API.</footer>
+</body>
+</html>

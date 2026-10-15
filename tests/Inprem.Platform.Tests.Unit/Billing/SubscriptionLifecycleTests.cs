@@ -272,6 +272,7 @@ public class SubscriptionLifecycleTests
     {
         var price = Catalog().Price;
         Assert.Throws<ArgumentException>(() => CheckoutSession.Create(CheckoutPurpose.Convert, 7, null, price, "http://app.test/r", "https://app.test/c", "k", "u", Now));
+        Assert.NotNull(CheckoutSession.Create(CheckoutPurpose.Convert, 7, null, price, "http://127.0.0.1:5000/r", "http://localhost:5000/c", "k-loopback", "u", Now)); // this computer only
         Assert.Throws<ArgumentException>(() => CheckoutSession.Create(CheckoutPurpose.Convert, 7, null, price, "/relative", "https://app.test/c", "k", "u", Now));
         Assert.Throws<ArgumentException>(() => CheckoutSession.Create(CheckoutPurpose.Convert, null, null, price, "https://app.test/r", "https://app.test/c", "k", "u", Now));
         Assert.Throws<ArgumentException>(() => CheckoutSession.Create(CheckoutPurpose.New, 7, null, price, "https://app.test/r", "https://app.test/c", "k", "u", Now));

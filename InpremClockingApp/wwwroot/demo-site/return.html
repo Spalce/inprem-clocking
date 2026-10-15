@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Confirming - Inprem Clock-in (demo website)</title>
+<link rel="stylesheet" href="demo.css">
+<script src="demo.js"></script>
+</head>
+<body>
+<header><a href="index.html"><strong>Inprem Clock-in</strong></a> <span class="tag">demo website</span> <nav><a href="index.html">Pricing</a> <a href="manage.html">Manage my subscription</a></nav></header>
+<main>
+<div class="card" data-testid="result">
+  <h1 id="title">Confirming your subscription…</h1>
+  <p id="message">We are checking with PayPal. Never close this page before it says so.</p>
+</div>
+<script>
+(async () => {
+  const checkout = demo.load("checkout"), token = demo.load("token");
+  if (!checkout || !token) { document.getElementById("message").textContent = "No checkout in progress."; return; }
+  await demo.confirmAndPoll(checkout, token, s => {
+    const titles = { Active: "You are subscribed", Cancelled: "Checkout was not completed", Expired: "Checkout was not completed", Failed: "We could not activate your subscription", Slow: "Payment received" };
+    document.getElementById("title").textContent = titles[s.status] || "Confirming your subscription…";
+    document.getElementById("message").textContent = s.message;
+    document.querySelector("[data-testid=result]").dataset.status = s.status;
+  });
+})();
+</script>
+</main>
+<footer>This page stands in for the marketing website (decision D29). It uses only the public website API.</footer>
+</body>
+</html>

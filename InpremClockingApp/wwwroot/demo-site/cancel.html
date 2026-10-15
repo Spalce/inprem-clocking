@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Checkout cancelled - Inprem Clock-in (demo website)</title>
+<link rel="stylesheet" href="demo.css">
+<script src="demo.js"></script>
+</head>
+<body>
+<header><a href="index.html"><strong>Inprem Clock-in</strong></a> <span class="tag">demo website</span> <nav><a href="index.html">Pricing</a> <a href="manage.html">Manage my subscription</a></nav></header>
+<main>
+<div class="card" data-testid="result">
+  <h1>Checkout was not completed</h1>
+  <p id="message">Nothing was charged. You can try again.</p>
+  <a class="button" href="index.html">Back to pricing</a>
+</div>
+<script>
+(async () => {
+  const checkout = demo.load("checkout"), token = demo.load("token");
+  if (!checkout || !token) return;
+  const r = await demo.call("POST", "/checkout-sessions/" + checkout + "/cancel", { token });
+  if (r.status === 200) document.querySelector("[data-testid=result]").dataset.status = r.body.status;
+})();
+</script>
+</main>
+<footer>This page stands in for the marketing website (decision D29). It uses only the public website API.</footer>
+</body>
+</html>

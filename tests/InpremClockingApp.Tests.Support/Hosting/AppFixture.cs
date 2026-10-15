@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Inprem.Platform.Infrastructure.Persistence;
 using InpremClockingApp.Data;
 using InpremClockingApp.Tests.Support.Database;
@@ -25,6 +26,10 @@ public class AppFixture : IAsyncLifetime
 
     /// <summary>The pretend PayPal (nothing reaches PayPal in tests).</summary>
     public FakePaymentProvider PayPal => Factory.PayPal;
+
+    /// <summary>Runs the billing-link emails the app queued (as the job server would).</summary>
+    public Task RunBillingAccessJobsAsync() =>
+        ((InlineBillingAccessQueue)Services.GetRequiredService<Inprem.Platform.Application.PublicApi.IBillingAccessQueue>()).RunAllAsync();
 
     /// <summary>The app's service provider (create a scope before resolving scoped services).</summary>
     public IServiceProvider Services => Factory.Services;

@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 3 Website API (in progress; Phase 2's sandbox checks P2-1 and P2-4 still open)
-- **Next step:** Phase 3 / Step 3.6 — Demo website page (`wwwroot/demo-site/`, behind `Demo:EnableDemoSite`) with UI tests of J1–J5
+- **Next step:** Phase 3 / Step 3.7 — Web team handover (`docs/multitenancy/api/integration-guide.md`, staging notes)
 - **Branch:** `mt/phase3` (from `mt/integration` `9ac52c3`)
 
 ## Phase status
@@ -16,7 +16,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | 0 Foundation | Implementation complete (0.1–0.8, 0.10; 0.9 moved to Phase 7). Deployment-dependent exit checks (P0-6 Level 3, P0-9 real copy, P0-11, P0-12) wait for the test-site deployment (developer's decision: deploy after all phases) | — | — |
 | 1 Provider Console | Implementation complete (1.1–1.7), Phase 1 bundle rehearsed. Waiting: developer walkthrough (P1-1), onboarding under 3 minutes on staging (P1-3) | P1-2, P1-4, P1-5, P1-6, P1-7 (automated); P1-1 automated part | 2026-10-15 (`87ab80d`, developer's request, before the P1-1 walkthrough) |
 | 2 PayPal core | Implementation complete (2.1–2.9), Phase 2 bundle rehearsed. Waiting: PayPal sandbox run (P2-1, P2-4) | P2-2, P2-3, P2-5, P2-6, P2-7 (automated); P2-1 and P2-4 with the pretend PayPal | 2026-10-15 (`9ac52c3`, developer's request, before the sandbox run) |
-| 3 Website API | In progress (Steps 3.1–3.5 done) | — | — |
+| 3 Website API | In progress (Steps 3.1–3.6 done) | — | — |
 | 4 Invoices | Not started | — | — |
 | 5 Twilio | Not started | — | — |
 | 6 Staff alerts | Not started | — | — |
@@ -123,6 +123,27 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-15 — Phase 3 / Step 3.6 — Demo website page (D29).**
+  - **`wwwroot/demo-site/`**: plain HTML and `fetch`, no build step, only the public API. Pages:
+    - pricing (`GET /plans`);
+    - sign-up (time zones, slug check, trial or subscribe; one idempotency key per page view; subscribe continues with `POST /checkout-sessions` and goes to PayPal);
+    - `return.html` (confirm, then polls 2 s for 30 s and 10 s up to 2 minutes, with the design 7.5 texts);
+    - `cancel.html`;
+    - "Manage my subscription" (`manage.html` asks for a link; `billing.html` takes the code off the address bar, shows the subscription, pays: convert, resubscribe or change plan, and cancels).
+    - Tokens stay in the tab's `sessionStorage`. How to run it locally: `wwwroot/demo-site/README.md`.
+  - **Off by default:** `Demo:EnableDemoSite`. A gate before the static files answers 404 for every `/demo-site` address when it is off, or on an Admin-only site.
+    - When on: `/demo-site/config.json` (the public Turnstile site key or a test answer) and `/demo-site/billing` (forwards to `billing.html`, matching the billing links).
+    - The demo is served from the app's own origin, so no CORS entry is needed.
+  - **Checkout addresses:** plain http is now accepted for this computer's own address only (loopback: local runs and the browser tests). The PayPal allow-list still accepts https origins only.
+  - **Tests:** UI +5 (`DemoSiteBrowserTests`, Playwright, real browser; PayPal's approve page is played by the test, which marks the subscription as PayPal would and redirects back):
+    - **J1:** trial signup, then the email link and a password.
+    - **J2:** subscribe, PayPal, return, Active.
+    - **J5:** cancel at PayPal → Cancelled.
+    - **J3 and J4:** an owner asks for a link, opens it, converts the trial through PayPal, then cancels.
+    - Off unless switched on (404 for the pages and config).
+    - Unit: loopback http accepted, other http refused.
+  - **Results:** Unit 162, Architecture 11, Baseline 312, Integration 182, UI 10.
 
 - **2026-10-15 — Local database: platform migration M1j applied.** Backup `DB_A65635_inpremdb_before_M1j_20261015.bak` taken first and verified; verify `1|1|1|0`; app data fingerprint unchanged.
 

@@ -45,7 +45,7 @@ public sealed class FakePaymentProvider : IPaymentProvider
     public HashSet<string> AllowedOrigins { get; } = new(StringComparer.OrdinalIgnoreCase) { AllowedOrigin };
 
     public bool IsAllowedReturnUrl(string url) =>
-        Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps && AllowedOrigins.Contains(uri.GetLeftPart(UriPartial.Authority));
+        Uri.TryCreate(url, UriKind.Absolute, out var uri) && AllowedOrigins.Contains(uri.GetLeftPart(UriPartial.Authority));
 
     public Task<string> CreateProductAsync(string name, string? description, string requestId, CancellationToken ct = default)
     {

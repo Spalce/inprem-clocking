@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pricing - Inprem Clock-in (demo website)</title>
+<link rel="stylesheet" href="demo.css">
+<script src="demo.js"></script>
+</head>
+<body>
+<header><a href="index.html"><strong>Inprem Clock-in</strong></a> <span class="tag">demo website</span> <nav><a href="index.html">Pricing</a> <a href="manage.html">Manage my subscription</a></nav></header>
+<main>
+<h1>Pricing</h1>
+<p>Choose a plan. Start with a free trial, or subscribe now with PayPal.</p>
+<div id="plans" class="plans" data-testid="plans"><p class="muted">Loading…</p></div>
+<script>
+(async () => {
+  const result = await demo.call("GET", "/plans");
+  const box = document.getElementById("plans");
+  box.innerHTML = "";
+  if (result.status !== 200 || result.body.length === 0) { box.textContent = "No plans available."; return; }
+  for (const plan of result.body) {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = "<h2></h2><p class='muted'></p><ul></ul>";
+    card.querySelector("h2").textContent = plan.name;
+    card.querySelector("p").textContent = plan.trialDays > 0 ? plan.trialDays + "-day free trial" : "No free trial";
+    for (const f of plan.features) { const li = document.createElement("li"); li.textContent = f; card.querySelector("ul").appendChild(li); }
+    for (const price of plan.prices) {
+      const a = document.createElement("a");
+      a.className = "button";
+      a.dataset.testid = "choose";
+      a.href = "signup.html?price=" + encodeURIComponent(price.planPriceId) + "&trial=" + plan.trialDays;
+      a.textContent = demo.money(price.price) + " / " + (price.billingCycle === "Monthly" ? "month" : "year");
+      card.appendChild(a);
+      card.appendChild(document.createTextNode(" "));
+    }
+    box.appendChild(card);
+  }
+})();
+</script>
+</main>
+<footer>This page stands in for the marketing website (decision D29). It uses only the public website API.</footer>
+</body>
+</html>
