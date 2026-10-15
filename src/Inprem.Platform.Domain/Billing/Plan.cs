@@ -54,6 +54,9 @@ public sealed class Plan
     public PlanStatus Status { get; private set; }
     public DateTime CreatedUtc { get; private set; }
 
+    /// <summary>The PayPal catalog product for this plan (created once, Phase 2 step 2.3).</summary>
+    public string? PayPalProductId { get; private set; }
+
     public IReadOnlyList<PlanPrice> Prices => _prices;
 
     public static Plan Create(string code, string name, string? description, string? features, int? maxPeople, int trialDays, bool isPublic, DateTime nowUtc)
@@ -105,6 +108,14 @@ public sealed class Plan
     /// <summary>Offered again (its retired prices stay retired; add new ones).</summary>
     public void Reactivate() => Status = PlanStatus.Active;
 
+    /// <summary>Records the PayPal product (once; it never changes).</summary>
+    public void LinkPayPalProduct(string productId)
+    {
+        if (string.IsNullOrWhiteSpace(productId) || productId.Length > 50) throw new ArgumentException("PayPal product id required (at most 50 characters).", nameof(productId));
+        if (PayPalProductId != null && PayPalProductId != productId) throw new InvalidOperationException("This plan is already linked to another PayPal product.");
+        PayPalProductId = productId;
+    }
+
     public bool IsOffered => Status == PlanStatus.Active && _prices.Any(p => p.Status == PlanStatus.Active);
 }
 
@@ -141,4 +152,12 @@ public sealed class PlanPrice
     }
 
     public void Retire() => Status = PlanStatus.Retired;
+
+    /// <summary>Records the PayPal billing plan for this price (once: a price never changes, so neither does its plan).</summary>
+    public void LinkPayPalPlan(string payPalPlanId)
+    {
+        if (string.IsNullOrWhiteSpace(payPalPlanId) || payPalPlanId.Length > 50) throw new ArgumentException("PayPal plan id required (at most 50 characters).", nameof(payPalPlanId));
+        if (PayPalPlanId != null && PayPalPlanId != payPalPlanId) throw new InvalidOperationException("This price is already linked to another PayPal plan.");
+        PayPalPlanId = payPalPlanId;
+    }
 }

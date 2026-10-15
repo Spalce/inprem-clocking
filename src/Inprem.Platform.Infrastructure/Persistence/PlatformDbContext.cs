@@ -50,6 +50,9 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<TenantProfile> TenantProfiles { get; set; } = null!;
     public DbSet<TenantNote> TenantNotes { get; set; } = null!;
     public DbSet<Subscription> Subscriptions { get; set; } = null!;
+    public DbSet<CheckoutSession> CheckoutSessions { get; set; } = null!;
+    public DbSet<Payment> Payments { get; set; } = null!;
+    public DbSet<BillingEvent> BillingEvents { get; set; } = null!;
     public DbSet<SupportSession> SupportSessions { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -160,6 +163,7 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
             plan.Property(p => p.Description).HasMaxLength(1000);
             plan.Property(p => p.Features).HasMaxLength(2000);
             plan.Property(p => p.Status).HasConversion<string>().HasMaxLength(20);
+            plan.Property(p => p.PayPalProductId).HasMaxLength(50);
             plan.Ignore(p => p.IsOffered);
             plan.HasIndex(p => p.Code).IsUnique();
             plan.HasMany(p => p.Prices).WithOne().HasForeignKey(p => p.PlanId).OnDelete(DeleteBehavior.Restrict);
@@ -207,9 +211,69 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
             subscription.Property(s => s.Id).ValueGeneratedNever();
             subscription.Property(s => s.Mode).HasConversion<string>().HasMaxLength(20);
             subscription.Property(s => s.Status).HasConversion<string>().HasMaxLength(30);
+            subscription.Property(s => s.OutstandingBalance).HasPrecision(10, 2);
+            subscription.Property(s => s.ExternalSubscriptionId).HasMaxLength(50).IsUnicode(false);
             subscription.HasIndex(s => s.TenantId).IsUnique();
+            subscription.HasIndex(s => s.ExternalSubscriptionId).IsUnique().HasFilter("[ExternalSubscriptionId] IS NOT NULL");
             subscription.HasOne<Plan>().WithMany().HasForeignKey(s => s.PlanId).OnDelete(DeleteBehavior.Restrict);
             subscription.HasOne<PlanPrice>().WithMany().HasForeignKey(s => s.PlanPriceId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Foreign keys to dbo.Tenants are added by the migration's SQL (the table is outside this context).
+        modelBuilder.Entity<CheckoutSession>(checkout =>
+        {
+            checkout.ToTable("CheckoutSessions");
+            checkout.HasKey(c => c.Id);
+            checkout.Property(c => c.Id).ValueGeneratedNever();
+            checkout.Property(c => c.Reference).HasMaxLength(40).IsUnicode(false);
+            checkout.Property(c => c.Purpose).HasConversion<string>().HasMaxLength(20);
+            checkout.Property(c => c.Status).HasConversion<string>().HasMaxLength(20);
+            checkout.Property(c => c.PayPalPlanId).HasMaxLength(50).IsUnicode(false);
+            checkout.Property(c => c.ExternalSubscriptionId).HasMaxLength(50).IsUnicode(false);
+            checkout.Property(c => c.ApprovalUrl).HasMaxLength(2000);
+            checkout.Property(c => c.ReturnUrl).HasMaxLength(2000);
+            checkout.Property(c => c.CancelUrl).HasMaxLength(2000);
+            checkout.Property(c => c.IdempotencyKey).HasMaxLength(100);
+            checkout.Property(c => c.FailureReason).HasMaxLength(500);
+            checkout.Property(c => c.CreatedBy).HasMaxLength(300);
+            checkout.Ignore(c => c.IsFinal);
+            checkout.HasIndex(c => c.Reference).IsUnique();
+            checkout.HasIndex(c => c.IdempotencyKey).IsUnique();
+            checkout.HasIndex(c => c.ExternalSubscriptionId).IsUnique().HasFilter("[ExternalSubscriptionId] IS NOT NULL");
+            checkout.HasIndex(c => new { c.Status, c.ExpiresUtc });
+            checkout.HasIndex(c => c.TenantId);
+            checkout.HasOne<PlanPrice>().WithMany().HasForeignKey(c => c.PlanPriceId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Payment>(payment =>
+        {
+            payment.ToTable("Payments");
+            payment.HasKey(p => p.Id);
+            payment.Property(p => p.Id).ValueGeneratedNever();
+            payment.Property(p => p.Source).HasConversion<string>().HasMaxLength(20);
+            payment.Property(p => p.Status).HasConversion<string>().HasMaxLength(20);
+            payment.Property(p => p.ExternalId).HasMaxLength(100);
+            payment.Property(p => p.Amount).HasPrecision(10, 2);
+            payment.Property(p => p.RefundedAmount).HasPrecision(10, 2);
+            payment.Property(p => p.Currency).HasMaxLength(3).IsFixedLength().IsUnicode(false);
+            payment.Property(p => p.RecordedBy).HasMaxLength(300);
+            payment.HasIndex(p => new { p.Source, p.ExternalId }).IsUnique().HasFilter("[ExternalId] IS NOT NULL");
+            payment.HasIndex(p => new { p.TenantId, p.PaidUtc });
+            payment.HasOne<Subscription>().WithMany().HasForeignKey(p => p.SubscriptionId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<BillingEvent>(billingEvent =>
+        {
+            billingEvent.ToTable("BillingEvents");
+            billingEvent.HasKey(e => e.ExternalEventId);
+            billingEvent.Property(e => e.ExternalEventId).HasMaxLength(100).IsUnicode(false);
+            billingEvent.Property(e => e.EventType).HasMaxLength(100).IsUnicode(false);
+            billingEvent.Property(e => e.ResourceType).HasMaxLength(50).IsUnicode(false);
+            billingEvent.Property(e => e.ResourceId).HasMaxLength(100).IsUnicode(false);
+            billingEvent.Property(e => e.Error).HasMaxLength(BillingEvent.MaxErrorLength);
+            billingEvent.Ignore(e => e.Status);
+            billingEvent.HasIndex(e => e.ReceivedUtc);
+            billingEvent.HasIndex(e => e.ResourceId);
         });
 
         modelBuilder.Entity<SupportSession>(session =>

@@ -4,9 +4,9 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 
 ## Current position
 
-- **Phase:** 1 Provider Console (implementation and bundle done; two exit checks wait for the developer and the test site)
-- **Next step:** developer walkthrough of the console (P1-1, P1-3 locally); then merge `mt/phase1` into `mt/integration` and start Phase 2 / Step 2.1
-- **Branch:** `mt/phase1` (from `mt/integration` `83c5ac0`)
+- **Phase:** 2 PayPal core (in progress)
+- **Next step:** Phase 2 / Step 2.2 — PayPal client (needs the PayPal sandbox app credentials in user-secrets)
+- **Branch:** `mt/phase2` (from `mt/integration` `87ab80d`)
 
 ## Phase status
 
@@ -14,8 +14,8 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 |---|---|---|---|
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
 | 0 Foundation | Implementation complete (0.1–0.8, 0.10; 0.9 moved to Phase 7). Deployment-dependent exit checks (P0-6 Level 3, P0-9 real copy, P0-11, P0-12) wait for the test-site deployment (developer's decision: deploy after all phases) | — | — |
-| 1 Provider Console | Implementation complete (1.1–1.7), Phase 1 bundle rehearsed. Waiting: developer walkthrough (P1-1), onboarding under 3 minutes on staging (P1-3) | P1-2, P1-4, P1-5, P1-6, P1-7 (automated); P1-1 automated part | — |
-| 2 PayPal core | Not started | — | — |
+| 1 Provider Console | Implementation complete (1.1–1.7), Phase 1 bundle rehearsed. Waiting: developer walkthrough (P1-1), onboarding under 3 minutes on staging (P1-3) | P1-2, P1-4, P1-5, P1-6, P1-7 (automated); P1-1 automated part | 2026-10-15 (`87ab80d`, developer's request, before the P1-1 walkthrough) |
+| 2 PayPal core | In progress (Step 2.1 done) | — | — |
 | 3 Website API | Not started | — | — |
 | 4 Invoices | Not started | — | — |
 | 5 Twilio | Not started | — | — |
@@ -72,6 +72,8 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **Rehearsed on synthetic data only (step 0.10).** The Phase 0 bundle was rehearsed with rollback (R2 and R3) on a disposable database with synthetic data, at about the size of the real one. Before a shared or production database, it must be repeated on a restored copy of that database (`rehearse-phase0.ps1 -Existing`). The CTO then signs it (design 11.2–11.4); see `docs/multitenancy/rehearsal-phase0.md`.
 - **M1 is M1a + M1b (step 0.10).** The step's "empty platform tables" already exist from step 0.7: provider users, invitations (named `ProviderInvitations`), audit and recovery records. No duplicate migration was added.
 - **`appsettings.Production.json` on the server (step 0.10).** `prepare-site.ps1` never ships it (a local publish would include the developer's copy). Upload with Web Deploy *without* "remove additional files", or move the connection string into the host's settings.
+- **P1-1 walkthrough still open.** Phase 1 was merged into `mt/integration` at the developer's request before the walkthrough. Record it here when done.
+- **Existing organizations are on Free (step 2.1, D26).** M1f gives every organization without a subscription a Free one, so billing enforcement (step 2.7) changes nothing for them. Moving one to a paid plan is a console action (step 2.8). Decide per organization before go-live.
 - **Antiforgery on the App site (found in step 1.5).** A POST without a token to an Account-area page got 400, even though `Program.cs` applies `IgnoreAntiforgeryToken` to all pages. Forms built with tag helpers carry the token, so nothing visible breaks. Check how the global convention really behaves before C3-10 (Phase 7).
 - **Support sessions replace the console sign-in on a combined site (step 1.5).** With `SiteMode=All` (local), the hand-off sign-in replaces the provider's console session in the shared cookie; sign in to the console again afterwards. Separate App and Admin hosts (production) are not affected.
 - **Support history page has no menu link yet (step 1.5).** `/Account/SupportSessions` exists for organization admins. Linking it from the approved sidebar is a C3 change, for the UI work in Phase 7, or say so earlier.
@@ -104,6 +106,23 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-15 — Phase 1 merged; Phase 2 started.** `mt/phase1` fast-forwarded into `mt/integration` (`87ab80d`) and pushed, at the developer's request (P1-1 walkthrough and P1-3 staging timing still open). Branch `mt/phase2` from there.
+
+- **2026-10-15 — Local database: platform migration M1f applied.** Backup `DB_A65635_inpremdb_before_M1f_20261015.bak` taken first and verified; verify `1|3|2|0|4` (four organizations now on Free); app data fingerprint unchanged.
+
+- **2026-10-15 — Phase 2 / Step 2.1 — Billing domain and data (platform migration M1f).**
+  - **`Subscription`** gets the PayPal fields (paid period, cancel at period end, outstanding balance, PayPal subscription id, status date) and the console overrides (free access until a date, people limit).
+    - Its methods follow the design 8 state diagram: trial expiry, awaiting activation, activation, past due, payment, suspension, cancellation, PayPal expiry, closing after the 90-day retention (D24), plan change, refresh.
+    - Moves the diagram does not have are refused. Repeating a move that already happened returns false and changes nothing, so confirm, webhook and reconciliation can all report the same activation (D20: exactly once).
+    - `HasFullAccess` decides saving and kiosk (step 2.7): Free, a running trial, PendingActivation, Active, PastDue, Canceled until the period end, or a free-access override. Expiry of a trial takes effect at once, before the daily job.
+    - Two transitions added beyond the diagram, both needed by the events of step 2.5: PayPal's `EXPIRED` from Active, PastDue, Canceled or Suspended; and resubscribing from Canceled or Suspended.
+  - **`CheckoutSession`** (design 7.5 states): random `chk_` reference for PayPal's `custom_id`, 3-hour life, https return and cancel addresses, idempotency key (unique), one organization or one signup. Final states never change. PayPal's status strings are mapped by `PayPalStatus.Parse`.
+  - **`Payment`** (PayPal sale or offline; refund and reversal) and **`BillingEvent`** (PayPal event id as the key, raw body for replay and never logged, attempts and last error).
+  - **Plan links:** `Plan.PayPalProductId` and `PlanPrice.PayPalPlanId`, each set once (for step 2.3).
+  - **Migration M1f:** additive; foreign keys to `dbo.Tenants` by SQL as before; existing subscriptions get their status date; **every organization without a subscription gets a Free one** (D26; see the follow-up). Scripts `platform-M1f-up/down/verify` rehearsed on LocalDB.
+  - **Tests:** Unit +24 (`SubscriptionLifecycleTests`: every transition of both diagrams, refusals, repeats, access, overrides, checkout input checks, status mapping, payments, events, links).
+  - **Results:** Unit 160, Architecture 11, Baseline 312, Integration 99, UI 5. No model drift.
 
 - **2026-10-15 — Phase 1 bundle and exit review.**
   - **Bundles:** `scripts/migrations/phase1-up.sql` and `phase1-down.sql`, generated by `build-phase1-bundle.ps1` from the reviewed M1c, M1d and M1e scripts, with the Phase 0 guards. They also refuse a database without the complete Phase 0 schema. CI checks both bundles are up to date.
