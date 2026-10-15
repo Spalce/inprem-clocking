@@ -190,9 +190,7 @@ namespace Inprem.Platform.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ExternalSubscriptionId")
-                        .IsUnique()
-                        .HasFilter("[ExternalSubscriptionId] IS NOT NULL");
+                    b.HasIndex("ExternalSubscriptionId");
 
                     b.HasIndex("IdempotencyKey")
                         .IsUnique();

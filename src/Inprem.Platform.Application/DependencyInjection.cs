@@ -14,6 +14,7 @@ public static class DependencyInjection
         services.AddScoped<IMembershipService, MembershipService>();
         services.AddScoped<Billing.PlanService>();
         services.AddScoped<Billing.PlanPublisher>();
+        services.AddScoped<Billing.CheckoutService>();
         services.AddScoped<Organizations.OrganizationService>();
         services.AddScoped<Support.SupportSessionService>();
         services.AddScoped<Audit.AuditLogService>();

@@ -239,7 +239,9 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
             checkout.Ignore(c => c.IsFinal);
             checkout.HasIndex(c => c.Reference).IsUnique();
             checkout.HasIndex(c => c.IdempotencyKey).IsUnique();
-            checkout.HasIndex(c => c.ExternalSubscriptionId).IsUnique().HasFilter("[ExternalSubscriptionId] IS NOT NULL");
+            // Not unique: a plan change is a new checkout on the same PayPal subscription (M1g). One PayPal
+            // subscription per organization is enforced on Subscriptions instead.
+            checkout.HasIndex(c => c.ExternalSubscriptionId);
             checkout.HasIndex(c => new { c.Status, c.ExpiresUtc });
             checkout.HasIndex(c => c.TenantId);
             checkout.HasOne<PlanPrice>().WithMany().HasForeignKey(c => c.PlanPriceId).OnDelete(DeleteBehavior.Restrict);

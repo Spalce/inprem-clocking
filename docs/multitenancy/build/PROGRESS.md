@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 2 PayPal core (in progress)
-- **Next step:** Phase 2 / Step 2.4 — Checkout (start, confirm, activate exactly once; plan change and cancel); the sandbox smoke test of steps 2.2–2.3 once the developer has put the PayPal sandbox keys in user-secrets
+- **Next step:** Phase 2 / Step 2.5 — Webhooks (`/webhooks/paypal`, verified, stored once, processed by a job); the sandbox smoke test of steps 2.2–2.4 once the developer has put the PayPal sandbox keys in user-secrets
 - **Branch:** `mt/phase2` (from `mt/integration` `87ab80d`)
 
 ## Phase status
@@ -15,7 +15,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
 | 0 Foundation | Implementation complete (0.1–0.8, 0.10; 0.9 moved to Phase 7). Deployment-dependent exit checks (P0-6 Level 3, P0-9 real copy, P0-11, P0-12) wait for the test-site deployment (developer's decision: deploy after all phases) | — | — |
 | 1 Provider Console | Implementation complete (1.1–1.7), Phase 1 bundle rehearsed. Waiting: developer walkthrough (P1-1), onboarding under 3 minutes on staging (P1-3) | P1-2, P1-4, P1-5, P1-6, P1-7 (automated); P1-1 automated part | 2026-10-15 (`87ab80d`, developer's request, before the P1-1 walkthrough) |
-| 2 PayPal core | In progress (Steps 2.1–2.3 done) | — | — |
+| 2 PayPal core | In progress (Steps 2.1–2.4 done) | — | — |
 | 3 Website API | Not started | — | — |
 | 4 Invoices | Not started | — | — |
 | 5 Twilio | Not started | — | — |
@@ -72,8 +72,9 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **Rehearsed on synthetic data only (step 0.10).** The Phase 0 bundle was rehearsed with rollback (R2 and R3) on a disposable database with synthetic data, at about the size of the real one. Before a shared or production database, it must be repeated on a restored copy of that database (`rehearse-phase0.ps1 -Existing`). The CTO then signs it (design 11.2–11.4); see `docs/multitenancy/rehearsal-phase0.md`.
 - **M1 is M1a + M1b (step 0.10).** The step's "empty platform tables" already exist from step 0.7: provider users, invitations (named `ProviderInvitations`), audit and recovery records. No duplicate migration was added.
 - **`appsettings.Production.json` on the server (step 0.10).** `prepare-site.ps1` never ships it (a local publish would include the developer's copy). Upload with Web Deploy *without* "remove additional files", or move the connection string into the host's settings.
-- **PayPal sandbox smoke test of steps 2.2 and 2.3 not run yet.** It needs the sandbox keys (`PayPal:ClientId`, `PayPal:Secret`) in user-secrets; the client is tested against a pretend PayPal only.
+- **PayPal sandbox smoke test of steps 2.2 to 2.4 not run yet.** It needs the sandbox keys (`PayPal:ClientId`, `PayPal:Secret`) in user-secrets; the client is tested against a pretend PayPal only.
 - **Low advisory GHSA-g4vj-cjjj-v7hg (NuGet.Packaging / NuGet.Protocol 6.11.0)** is reported in the app and test projects. It was not introduced by step 2.2 (it comes with the existing design-time packages). Low severity, so the CI gate does not fail; it is reviewed with the other packages in Phase 7.
+- **Billing alerts by email only (step 2.4).** A checkout that fails verification emails active provider Owners and Billing users ("[Inprem billing]"). SMS and the console notification list come in Phase 5.
 - **P1-1 walkthrough still open.** Phase 1 was merged into `mt/integration` at the developer's request before the walkthrough. Record it here when done.
 - **Existing organizations are on Free (step 2.1, D26).** M1f gives every organization without a subscription a Free one, so billing enforcement (step 2.7) changes nothing for them. Moving one to a paid plan is a console action (step 2.8). Decide per organization before go-live.
 - **Antiforgery on the App site (found in step 1.5).** A POST without a token to an Account-area page got 400, even though `Program.cs` applies `IgnoreAntiforgeryToken` to all pages. Forms built with tag helpers carry the token, so nothing visible breaks. Check how the global convention really behaves before C3-10 (Phase 7).
@@ -108,6 +109,31 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-15 — Local database: platform migration M1g applied.** Backup `DB_A65635_inpremdb_before_M1g_20261015.bak` taken first and verified; verify `1|0|0`; app data fingerprint unchanged.
+
+- **2026-10-15 — Phase 2 / Step 2.4 — Checkout.**
+  - **`CheckoutService`** (Application), shared by the in-app Billing page (step 2.8) and the website (Phase 3):
+    - **Start:** convert a trial, subscribe again, or change plan. The browser sends only our price id; the PayPal plan id comes from our catalogue.
+      - Refused: return or cancel addresses off the allow-list, prices not offered or not published, and purposes that do not fit the subscription's state.
+      - The idempotency key is saved before PayPal is called; the same key returns the same checkout, and the same key for something else is refused.
+      - A new subscription carries `custom_id` = the checkout reference and request id `inprem-checkout-{id}`. A plan change uses PayPal's revise.
+      - PayPal failing marks the checkout Failed, audited with the debug id.
+    - **Confirm** (the one entry point for the confirm call, webhooks and reconciliation): re-reads the subscription from PayPal, then checks it.
+      - Checks: `custom_id` (not for plan changes), the subscription id, our catalogue's plan, the currency and amount of any payment, no other organization linked, not expired. A mismatch fails the checkout, is audited, and emails provider Owners and Billing users.
+      - APPROVED → checkout Approved, subscription PendingActivation (**never Active from a redirect alone**). ACTIVE → **activate**.
+      - A plan change completes only once PayPal shows the new plan (the subscription is ACTIVE all along).
+    - **Exactly once (D20):** every confirm runs under a database lock per checkout (`sp_getapplock` in a transaction, so across processes), re-reads after the lock, and `Subscription.Activate` is a no-op the second time. The audit entry `subscription.activated` and the owners' confirmation email happen only when something really changed.
+    - **Also:** the buyer's cancel (AwaitingApproval → Cancelled); expiry after 3 hours; cancelling a PayPal subscription (PayPal first, then here; access to the period end; owners emailed). Email failures are audited, never undo a change.
+  - **`CheckoutStore`** (Infrastructure), with the lock.
+  - **Migration M1g:** the checkout index on the PayPal subscription id is no longer unique. A plan change is a second checkout on the same PayPal subscription; the unique rule that matters stays on `Subscriptions`. Found by the plan-change test. Scripts rehearsed.
+  - **Tests:** Integration +12 (`CheckoutTests`, real database, pretend PayPal):
+    - start from our catalogue; redirect alone never activates;
+    - **five sources at the same moment activate once** (one audit entry, one email); approval then three sources in a row: once;
+    - the four mismatches (custom_id, plan, other organization, currency) fail and alert;
+    - idempotency; the refusals and PayPal down; expiry; buyer cancel (later ACTIVE ignored);
+    - plan change (waits for PayPal's new plan); cancel with access to the period end.
+  - **Results:** Unit 161, Architecture 11, Baseline 312, Integration 134, UI 5. No model drift.
 
 - **2026-10-15 — Phase 2 / Step 2.3 — Plan sync ("Publish to PayPal").**
   - **`PlanPublisher`** (Application): a PayPal product for the plan (once) and a PayPal billing plan for every active price that has none.
