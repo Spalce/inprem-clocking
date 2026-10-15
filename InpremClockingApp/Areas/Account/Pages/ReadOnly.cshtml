@@ -1,0 +1,23 @@
+@page "/Account/ReadOnly"
+@model InpremClockingApp.Areas.Account.Pages.ReadOnlyModel
+@{
+    ViewData["Title"] = Model.Kiosk ? "Kiosk paused" : "Read-only";
+}
+
+<div class="tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:p-8 tw:shadow-sm" data-testid="read-only">
+    <h1 class="tw:mb-2 tw:text-center tw:text-lg tw:font-semibold tw:text-slate-900">@(Model.Kiosk ? "The kiosk is paused" : "Changes cannot be saved")</h1>
+    <p class="tw:mb-4 tw:text-center tw:text-sm tw:text-slate-700" data-testid="reason">@Model.Access!.ReadOnlyReason</p>
+    @if (Model.Kiosk)
+    {
+        <p class="tw:mb-4 tw:text-center tw:text-sm tw:text-slate-600">Clocking in and out is not available until the subscription is active again. Please speak to your organization's admin.</p>
+    }
+    else
+    {
+        <p class="tw:mb-4 tw:text-center tw:text-sm tw:text-slate-600">Your organization is read-only: you can still open every page, run reports and export, but nothing can be added, changed or deleted.</p>
+    }
+    @if (Model.IsOwner)
+    {
+        <p class="tw:mb-4 tw:text-center tw:text-sm tw:text-slate-600">As the owner, you can subscribe again from the Billing page, or contact Inprem.</p>
+    }
+    <p class="tw:text-center tw:text-sm"><a href="/BackOffice" class="tw:font-medium tw:text-blue-700 tw:hover:underline" data-testid="back">Go to the back office</a></p>
+</div>

@@ -1,8 +1,33 @@
 @using InpremClockingApp.Provider
+@using Inprem.Platform.Application.Billing
+@using Inprem.Platform.Application.Tenancy
+@inject ITenantContext Tenant
+@inject IEntitlementService Entitlements
 @* C3-2: the platform's status banner, one include in the back-office layouts; renders nothing normally.
-   Support sessions (Phase 1 step 1.5) show who is working here and until when; billing banners come in Phase 2. *@
+   Support sessions (Phase 1 step 1.5) show who is working here and until when. Billing (Phase 2
+   step 2.7): read-only, a payment problem, or the last 14 days of a trial; nothing for an active
+   or free organization. *@
 @{
     var support = SupportSessions.Current(Context);
+    var access = Tenant.TenantId is int tenantId ? await Entitlements.GetAsync(tenantId, Context.RequestAborted) : null;
+}
+@if (access != null && !access.FullAccess)
+{
+    <div data-testid="billing-banner" data-kind="read-only" style="background:#b45309;color:#fff;padding:8px 16px;font-size:14px">
+      <strong>Read-only:</strong> @access.ReadOnlyReason Reports and exports still work; changes cannot be saved and the kiosk is paused.
+    </div>
+}
+else if (access is { PaymentProblem: true })
+{
+    <div data-testid="billing-banner" data-kind="payment" style="background:#b45309;color:#fff;padding:8px 16px;font-size:14px">
+      <strong>Payment problem:</strong> PayPal could not collect the last payment and will try again. Please check the payment method in PayPal to avoid a suspension.
+    </div>
+}
+else if (access is { TrialDaysLeft: > 0 and <= 14 })
+{
+    <div data-testid="billing-banner" data-kind="trial" style="background:#1d4ed8;color:#fff;padding:8px 16px;font-size:14px">
+      <strong>Free trial:</strong> @access.TrialDaysLeft day@(access.TrialDaysLeft == 1 ? "" : "s") left (until @access.TrialEndsUtc!.Value.ToString("d MMMM yyyy")).
+    </div>
 }
 @if (support != null)
 {

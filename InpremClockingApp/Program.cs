@@ -170,6 +170,8 @@ app.UseMiddleware<AdminAllowList>();
 
 app.UseAuthentication();
 app.UseTenantContext();
+// Read-only mode for organizations whose subscription is not active (multi-tenancy Phase 2, C3-3/C3-4).
+app.UseBillingEnforcement();
 app.UseAuthorization();
 
 //app.MapRazorPages();

@@ -18,6 +18,7 @@ public static class DependencyInjection
         services.AddScoped<Application.Billing.ICheckoutStore, CheckoutStore>();
         services.AddScoped<Application.Billing.IBillingEventStore, BillingEventStore>();
         services.AddScoped<Application.Billing.IReconciliationStore, ReconciliationStore>();
+        services.AddScoped<Application.Billing.IEntitlementStore, EntitlementStore>();
         services.AddSingleton<IClock, SystemClock>();
         services.AddMemoryCache();
         return services;

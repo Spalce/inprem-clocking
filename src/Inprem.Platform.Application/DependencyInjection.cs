@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<Billing.BillingWebhookService>();
         services.AddScoped<Billing.BillingEventProcessor>();
         services.AddScoped<Billing.BillingReconciliation>();
+        services.AddScoped<Billing.IEntitlementService, Billing.EntitlementService>();
         services.AddScoped<Organizations.OrganizationService>();
         services.AddScoped<Support.SupportSessionService>();
         services.AddScoped<Audit.AuditLogService>();
