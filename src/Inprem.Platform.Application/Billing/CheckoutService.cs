@@ -345,6 +345,34 @@ public sealed class CheckoutService
 
     // ---------------------------------------------------------- other endings
 
+    /// <summary>
+    /// Reconciliation (step 2.6): a checkout not approved in time expires; one Approved for more
+    /// than <see cref="ApprovedLimit"/> without PayPal ever saying ACTIVE fails and alerts the
+    /// provider. Returns the new status, or null when nothing changed.
+    /// </summary>
+    public async Task<CheckoutStatus?> EndStaleAsync(Guid sessionId, CancellationToken ct = default)
+    {
+        var result = await LockedAsync(sessionId, async session =>
+        {
+            var now = _clock.UtcNow;
+            if (session.ExpireIfOver(now))
+            {
+                await FinishAsync(session, CheckoutSource.Reconciliation, "checkout.expired", "Not approved in time.", ct).ConfigureAwait(false);
+                return CheckoutResult.Ok(session);
+            }
+            if (session.Status == CheckoutStatus.Approved && now - session.CreatedUtc >= ApprovedLimit
+                && session.Fail($"Approved in PayPal but not ACTIVE after {ApprovedLimit.TotalHours:0} hours.", now))
+            {
+                await FinishAsync(session, CheckoutSource.Reconciliation, "checkout.failed", session.FailureReason!, ct).ConfigureAwait(false);
+                await AlertProviderAsync("Checkout stuck at Approved",
+                    $"Checkout {session.Reference} for organization {session.TenantId} (PayPal {session.ExternalSubscriptionId}) was approved but PayPal has not made it ACTIVE in {ApprovedLimit.TotalHours:0} hours. Check it in PayPal; nothing was activated.", ct).ConfigureAwait(false);
+                return CheckoutResult.Ok(session);
+            }
+            return new CheckoutResult(false, null, null);
+        }, ct).ConfigureAwait(false);
+        return result.Session?.Status;
+    }
+
     /// <summary>The buyer came back through the cancel address.</summary>
     public Task<CheckoutResult> CancelByBuyerAsync(Guid sessionId, CancellationToken ct = default) =>
         LockedAsync(sessionId, async session =>

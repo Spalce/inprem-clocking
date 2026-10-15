@@ -145,6 +145,9 @@ public sealed class JobServerHost : IHostedService, IDisposable
             ServerName = $"{Environment.MachineName}:{Environment.ProcessId}:app",
             Activator = _services.GetService<JobActivator>() ?? new Hangfire.AspNetCore.AspNetCoreJobActivator(_services.GetRequiredService<IServiceScopeFactory>()),
         }, _services.GetRequiredService<JobStorage>());
+
+        // Recurring jobs live in the job storage; registering them where jobs run keeps them current.
+        InpremClockingApp.Billing.BillingReconciliationJob.Register(new RecurringJobManager(_services.GetRequiredService<JobStorage>()));
         _logger.LogInformation("Hangfire job server started.");
         return Task.CompletedTask;
     }

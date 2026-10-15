@@ -56,6 +56,7 @@ builder.Services.AddPayPal(builder.Configuration);
 // PayPal webhooks are processed by a background job (InpremClockingApp/Billing).
 builder.Services.AddScoped<Inprem.Platform.Application.Billing.IBillingEventQueue, InpremClockingApp.Billing.HangfireBillingEventQueue>();
 builder.Services.AddScoped<InpremClockingApp.Billing.BillingEventJob>();
+builder.Services.AddScoped<InpremClockingApp.Billing.BillingReconciliationJob>();
 
 builder.Services.AddDefaultIdentity<AppUser>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddRoles<AppRole>()

@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 2 PayPal core (in progress)
-- **Next step:** Phase 2 / Step 2.6 — Reconciliation jobs (open checkouts every 5 minutes; all PayPal subscriptions daily; trial expiry); the sandbox smoke test of steps 2.2–2.5 once the developer has put the PayPal sandbox keys in user-secrets (webhooks also need a public https address, e.g. ngrok, and `PayPal:WebhookId`)
+- **Next step:** Phase 2 / Step 2.7 — Entitlements and enforcement (C3-3, C3-4; status banner C3-2); the sandbox smoke test of steps 2.2–2.6 once the developer has put the PayPal sandbox keys in user-secrets (webhooks also need a public https address, e.g. ngrok, and `PayPal:WebhookId`)
 - **Branch:** `mt/phase2` (from `mt/integration` `87ab80d`)
 
 ## Phase status
@@ -15,7 +15,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
 | 0 Foundation | Implementation complete (0.1–0.8, 0.10; 0.9 moved to Phase 7). Deployment-dependent exit checks (P0-6 Level 3, P0-9 real copy, P0-11, P0-12) wait for the test-site deployment (developer's decision: deploy after all phases) | — | — |
 | 1 Provider Console | Implementation complete (1.1–1.7), Phase 1 bundle rehearsed. Waiting: developer walkthrough (P1-1), onboarding under 3 minutes on staging (P1-3) | P1-2, P1-4, P1-5, P1-6, P1-7 (automated); P1-1 automated part | 2026-10-15 (`87ab80d`, developer's request, before the P1-1 walkthrough) |
-| 2 PayPal core | In progress (Steps 2.1–2.5 done) | — | — |
+| 2 PayPal core | In progress (Steps 2.1–2.6 done) | — | — |
 | 3 Website API | Not started | — | — |
 | 4 Invoices | Not started | — | — |
 | 5 Twilio | Not started | — | — |
@@ -72,7 +72,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **Rehearsed on synthetic data only (step 0.10).** The Phase 0 bundle was rehearsed with rollback (R2 and R3) on a disposable database with synthetic data, at about the size of the real one. Before a shared or production database, it must be repeated on a restored copy of that database (`rehearse-phase0.ps1 -Existing`). The CTO then signs it (design 11.2–11.4); see `docs/multitenancy/rehearsal-phase0.md`.
 - **M1 is M1a + M1b (step 0.10).** The step's "empty platform tables" already exist from step 0.7: provider users, invitations (named `ProviderInvitations`), audit and recovery records. No duplicate migration was added.
 - **`appsettings.Production.json` on the server (step 0.10).** `prepare-site.ps1` never ships it (a local publish would include the developer's copy). Upload with Web Deploy *without* "remove additional files", or move the connection string into the host's settings.
-- **PayPal sandbox smoke test of steps 2.2 to 2.5 not run yet.** It needs the sandbox keys (`PayPal:ClientId`, `PayPal:Secret`) in user-secrets; the client is tested against a pretend PayPal only.
+- **PayPal sandbox smoke test of steps 2.2 to 2.6 not run yet.** It needs the sandbox keys (`PayPal:ClientId`, `PayPal:Secret`) in user-secrets; the client is tested against a pretend PayPal only.
 - **Low advisory GHSA-g4vj-cjjj-v7hg (NuGet.Packaging / NuGet.Protocol 6.11.0)** is reported in the app and test projects. It was not introduced by step 2.2 (it comes with the existing design-time packages). Low severity, so the CI gate does not fail; it is reviewed with the other packages in Phase 7.
 - **Owner emails for payment problems wait for Phase 5 (step 2.5).** Webhooks change the subscription (past due, suspended, cancelled, expired) and audit it, but only activation, plan change and the owner's own cancel email the owners so far. The payment-failed, suspended and similar messages are in the Phase 5 alert catalogue.
 - **Billing alerts by email only (step 2.4).** A checkout that fails verification emails active provider Owners and Billing users ("[Inprem billing]"). SMS and the console notification list come in Phase 5.
@@ -110,6 +110,24 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-15 — Phase 2 / Step 2.6 — Reconciliation jobs.**
+  - **`BillingReconciliation`** (Application), design 7.5 source 3. It uses the same idempotent use cases and the same per-organization lock as confirm and webhooks.
+    - **Every 5 minutes** (`billing-checkouts`): every open checkout (Created, AwaitingApproval, Approved; oldest first, up to 500) is confirmed with PayPal.
+      - Past its 3 hours → Expired.
+      - Approved for more than 24 hours without PayPal saying ACTIVE → Failed, and provider Owners and Billing users are emailed (`CheckoutService.EndStaleAsync`).
+    - **Daily at 03:15 UTC** (`billing-daily`): every PayPal subscription not Closed is compared with PayPal and corrected by `SubscriptionSync` (each correction audited as `job:reconciliation`).
+      - Trials that have ended are marked Expired (`subscription.trial-expired`). Access already ends at the trial date: `HasFullAccess` reads `TrialEndsUtc` on every check (the lazy evaluation of the step text).
+      - The provider gets an email summary when something was corrected or could not be checked.
+    - One subscription or checkout failing (PayPal down) does not stop the others; it is tried again next run.
+  - **Hangfire recurring jobs** (`BillingReconciliationJob`), registered when the job server starts (App site with `Jobs:RunServer`): the 5-minute run without retries (the next run is 5 minutes away); the daily run with 2 retries; neither runs twice at once.
+  - **Local note:** the developer's local app has `Jobs:RunServer=true`, so these jobs run there too. Without PayPal keys they find nothing to do (PayPal "not configured" changes nothing).
+  - **Tests:**
+    - Integration +5 (`ReconciliationTests`):
+      - **P2-6:** a dropped activation webhook is corrected by the next 5-minute run (once); a dropped suspension webhook by the daily run, with the provider summary.
+      - stale checkouts expire (3 hours) or fail and alert (24 hours approved); ended trials lose access at once and expire in the daily run; PayPal failing for one checkout does not stop the others.
+    - The job-server test now also checks that both recurring jobs are registered with their schedules.
+  - **Results:** Unit 161, Architecture 11, Baseline 312, Integration 146, UI 5.
 
 - **2026-10-15 — Phase 2 / Step 2.5 — Webhooks.**
   - **`POST /webhooks/paypal`** (App site only, by the site convention; anonymous; no antiforgery; 256 KB limit; `PayPalWebhookController`):

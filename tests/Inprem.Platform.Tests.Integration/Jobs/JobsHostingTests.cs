@@ -71,6 +71,12 @@ public class JobsHostingTests : IAsyncLifetime
         var deadline = DateTime.UtcNow.AddSeconds(30);
         while (!JobProbe.Ran.ContainsKey(id) && DateTime.UtcNow < deadline) await Task.Delay(200);
         Assert.True(JobProbe.Ran.ContainsKey(id), "The enqueued job did not run.");
+
+        // Phase 2 step 2.6: the billing reconciliation jobs are registered where jobs run.
+        using var connection = app.Services.GetRequiredService<JobStorage>().GetConnection();
+        var recurring = Hangfire.Storage.StorageConnectionExtensions.GetRecurringJobs(connection).ToDictionary(j => j.Id, j => j.Cron);
+        Assert.Equal(InpremClockingApp.Billing.BillingReconciliationJob.CheckoutsCron, recurring[InpremClockingApp.Billing.BillingReconciliationJob.CheckoutsJobId]);
+        Assert.Equal(InpremClockingApp.Billing.BillingReconciliationJob.DailyCron, recurring[InpremClockingApp.Billing.BillingReconciliationJob.DailyJobId]);
     }
 
     [Fact]
