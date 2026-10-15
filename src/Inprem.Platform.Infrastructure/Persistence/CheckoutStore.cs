@@ -36,6 +36,14 @@ public sealed class CheckoutStore : ICheckoutStore
         return plan == null ? null : (plan, plan.Prices.Single(p => p.Id == priceId));
     }
 
+    public Task<PlanPrice?> FindPriceByPayPalPlanAsync(string payPalPlanId, CancellationToken ct = default) =>
+        _db.PlanPrices.FirstOrDefaultAsync(p => p.PayPalPlanId == payPalPlanId, ct);
+
+    public Task<Payment?> FindPaymentAsync(PaymentSource source, string externalId, CancellationToken ct = default) =>
+        _db.Payments.FirstOrDefaultAsync(p => p.Source == source && p.ExternalId == externalId, ct);
+
+    public async Task AddPaymentAsync(Payment payment, CancellationToken ct = default) => await _db.Payments.AddAsync(payment, ct).ConfigureAwait(false);
+
     public async Task<IReadOnlyList<string>> OwnerEmailsAsync(int tenantId, CancellationToken ct = default) =>
         await (from m in _db.TenantMemberships.AsNoTracking()
                join a in _db.Accounts.AsNoTracking() on m.UserId equals a.Id

@@ -45,7 +45,7 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
     /// Pages below the menu: who may open them (written out independently), and their address for
     /// a plan id. Plans: everyone views; Billing and Owners change.
     /// </summary>
-    private sealed record Ids(Guid PlanId, int TenantId, string AdminUserId, string ProviderUserId);
+    private sealed record Ids(Guid PlanId, int TenantId, string AdminUserId, string ProviderUserId, string WebhookEventId);
 
     private static readonly ProviderRole[] Everyone = { ProviderRole.Support, ProviderRole.Billing, ProviderRole.Owner };
     private static readonly ProviderRole[] BillingAndOwner = { ProviderRole.Billing, ProviderRole.Owner };
@@ -71,7 +71,17 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
         ["/Users/Role"] = (OwnerOnly, x => $"/Provider/Users/Role/{x.ProviderUserId}"),
         ["/Users/Disable"] = (OwnerOnly, x => $"/Provider/Users/Disable/{x.ProviderUserId}"),
         ["/Users/ResetTwoFactor"] = (OwnerOnly, x => $"/Provider/Users/ResetTwoFactor/{x.ProviderUserId}"),
+        ["/Webhooks/Details"] = (BillingAndOwner, x => $"/Provider/Webhooks/Details/{x.WebhookEventId}"),
     };
+
+    private async Task<string> WebhookEventIdAsync()
+    {
+        await using var db = _app.CreatePlatformDbContext();
+        var id = $"WH-MATRIX-{Guid.NewGuid():N}";
+        db.BillingEvents.Add(Inprem.Platform.Domain.Billing.BillingEvent.Receive(id, "BILLING.SUBSCRIPTION.UPDATED", "subscription", "I-MATRIX", "{}", DateTime.UtcNow));
+        await db.SaveChangesAsync();
+        return id;
+    }
 
     private async Task<Guid> PlanIdAsync()
     {
@@ -145,7 +155,7 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
 
         var supportEmail = $"target-{Guid.NewGuid():N}"[..18] + "@console.test";
         await CreateEnrolledProviderUserAsync(_app.Services, _app.CreatePlatformDbContext, supportEmail, ProviderRole.Support);
-        var ids = new Ids(await PlanIdAsync(), _app.Data.Alpha.Id, _app.Data.Alpha.Owner!.UserId, (await _app.FindUserAsync(supportEmail)).Id);
+        var ids = new Ids(await PlanIdAsync(), _app.Data.Alpha.Id, _app.Data.Alpha.Owner!.UserId, (await _app.FindUserAsync(supportEmail)).Id, await WebhookEventIdAsync());
         foreach (var (page, (roles, url)) in SubPages)
         {
             Assert.EndsWith("/Provider/Login", Location(await anonymous.GetAsync(url(ids))));

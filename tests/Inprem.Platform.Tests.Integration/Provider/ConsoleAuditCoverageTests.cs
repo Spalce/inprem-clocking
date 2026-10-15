@@ -54,6 +54,9 @@ public class ConsoleAuditCoverageTests
         ["Tenants.DetailsModel.OnPostResetAsync"] = ("organization.password-reset-sent", "OrganizationPagesTests"),
         ["Tenants.DetailsModel.OnPostEndSupportAsync"] = ("support.ended", "SupportSessionTests"),
         ["Tenants.StartSupportModel.OnPostAsync"] = ("support.started", "SupportSessionTests"),
+
+        // Webhook events.
+        ["Webhooks.DetailsModel.OnPostReplayAsync"] = ("billing-event.replayed", "WebhookTests"),
     };
 
     private const string Root = "InpremClockingApp.Areas.Provider.Pages.";

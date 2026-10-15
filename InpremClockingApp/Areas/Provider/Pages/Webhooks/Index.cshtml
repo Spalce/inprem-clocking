@@ -1,10 +1,54 @@
 @page
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = InpremClockingApp.Provider.ProviderPolicies.Billing)]
+@model InpremClockingApp.Areas.Provider.Pages.Webhooks.IndexModel
+@using Inprem.Platform.Domain.Billing
 @{
     ViewData["Title"] = "Webhook events";
     Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
 }
 
 <h1 class="pc-title">Webhook events</h1>
-<p class="pc-subtitle">Events received from PayPal.</p>
-<partial name="/Areas/Provider/Pages/Shared/_ComingSoon.cshtml" model="@("Phase 2 (PayPal)")" />
+<p class="pc-subtitle">Every verified event PayPal sent, newest first. Events that failed signature verification are refused and not stored.</p>
+
+<form method="get" class="pc-filters">
+  <select name="Status" aria-label="Status">
+    <option value="">Any status</option>
+    @foreach (var status in Enum.GetValues<BillingEventStatus>())
+    {
+        <option value="@status" selected="@(Model.Status == status)">@status</option>
+    }
+  </select>
+  <input name="Type" value="@Model.Type" placeholder="Event type (e.g. BILLING.SUBSCRIPTION.)" aria-label="Event type" />
+  <button type="submit" class="pc-btn">Filter</button>
+</form>
+
+<table class="pc-table" data-testid="events">
+  <thead><tr><th>Received (UTC)</th><th>Event</th><th>Resource</th><th>Status</th><th>Attempts</th></tr></thead>
+  <tbody>
+  @foreach (var e in Model.Items)
+  {
+      <tr>
+        <td><a asp-page="Details" asp-route-id="@e.ExternalEventId">@e.ReceivedUtc.ToString("yyyy-MM-dd HH:mm:ss")</a></td>
+        <td><code>@e.EventType</code></td>
+        <td>@e.ResourceId</td>
+        <td><span class="pc-badge pc-badge-@(e.Status == BillingEventStatus.Failed ? "retired" : "active")">@e.Status</span></td>
+        <td>@e.Attempts</td>
+      </tr>
+  }
+  @if (Model.Items.Count == 0)
+  {
+      <tr><td colspan="5" class="pc-muted">No events.</td></tr>
+  }
+  </tbody>
+</table>
+
+<div class="pc-pager">
+  <span class="pc-muted">@Model.Total event@(Model.Total == 1 ? "" : "s") &middot; page @Model.PageNumber of @Model.Pages</span>
+  @if (Model.PageNumber > 1)
+  {
+      <a asp-page="Index" asp-all-route-data="Model.Route(Model.PageNumber - 1)" class="pc-btn pc-btn-small">Previous</a>
+  }
+  @if (Model.PageNumber < Model.Pages)
+  {
+      <a asp-page="Index" asp-all-route-data="Model.Route(Model.PageNumber + 1)" class="pc-btn pc-btn-small">Next</a>
+  }
+</div>

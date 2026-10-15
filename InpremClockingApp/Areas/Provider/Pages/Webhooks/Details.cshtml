@@ -1,0 +1,38 @@
+@page "{id}"
+@model InpremClockingApp.Areas.Provider.Pages.Webhooks.DetailsModel
+@using Inprem.Platform.Domain.Billing
+@{
+    ViewData["Title"] = "Webhook event";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+    var e = Model.Event;
+}
+
+<p><a asp-page="Index">&larr; Webhook events</a></p>
+<div class="pc-heading">
+  <div>
+    <h1 class="pc-title"><code>@e.EventType</code> <span class="pc-badge pc-badge-@(e.Status == BillingEventStatus.Failed ? "retired" : "active")" data-testid="status">@e.Status</span></h1>
+    <p class="pc-subtitle">PayPal event <code>@e.ExternalEventId</code></p>
+  </div>
+  <div class="pc-actions">
+    <form method="post" asp-page-handler="Replay" asp-route-id="@e.ExternalEventId" class="pc-inline"
+          onsubmit="return confirm('Process this event again? It is applied from PayPal\'s current view, so nothing is done twice.');">
+      <button type="submit" class="pc-btn" data-testid="replay"><i class="fas fa-redo"></i> Replay</button>
+    </form>
+  </div>
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="pc-success" data-testid="success">@success</div>
+}
+
+<div class="pc-card">
+  <dl class="pc-dl">
+    <dt>Resource</dt><dd>@(e.ResourceType ?? "—") @e.ResourceId</dd>
+    <dt>Received</dt><dd>@e.ReceivedUtc.ToString("yyyy-MM-dd HH:mm:ss") UTC</dd>
+    <dt>Processed</dt><dd>@(e.ProcessedUtc?.ToString("yyyy-MM-dd HH:mm:ss") + " UTC" ?? "—")</dd>
+    <dt>Attempts</dt><dd>@e.Attempts</dd>
+    <dt>Last error</dt><dd data-testid="error">@(e.Error ?? "—")</dd>
+  </dl>
+</div>
+<p class="pc-muted">The event's full content is kept for processing and replay; it is not shown because it contains the payer's details.</p>

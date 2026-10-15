@@ -23,6 +23,12 @@ public interface ICheckoutStore
     /// <summary>A price with its plan.</summary>
     Task<(Plan Plan, PlanPrice Price)?> FindPriceAsync(Guid priceId, CancellationToken ct = default);
 
+    /// <summary>The price published as this PayPal plan, if any.</summary>
+    Task<PlanPrice?> FindPriceByPayPalPlanAsync(string payPalPlanId, CancellationToken ct = default);
+
+    Task<Payment?> FindPaymentAsync(PaymentSource source, string externalId, CancellationToken ct = default);
+    Task AddPaymentAsync(Payment payment, CancellationToken ct = default);
+
     /// <summary>The active Owners' emails of an organization (confirmation emails).</summary>
     Task<IReadOnlyList<string>> OwnerEmailsAsync(int tenantId, CancellationToken ct = default);
 
@@ -180,11 +186,8 @@ public sealed class CheckoutService
     /// the provider. Safe to call any number of times, from any source.
     /// </summary>
     public Task<CheckoutResult> ConfirmAsync(Guid sessionId, CheckoutSource source, CancellationToken ct = default) =>
-        _store.WithLockAsync($"checkout:{sessionId:N}", async () =>
+        LockedAsync(sessionId, async session =>
         {
-            _store.Reset();
-            var session = await _store.FindAsync(sessionId, ct).ConfigureAwait(false);
-            if (session == null) return CheckoutResult.Fail("No such checkout.");
             if (session.IsFinal || session.ExternalSubscriptionId == null) return Result(session);
 
             PayPalSubscription? paypal;
@@ -246,6 +249,22 @@ public sealed class CheckoutService
             }
             return Result(session);
         }, ct);
+
+    /// <summary>
+    /// Runs <paramref name="work"/> on the checkout under its organization's billing lock (the
+    /// same lock webhooks and reconciliation take), on a fresh read made after the lock.
+    /// </summary>
+    private async Task<CheckoutResult> LockedAsync(Guid sessionId, Func<CheckoutSession, Task<CheckoutResult>> work, CancellationToken ct)
+    {
+        var first = await _store.FindAsync(sessionId, ct).ConfigureAwait(false);
+        if (first == null) return CheckoutResult.Fail("No such checkout.");
+        return await _store.WithLockAsync(BillingLocks.For(first), async () =>
+        {
+            _store.Reset();
+            var session = await _store.FindAsync(sessionId, ct).ConfigureAwait(false);
+            return session == null ? CheckoutResult.Fail("No such checkout.") : await work(session).ConfigureAwait(false);
+        }, ct).ConfigureAwait(false);
+    }
 
     private async Task<string?> MismatchAsync(CheckoutSession session, PayPalSubscription paypal, CancellationToken ct)
     {
@@ -328,11 +347,8 @@ public sealed class CheckoutService
 
     /// <summary>The buyer came back through the cancel address.</summary>
     public Task<CheckoutResult> CancelByBuyerAsync(Guid sessionId, CancellationToken ct = default) =>
-        _store.WithLockAsync($"checkout:{sessionId:N}", async () =>
+        LockedAsync(sessionId, async session =>
         {
-            _store.Reset();
-            var session = await _store.FindAsync(sessionId, ct).ConfigureAwait(false);
-            if (session == null) return CheckoutResult.Fail("No such checkout.");
             if (session.CancelByBuyer(_clock.UtcNow)) await FinishAsync(session, CheckoutSource.Confirm, "checkout.cancelled", "The buyer cancelled at PayPal.", ct).ConfigureAwait(false);
             return Result(session);
         }, ct);

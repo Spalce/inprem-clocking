@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 2 PayPal core (in progress)
-- **Next step:** Phase 2 / Step 2.5 — Webhooks (`/webhooks/paypal`, verified, stored once, processed by a job); the sandbox smoke test of steps 2.2–2.4 once the developer has put the PayPal sandbox keys in user-secrets
+- **Next step:** Phase 2 / Step 2.6 — Reconciliation jobs (open checkouts every 5 minutes; all PayPal subscriptions daily; trial expiry); the sandbox smoke test of steps 2.2–2.5 once the developer has put the PayPal sandbox keys in user-secrets (webhooks also need a public https address, e.g. ngrok, and `PayPal:WebhookId`)
 - **Branch:** `mt/phase2` (from `mt/integration` `87ab80d`)
 
 ## Phase status
@@ -15,7 +15,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
 | 0 Foundation | Implementation complete (0.1–0.8, 0.10; 0.9 moved to Phase 7). Deployment-dependent exit checks (P0-6 Level 3, P0-9 real copy, P0-11, P0-12) wait for the test-site deployment (developer's decision: deploy after all phases) | — | — |
 | 1 Provider Console | Implementation complete (1.1–1.7), Phase 1 bundle rehearsed. Waiting: developer walkthrough (P1-1), onboarding under 3 minutes on staging (P1-3) | P1-2, P1-4, P1-5, P1-6, P1-7 (automated); P1-1 automated part | 2026-10-15 (`87ab80d`, developer's request, before the P1-1 walkthrough) |
-| 2 PayPal core | In progress (Steps 2.1–2.4 done) | — | — |
+| 2 PayPal core | In progress (Steps 2.1–2.5 done) | — | — |
 | 3 Website API | Not started | — | — |
 | 4 Invoices | Not started | — | — |
 | 5 Twilio | Not started | — | — |
@@ -72,8 +72,9 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **Rehearsed on synthetic data only (step 0.10).** The Phase 0 bundle was rehearsed with rollback (R2 and R3) on a disposable database with synthetic data, at about the size of the real one. Before a shared or production database, it must be repeated on a restored copy of that database (`rehearse-phase0.ps1 -Existing`). The CTO then signs it (design 11.2–11.4); see `docs/multitenancy/rehearsal-phase0.md`.
 - **M1 is M1a + M1b (step 0.10).** The step's "empty platform tables" already exist from step 0.7: provider users, invitations (named `ProviderInvitations`), audit and recovery records. No duplicate migration was added.
 - **`appsettings.Production.json` on the server (step 0.10).** `prepare-site.ps1` never ships it (a local publish would include the developer's copy). Upload with Web Deploy *without* "remove additional files", or move the connection string into the host's settings.
-- **PayPal sandbox smoke test of steps 2.2 to 2.4 not run yet.** It needs the sandbox keys (`PayPal:ClientId`, `PayPal:Secret`) in user-secrets; the client is tested against a pretend PayPal only.
+- **PayPal sandbox smoke test of steps 2.2 to 2.5 not run yet.** It needs the sandbox keys (`PayPal:ClientId`, `PayPal:Secret`) in user-secrets; the client is tested against a pretend PayPal only.
 - **Low advisory GHSA-g4vj-cjjj-v7hg (NuGet.Packaging / NuGet.Protocol 6.11.0)** is reported in the app and test projects. It was not introduced by step 2.2 (it comes with the existing design-time packages). Low severity, so the CI gate does not fail; it is reviewed with the other packages in Phase 7.
+- **Owner emails for payment problems wait for Phase 5 (step 2.5).** Webhooks change the subscription (past due, suspended, cancelled, expired) and audit it, but only activation, plan change and the owner's own cancel email the owners so far. The payment-failed, suspended and similar messages are in the Phase 5 alert catalogue.
 - **Billing alerts by email only (step 2.4).** A checkout that fails verification emails active provider Owners and Billing users ("[Inprem billing]"). SMS and the console notification list come in Phase 5.
 - **P1-1 walkthrough still open.** Phase 1 was merged into `mt/integration` at the developer's request before the walkthrough. Record it here when done.
 - **Existing organizations are on Free (step 2.1, D26).** M1f gives every organization without a subscription a Free one, so billing enforcement (step 2.7) changes nothing for them. Moving one to a paid plan is a console action (step 2.8). Decide per organization before go-live.
@@ -109,6 +110,23 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-15 — Phase 2 / Step 2.5 — Webhooks.**
+  - **`POST /webhooks/paypal`** (App site only, by the site convention; anonymous; no antiforgery; 256 KB limit; `PayPalWebhookController`):
+    - PayPal verifies the signature (`IPaymentProvider.VerifyWebhookAsync`): unverified, not JSON, or without id or type → **400**, logged as suspicious with the transmission id and address (never the body).
+    - Stored once by PayPal's event id (`BillingEvent` primary key; a duplicate, even at the same moment, → **200** and nothing new), then queued and answered at once.
+  - **`BillingEventProcessor`** (the Hangfire job `BillingEventJob`, 5 automatic retries):
+    - **Subscription events re-fetch the subscription from PayPal**, and fail the job if PayPal cannot be reached. A checkout still waiting goes through `CheckoutService.ConfirmAsync` (design 7.5 source 2: activation once).
+    - Otherwise **`SubscriptionSync` applies PayPal's current state**: ACTIVE with an outstanding balance and failed payments → PastDue; ACTIVE again → paid (PastDue cleared) or reactivated (from Suspended); SUSPENDED → Suspended; CANCELLED → Canceled (access to the period end); EXPIRED → Expired; plan changes followed. Because it follows the current state, duplicates and out-of-order events end in the same place.
+    - `PAYMENT.SALE.COMPLETED` records the payment once per sale id, then syncs (the period moves on). `PAYMENT.SALE.REFUNDED` / `REVERSED` update the payment. Unknown subscriptions and other event types are marked processed with no change.
+    - A failure is kept on the event (attempts, last error) and rethrown so Hangfire retries.
+  - **One billing lock per organization:** checkout confirm, webhooks and (step 2.6) reconciliation all take `billing:tenant:{id}`. The checkout lock of step 2.4 moved to it, so a webhook sync and a confirm never interleave.
+  - **Console "Webhook events"** (Owners and Billing; P2-3): every stored event, filters by status and type, pages of 50. The event's page shows status, attempts, last error and **Replay** (audited as `billing-event.replayed`, queued again). The raw body is not shown: it contains the payer's details.
+  - **Found and fixed:** an ACTIVATED event processed while PayPal's API was down was marked processed without applying anything; the processor now re-reads first and fails (retry).
+  - **Tests:**
+    - Integration +7 (`WebhookTests`): tampered and unsigned rejected and not stored; stored once and queued; duplicate 200; ACTIVATED through the checkout once (also before PayPal says ACTIVE, and with the buyer's return); payment failed, then sale completed, then refunded (payment once); out-of-order SUSPENDED, ACTIVATED after CANCELLED, EXPIRED; unknown and other events; a failure kept, shown in the console without payer details, replayed and finished; Support refused.
+    - The console matrix and the audit coverage list have the new page and handler.
+  - **Results:** Unit 161, Architecture 11, Baseline 312, Integration 141, UI 5. No model drift.
 
 - **2026-10-15 — Local database: platform migration M1g applied.** Backup `DB_A65635_inpremdb_before_M1g_20261015.bak` taken first and verified; verify `1|0|0`; app data fingerprint unchanged.
 

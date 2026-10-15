@@ -53,6 +53,9 @@ builder.Services.AddPlatformInfrastructure(connectionString!);
 // PayPal (multi-tenancy Phase 2): section "PayPal", credentials from user-secrets or the host's
 // settings. Without PayPal:ClientId the app runs and PayPal actions say PayPal is not configured.
 builder.Services.AddPayPal(builder.Configuration);
+// PayPal webhooks are processed by a background job (InpremClockingApp/Billing).
+builder.Services.AddScoped<Inprem.Platform.Application.Billing.IBillingEventQueue, InpremClockingApp.Billing.HangfireBillingEventQueue>();
+builder.Services.AddScoped<InpremClockingApp.Billing.BillingEventJob>();
 
 builder.Services.AddDefaultIdentity<AppUser>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddRoles<AppRole>()
