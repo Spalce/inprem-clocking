@@ -581,6 +581,7 @@ components:
         limits:
           type: object
           properties:
+            maxPeople: { type: integer, nullable: true, description: "Staff and volunteers together; null = unlimited. What plans have today (added in Phase 3 step 3.2)." }
             maxStaff: { type: integer, nullable: true, description: "null = unlimited" }
             maxVolunteers: { type: integer, nullable: true }
             maxAdmins: { type: integer, nullable: true }

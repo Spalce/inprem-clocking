@@ -48,7 +48,9 @@ public static class Problems
             ["traceId"] = Activity.Current?.Id ?? context.TraceIdentifier,
         };
         if (errors is { Count: > 0 }) extensions["errors"] = errors;
-        return Results.Problem(detail: detail, instance: context.Request.Path, statusCode: status, title: title,
+        // The endpoint's pattern, not the request's own path: an error never repeats what the caller sent.
+        var instance = (context.GetEndpoint() as RouteEndpoint)?.RoutePattern.RawText ?? "/api/public/v1";
+        return Results.Problem(detail: detail, instance: instance, statusCode: status, title: title,
             type: $"{context.Request.Scheme}://{context.Request.Host}/problems/{code}", extensions: extensions);
     }
 

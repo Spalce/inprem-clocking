@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 3 Website API (in progress; Phase 2's sandbox checks P2-1 and P2-4 still open)
-- **Next step:** Phase 3 / Step 3.2 — Public read endpoints (plans, time zones, slug availability)
+- **Next step:** Phase 3 / Step 3.3 — Registration (`POST /signups`, signup status, resend verification, email verification page)
 - **Branch:** `mt/phase3` (from `mt/integration` `9ac52c3`)
 
 ## Phase status
@@ -16,7 +16,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | 0 Foundation | Implementation complete (0.1–0.8, 0.10; 0.9 moved to Phase 7). Deployment-dependent exit checks (P0-6 Level 3, P0-9 real copy, P0-11, P0-12) wait for the test-site deployment (developer's decision: deploy after all phases) | — | — |
 | 1 Provider Console | Implementation complete (1.1–1.7), Phase 1 bundle rehearsed. Waiting: developer walkthrough (P1-1), onboarding under 3 minutes on staging (P1-3) | P1-2, P1-4, P1-5, P1-6, P1-7 (automated); P1-1 automated part | 2026-10-15 (`87ab80d`, developer's request, before the P1-1 walkthrough) |
 | 2 PayPal core | Implementation complete (2.1–2.9), Phase 2 bundle rehearsed. Waiting: PayPal sandbox run (P2-1, P2-4) | P2-2, P2-3, P2-5, P2-6, P2-7 (automated); P2-1 and P2-4 with the pretend PayPal | 2026-10-15 (`9ac52c3`, developer's request, before the sandbox run) |
-| 3 Website API | In progress (Step 3.1 done) | — | — |
+| 3 Website API | In progress (Steps 3.1–3.2 done) | — | — |
 | 4 Invoices | Not started | — | — |
 | 5 Twilio | Not started | — | — |
 | 6 Staff alerts | Not started | — | — |
@@ -75,7 +75,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **PayPal sandbox smoke test of steps 2.2 to 2.8 not run yet.** Locally it also needs, besides the keys: `PayPal:ReturnUrlAllowList:0` = the app's https address (e.g. `https://localhost:7xxx`), `PayPal:PlanReturnUrl` = that address + `/Billing/PayPalReturn`, `PayPal:PlanCancelUrl` = that address + `/Billing`. It needs the sandbox keys (`PayPal:ClientId`, `PayPal:Secret`) in user-secrets; the client is tested against a pretend PayPal only.
 - **Low advisory GHSA-g4vj-cjjj-v7hg (NuGet.Packaging / NuGet.Protocol 6.11.0)** is reported in the app and test projects. It was not introduced by step 2.2 (it comes with the existing design-time packages). Low severity, so the CI gate does not fail; it is reviewed with the other packages in Phase 7.
 - **PayPal sandbox access from Ghana (2026-10-15).** The developer is in Ghana, where PayPal may only allow send-only personal accounts; it is unclear whether such an account can open developer.paypal.com. If not, the project owner creates the sandbox app on Inprem's PayPal Business account and shares the two sandbox keys privately. ngrok is not affected.
-- **Draft API change proposed (step 3.1).** `internal_error` was added to the problem codes in `docs/multitenancy/api/public-v1.draft.yaml` (the draft had no code for a 500). Confirm with the web team when the integration guide is handed over (step 3.7).
+- **Draft API changes proposed (steps 3.1, 3.2).** In `docs/multitenancy/api/public-v1.draft.yaml`: `internal_error` added to the problem codes (the draft had no code for a 500); `limits.maxPeople` added to plans (staff and volunteers together, what plans have today; the draft's separate staff, volunteer and admin limits wait for the plan catalogue decision, PO-5). Confirm with the web team when the integration guide is handed over (step 3.7).
 - **Old billing tables still mapped (step 2.9).** `Models/Billing` (Subscription, Invoice and their enums) stays as table mappings in `ApplicationDbContext`, marked legacy, so the app's schema does not change before M6 (Phase 7) drops the tables. Nothing reads or writes them any more. This is a deviation from the step text's "remove Models/Billing": removing the mappings would make the next app migration drop the tables early.
 - **Old billing rows to review (step 2.9).** M5 moves paying Active/PastDue old subscriptions to Invoiced; others are left and counted (`LeftForReview`). Unpaid or void old invoices stay for Phase 4. Locally: both paying old subscriptions moved, 1 paid invoice became a payment, 1 void invoice left.
 - **People limit not enforced yet (step 2.7).** `AccessStatus.CanAddPeople` knows the plan's limit (or the console override), but refusing a new staff member or volunteer means touching the approved add-person flows (a C3 change). Decide with the developer whether, and how, before plans with limits are sold.
@@ -116,6 +116,17 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-15 — Phase 3 / Step 3.2 — Public read endpoints.**
+  - **`GET /plans`:** public, offered plans with their active prices (cheapest first): id, name, description, trial days, features (one per line in the console), `limits.maxPeople`, and prices as `{ amount: "29.00", currency }`. Cached for 5 minutes in the app and by the browser (`Cache-Control: public, max-age=300`).
+  - **`GET /timezones`:** the same IANA list as the console (common ones first), with the current offset in the display name.
+  - **`GET /slugs/{slug}/availability`:** available or not, with a free suggestion when the name is taken or reserved. A badly formed name gets 400 `validation_failed` with the field message.
+  - **Problem details no longer echo the request path** (`instance` is the endpoint's pattern). Found by the tenant-isolation suite: it calls every route with another organization's values, and the 400 repeated them back. It was the caller's own input, not a leak, but errors should not repeat input.
+  - **Tests:**
+    - Integration +4 (`PublicReadTests`): plans (only public and offered; prices, features, limits; cache header; cached for 5 minutes); time zones; slug free, taken (with a suggestion that is itself free), reserved, badly formed (400, input not echoed).
+    - **P3-8 privacy check:** no email, admin name or staff email in any public answer.
+    - The contract test now covers four operations; the isolation suite covers the new routes.
+  - **Results:** Unit 161, Architecture 11, Baseline 312, Integration 168, UI 5.
 
 - **2026-10-15 — Phase 2 merged; Phase 3 started.** `mt/phase2` fast-forwarded into `mt/integration` (`9ac52c3`) and pushed, at the developer's request (P2-1 and P2-4 wait for the PayPal sandbox run). Branch `mt/phase3` from there.
 
