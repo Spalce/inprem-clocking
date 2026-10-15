@@ -20,6 +20,7 @@ public static class DependencyInjection
         services.AddScoped<Billing.BillingEventProcessor>();
         services.AddScoped<Billing.BillingReconciliation>();
         services.AddScoped<Billing.IEntitlementService, Billing.EntitlementService>();
+        services.AddScoped<Billing.BillingAccountService>();
         services.AddScoped<Organizations.OrganizationService>();
         services.AddScoped<Support.SupportSessionService>();
         services.AddScoped<Audit.AuditLogService>();

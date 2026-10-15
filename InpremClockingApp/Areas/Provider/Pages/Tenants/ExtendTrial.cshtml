@@ -1,0 +1,26 @@
+@page "{id:int}"
+@model InpremClockingApp.Areas.Provider.Pages.Tenants.ExtendTrialModel
+@{
+    ViewData["Title"] = "Extend trial";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<p><a asp-page="Details" asp-route-id="@RouteData.Values["id"]" asp-route-tab="subscription">&larr; Back to the organization</a></p>
+<h1 class="pc-title">Extend the trial of @Model.Name</h1>
+<p class="pc-subtitle">Now ending @(Model.CurrentEnd?.ToString("yyyy-MM-dd") ?? "—"). The organization keeps full access until the new date (end of that day, UTC); an expired trial becomes a trial again.</p>
+
+@if (Model.Error != null)
+{
+    <div class="pc-error" data-testid="error">@Model.Error</div>
+}
+
+<form method="post" class="pc-card pc-form">
+  <div class="pc-field">
+    <label for="TrialEnds">New last day of the trial</label>
+    <input type="date" id="TrialEnds" name="TrialEnds" value="@Model.TrialEnds?.ToString("yyyy-MM-dd")" required />
+  </div>
+  <div class="pc-actions">
+    <button type="submit" class="pc-btn pc-btn-primary" data-testid="confirm">Extend trial</button>
+    <a asp-page="Details" asp-route-id="@RouteData.Values["id"]" asp-route-tab="subscription" class="pc-btn">Cancel</a>
+  </div>
+</form>

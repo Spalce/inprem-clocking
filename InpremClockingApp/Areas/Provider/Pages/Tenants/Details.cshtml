@@ -55,27 +55,67 @@
 @switch (Model.Tab)
 {
     case "subscription":
-        if (org.Subscription == null)
+        if (Model.Billing?.Subscription is not { } sub)
         {
-            <p class="pc-muted">No platform subscription yet: this organization is still on the old billing, moved over in Phase 2.</p>
+            <p class="pc-muted">No subscription on record.</p>
         }
         else
         {
-            var sub = org.Subscription;
-            <dl class="pc-dl">
-              <dt>Plan</dt><dd>@(sub.PlanName ?? "No plan")</dd>
-              <dt>Price</dt><dd>@(sub.PriceText ?? "—")</dd>
+            var b = Model.Billing;
+            <dl class="pc-dl" data-testid="subscription">
+              <dt>Plan</dt><dd>@(b.Plan?.Name ?? "No plan")</dd>
+              <dt>Price</dt><dd>@(b.Price == null ? "—" : Inprem.Platform.Application.Billing.PlanService.Describe(b.Price))</dd>
               <dt>Billing</dt><dd>@sub.Mode</dd>
-              <dt>Status</dt><dd><span class="pc-badge">@sub.Status</span></dd>
+              <dt>Status</dt><dd><span class="pc-badge" data-testid="subscription-status">@sub.Status</span> @(b.Access.FullAccess ? "(full access)" : "(read-only)")</dd>
               <dt>Trial ends</dt><dd>@(sub.TrialEndsUtc?.ToString("yyyy-MM-dd") ?? "—")</dd>
+              <dt>Paid period</dt><dd>@(sub.CurrentPeriodStartUtc?.ToString("yyyy-MM-dd") ?? "—") to @(sub.CurrentPeriodEndUtc?.ToString("yyyy-MM-dd") ?? "—")@(sub.CancelAtPeriodEnd ? " (cancelled: ends then)" : "")</dd>
+              <dt>Outstanding</dt><dd>@sub.OutstandingBalance.ToString("0.00")</dd>
+              <dt>PayPal subscription</dt><dd>@(sub.ExternalSubscriptionId ?? "—")</dd>
+              <dt>Free access until</dt><dd data-testid="free-access">@(sub.FreeAccessUntilUtc?.ToString("yyyy-MM-dd") ?? "—")</dd>
+              <dt>People limit</dt><dd>@(sub.MaxPeopleOverride?.ToString() ?? b.Plan?.MaxPeople?.ToString() ?? "No limit")@(sub.MaxPeopleOverride != null ? " (override)" : "")</dd>
               <dt>Since</dt><dd>@sub.CreatedUtc.ToString("yyyy-MM-dd")</dd>
             </dl>
-            <p class="pc-muted">Read-only until PayPal billing arrives (Phase 2).</p>
+            @if (Model.CanBill)
+            {
+                <div class="pc-actions" style="margin-top:12px">
+                  @if (sub.Status is Inprem.Platform.Domain.Billing.SubscriptionStatus.Trialing or Inprem.Platform.Domain.Billing.SubscriptionStatus.Expired && sub.ExternalSubscriptionId == null)
+                  {
+                      <a asp-page="ExtendTrial" asp-route-id="@s.TenantId" class="pc-btn" data-testid="extend-trial">Extend trial</a>
+                  }
+                  <a asp-page="FreeAccess" asp-route-id="@s.TenantId" class="pc-btn" data-testid="free-access-link">Free access</a>
+                  @if (sub.ExternalSubscriptionId != null)
+                  {
+                      <form method="post" asp-page-handler="Sync" asp-route-id="@s.TenantId" class="pc-inline">
+                        <button type="submit" class="pc-btn" data-testid="sync"><i class="fas fa-sync"></i> Sync with PayPal</button>
+                      </form>
+                  }
+                  @if (b.PaysByPayPal)
+                  {
+                      <a asp-page="CancelSubscription" asp-route-id="@s.TenantId" class="pc-btn pc-btn-danger" data-testid="cancel-subscription">Cancel subscription</a>
+                  }
+                </div>
+            }
         }
         break;
 
     case "invoices":
-        <partial name="/Areas/Provider/Pages/Shared/_ComingSoon.cshtml" model="@("Phase 2 (payments) and Phase 4 (invoices)")" />
+        if (Model.Billing == null || Model.Billing.Payments.Count == 0)
+        {
+            <p class="pc-muted">No payments yet. Invoices come in Phase 4.</p>
+        }
+        else
+        {
+            <table class="pc-table" data-testid="payments">
+              <thead><tr><th>Paid (UTC)</th><th>Amount</th><th>Source</th><th>Status</th><th>Reference</th></tr></thead>
+              <tbody>
+              @foreach (var p in Model.Billing.Payments)
+              {
+                  <tr><td>@p.PaidUtc.ToString("yyyy-MM-dd HH:mm")</td><td>@p.Amount.ToString("0.00") @p.Currency</td><td>@p.Source</td>
+                      <td>@p.Status@(p.RefundedAmount > 0 ? $" ({p.RefundedAmount:0.00})" : "")</td><td>@p.ExternalId</td></tr>
+              }
+              </tbody>
+            </table>
+        }
         break;
 
     case "admins":

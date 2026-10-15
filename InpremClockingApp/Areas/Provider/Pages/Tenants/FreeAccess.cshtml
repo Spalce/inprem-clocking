@@ -1,0 +1,36 @@
+@page "{id:int}"
+@model InpremClockingApp.Areas.Provider.Pages.Tenants.FreeAccessModel
+@{
+    ViewData["Title"] = "Free access";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<p><a asp-page="Details" asp-route-id="@RouteData.Values["id"]" asp-route-tab="subscription">&larr; Back to the organization</a></p>
+<h1 class="pc-title">Free access for @Model.Name</h1>
+<p class="pc-subtitle">Full access until a date, whatever the subscription says (for example while a payment problem is sorted out). Now: @(Model.Current?.ToString("yyyy-MM-dd") ?? "none"). Nothing is charged or changed in PayPal.</p>
+
+@if (Model.Error != null)
+{
+    <div class="pc-error" data-testid="error">@Model.Error</div>
+}
+
+<form method="post" class="pc-card pc-form">
+  <div class="pc-field">
+    <label for="Until">Last day of free access</label>
+    <input type="date" id="Until" name="Until" value="@Model.Until?.ToString("yyyy-MM-dd")" />
+  </div>
+  @if (Model.Current != null)
+  {
+      <div class="pc-field">
+        <label><input type="checkbox" name="Remove" value="true" /> Remove the free access instead</label>
+      </div>
+  }
+  <div class="pc-field">
+    <label for="Reason">Reason <span class="pc-muted">(required; recorded in the audit log)</span></label>
+    <textarea id="Reason" name="Reason" rows="3" maxlength="300" required>@Model.Reason</textarea>
+  </div>
+  <div class="pc-actions">
+    <button type="submit" class="pc-btn pc-btn-primary" data-testid="confirm">Save</button>
+    <a asp-page="Details" asp-route-id="@RouteData.Values["id"]" asp-route-tab="subscription" class="pc-btn">Cancel</a>
+  </div>
+</form>

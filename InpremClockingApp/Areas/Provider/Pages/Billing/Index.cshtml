@@ -1,10 +1,61 @@
 @page
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = InpremClockingApp.Provider.ProviderPolicies.Billing)]
+@model InpremClockingApp.Areas.Provider.Pages.Billing.IndexModel
+@using Inprem.Platform.Domain.Billing
 @{
     ViewData["Title"] = "Billing";
     Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
 }
 
 <h1 class="pc-title">Billing</h1>
-<p class="pc-subtitle">Subscriptions, payments and invoices.</p>
-<partial name="/Areas/Provider/Pages/Shared/_ComingSoon.cshtml" model="@("Phase 2 (PayPal)")" />
+<p class="pc-subtitle">Every organization's subscription. Open an organization for its payments and the subscription actions.</p>
+
+<form method="get" class="pc-filters">
+  <select name="Status" aria-label="Status">
+    <option value="">Any status</option>
+    @foreach (var status in Enum.GetValues<SubscriptionStatus>())
+    {
+        <option value="@status" selected="@(Model.Status == status)">@status</option>
+    }
+  </select>
+  <select name="Mode" aria-label="Billing">
+    <option value="">Any billing</option>
+    @foreach (var mode in Enum.GetValues<BillingMode>())
+    {
+        <option value="@mode" selected="@(Model.Mode == mode)">@mode</option>
+    }
+  </select>
+  <button type="submit" class="pc-btn">Filter</button>
+</form>
+
+<table class="pc-table" data-testid="subscriptions">
+  <thead><tr><th>Organization</th><th>Billing</th><th>Status</th><th>Trial ends</th><th>Paid until</th><th>Outstanding</th></tr></thead>
+  <tbody>
+  @foreach (var (s, name) in Model.Items)
+  {
+      <tr>
+        <td><a asp-page="/Tenants/Details" asp-route-id="@s.TenantId" asp-route-tab="subscription">@name</a></td>
+        <td>@s.Mode</td>
+        <td><span class="pc-badge">@s.Status</span></td>
+        <td>@(s.TrialEndsUtc?.ToString("yyyy-MM-dd") ?? "")</td>
+        <td>@(s.CurrentPeriodEndUtc?.ToString("yyyy-MM-dd") ?? "")</td>
+        <td>@(s.OutstandingBalance > 0 ? s.OutstandingBalance.ToString("0.00") : "")</td>
+      </tr>
+  }
+  @if (Model.Items.Count == 0)
+  {
+      <tr><td colspan="6" class="pc-muted">No subscriptions match.</td></tr>
+  }
+  </tbody>
+</table>
+
+<div class="pc-pager">
+  <span class="pc-muted">@Model.Total subscription@(Model.Total == 1 ? "" : "s") &middot; page @Model.PageNumber of @Model.Pages</span>
+  @if (Model.PageNumber > 1)
+  {
+      <a asp-page="Index" asp-all-route-data="Model.Route(Model.PageNumber - 1)" class="pc-btn pc-btn-small">Previous</a>
+  }
+  @if (Model.PageNumber < Model.Pages)
+  {
+      <a asp-page="Index" asp-all-route-data="Model.Route(Model.PageNumber + 1)" class="pc-btn pc-btn-small">Next</a>
+  }
+</div>

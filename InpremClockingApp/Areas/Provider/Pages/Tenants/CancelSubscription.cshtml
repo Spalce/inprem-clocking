@@ -1,0 +1,26 @@
+@page "{id:int}"
+@model InpremClockingApp.Areas.Provider.Pages.Tenants.CancelSubscriptionModel
+@{
+    ViewData["Title"] = "Cancel subscription";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<p><a asp-page="Details" asp-route-id="@RouteData.Values["id"]" asp-route-tab="subscription">&larr; Back to the organization</a></p>
+<h1 class="pc-title">Cancel the subscription of @Model.Name?</h1>
+<p class="pc-subtitle">PayPal stops all future payments now. The organization keeps full access until the end of the period already paid, then becomes read-only. Its owners are emailed.</p>
+
+@if (Model.Error != null)
+{
+    <div class="pc-error" data-testid="error">@Model.Error</div>
+}
+
+<form method="post" class="pc-card pc-form">
+  <div class="pc-field">
+    <label for="Reason">Reason <span class="pc-muted">(required; sent to PayPal and recorded in the audit log)</span></label>
+    <textarea id="Reason" name="Reason" rows="3" maxlength="300" required>@Model.Reason</textarea>
+  </div>
+  <div class="pc-actions">
+    <button type="submit" class="pc-btn pc-btn-danger" data-testid="confirm">Cancel subscription</button>
+    <a asp-page="Details" asp-route-id="@RouteData.Values["id"]" asp-route-tab="subscription" class="pc-btn">Keep it</a>
+  </div>
+</form>

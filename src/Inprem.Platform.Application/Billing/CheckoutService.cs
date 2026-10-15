@@ -343,6 +343,22 @@ public sealed class CheckoutService
         return (subscription, found.Price);
     }
 
+    /// <summary>The organization's checkout with this idempotency key (the Billing page's return address carries it).</summary>
+    public async Task<CheckoutSession?> FindForTenantAsync(int tenantId, string idempotencyKey, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(idempotencyKey)) return null;
+        var session = await _store.FindByIdempotencyKeyAsync(idempotencyKey.Trim(), ct).ConfigureAwait(false);
+        return session?.TenantId == tenantId ? session : null;
+    }
+
+    /// <summary>The organization's latest checkout for a PayPal subscription (the plan's fallback return page).</summary>
+    public async Task<CheckoutSession?> FindByPayPalForTenantAsync(int tenantId, string subscriptionId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(subscriptionId)) return null;
+        var session = await _store.FindByExternalIdAsync(subscriptionId.Trim(), ct).ConfigureAwait(false);
+        return session?.TenantId == tenantId ? session : null;
+    }
+
     // ---------------------------------------------------------- other endings
 
     /// <summary>

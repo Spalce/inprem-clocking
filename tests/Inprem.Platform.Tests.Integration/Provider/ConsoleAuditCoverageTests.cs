@@ -54,6 +54,10 @@ public class ConsoleAuditCoverageTests
         ["Tenants.DetailsModel.OnPostResetAsync"] = ("organization.password-reset-sent", "OrganizationPagesTests"),
         ["Tenants.DetailsModel.OnPostEndSupportAsync"] = ("support.ended", "SupportSessionTests"),
         ["Tenants.StartSupportModel.OnPostAsync"] = ("support.started", "SupportSessionTests"),
+        ["Tenants.DetailsModel.OnPostSyncAsync"] = ("subscription.synced / the correction", "BillingPageTests"),
+        ["Tenants.ExtendTrialModel.OnPostAsync"] = ("subscription.trial-extended", "BillingPageTests"),
+        ["Tenants.FreeAccessModel.OnPostAsync"] = ("subscription.free-access-granted / -removed", "BillingPageTests"),
+        ["Tenants.CancelSubscriptionModel.OnPostAsync"] = ("subscription.canceled", "BillingPageTests"),
 
         // Webhook events.
         ["Webhooks.DetailsModel.OnPostReplayAsync"] = ("billing-event.replayed", "WebhookTests"),

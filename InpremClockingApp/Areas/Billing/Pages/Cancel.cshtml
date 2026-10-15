@@ -1,0 +1,23 @@
+@page "/Billing/Cancel"
+@model InpremClockingApp.Areas.Billing.Pages.CancelModel
+@{
+    ViewData["Title"] = "Cancel subscription";
+    var s = Model.Overview.Subscription!;
+}
+
+<div class="tw:mx-auto tw:max-w-xl tw:p-6">
+  <p class="tw:mb-4 tw:text-sm"><a href="/Billing" class="tw:text-blue-700 tw:hover:underline">&larr; Billing</a></p>
+  <div class="tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:p-6 tw:shadow-sm">
+    <h1 class="tw:mb-2 tw:text-lg tw:font-semibold tw:text-slate-900">Cancel the subscription</h1>
+    <p class="tw:mb-4 tw:text-sm tw:text-slate-600">PayPal stops future payments. You keep full access until @(s.CurrentPeriodEndUtc?.ToString("d MMMM yyyy") ?? "the end of the paid period"); after that the organization becomes read-only (reports and exports still work), and you can subscribe again at any time.</p>
+    @if (Model.Error != null)
+    {
+        <div class="tw:mb-4 tw:rounded-md tw:bg-red-50 tw:p-3 tw:text-sm tw:text-red-800" data-testid="error">@Model.Error</div>
+    }
+    <form method="post">
+      <label class="tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700" for="Reason">Why are you cancelling? (required)</label>
+      <textarea id="Reason" name="Reason" rows="3" maxlength="300" class="tw:mb-4 tw:w-full tw:rounded-md tw:border tw:border-slate-300 tw:p-2 tw:text-sm">@Model.Reason</textarea>
+      <button type="submit" class="tw:cursor-pointer tw:rounded-md tw:border-0 tw:bg-red-700 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-red-800" data-testid="confirm-cancel">Cancel subscription</button>
+    </form>
+  </div>
+</div>

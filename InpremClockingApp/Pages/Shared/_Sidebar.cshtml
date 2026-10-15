@@ -1,3 +1,4 @@
+@inject Inprem.Platform.Application.Tenancy.ITenantContext Tenant
 @{
     var linkClass = "tw:flex tw:items-center tw:gap-3 tw:rounded-md tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:text-slate-300 tw:hover:bg-slate-800 tw:hover:text-white";
     var subLinkClass = "tw:block tw:rounded-md tw:px-3 tw:py-2 tw:text-sm tw:text-slate-400 tw:hover:bg-slate-800 tw:hover:text-white";
@@ -34,6 +35,14 @@
         <i class="fas fa-users tw:w-4 tw:text-center"></i>
         <span>Admins</span>
       </a>
+      @* C3-1 (multi-tenancy Phase 2 step 2.8): Billing, for the organization's Owner only. *@
+      @if (Tenant.Role == Inprem.Platform.Domain.Memberships.MembershipRole.Owner && InpremClockingApp.Provider.SupportSessions.Current(Context) == null)
+      {
+        <a href="/Billing" class="@linkClass" data-testid="billing-link">
+          <i class="fas fa-credit-card tw:w-4 tw:text-center"></i>
+          <span>Billing</span>
+        </a>
+      }
 
       <div>
         <button type="button" data-sidebar-toggle="reportsMenu" class="tw:flex tw:w-full tw:cursor-pointer tw:appearance-none tw:items-center tw:justify-between tw:rounded-md tw:border-0 tw:bg-transparent tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:text-slate-300 tw:hover:bg-slate-800 tw:hover:text-white">

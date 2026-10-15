@@ -72,6 +72,9 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
         ["/Users/Disable"] = (OwnerOnly, x => $"/Provider/Users/Disable/{x.ProviderUserId}"),
         ["/Users/ResetTwoFactor"] = (OwnerOnly, x => $"/Provider/Users/ResetTwoFactor/{x.ProviderUserId}"),
         ["/Webhooks/Details"] = (BillingAndOwner, x => $"/Provider/Webhooks/Details/{x.WebhookEventId}"),
+        ["/Tenants/ExtendTrial"] = (BillingAndOwner, x => $"/Provider/Tenants/ExtendTrial/{x.TenantId}"),
+        ["/Tenants/FreeAccess"] = (BillingAndOwner, x => $"/Provider/Tenants/FreeAccess/{x.TenantId}"),
+        ["/Tenants/CancelSubscription"] = (BillingAndOwner, x => $"/Provider/Tenants/CancelSubscription/{x.TenantId}"),
     };
 
     private async Task<string> WebhookEventIdAsync()

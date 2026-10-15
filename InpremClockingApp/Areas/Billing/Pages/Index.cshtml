@@ -1,0 +1,125 @@
+@page "/Billing"
+@model InpremClockingApp.Areas.Billing.Pages.IndexModel
+@{
+    ViewData["Title"] = "Billing";
+    var o = Model.Overview;
+    var s = o.Subscription;
+    var card = "tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:p-6 tw:shadow-sm tw:mb-6";
+    var button = "tw:inline-flex tw:cursor-pointer tw:items-center tw:rounded-md tw:border-0 tw:bg-blue-700 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-800";
+}
+
+<div class="tw:mx-auto tw:max-w-4xl tw:p-6">
+  <h1 class="tw:mb-1 tw:text-2xl tw:font-semibold tw:text-slate-900">Billing</h1>
+  <p class="tw:mb-6 tw:text-sm tw:text-slate-600">Your plan, your subscription and your payments. Payments are made at PayPal; Inprem never sees card details.</p>
+
+  @if (TempData["Success"] is string success)
+  {
+      <div class="tw:mb-4 tw:rounded-md tw:bg-green-50 tw:p-3 tw:text-sm tw:text-green-800" data-testid="success">@success</div>
+  }
+  @if (TempData["Error"] is string error)
+  {
+      <div class="tw:mb-4 tw:rounded-md tw:bg-red-50 tw:p-3 tw:text-sm tw:text-red-800" data-testid="error">@error</div>
+  }
+
+  <div class="@card" data-testid="current">
+    <h2 class="tw:mb-3 tw:text-lg tw:font-semibold tw:text-slate-900">Your subscription</h2>
+    @if (s == null)
+    {
+        <p class="tw:text-sm tw:text-slate-600">There is no subscription on record. Please contact Inprem.</p>
+    }
+    else
+    {
+        <dl class="tw:grid tw:grid-cols-2 tw:gap-y-2 tw:text-sm">
+          <dt class="tw:text-slate-500">Plan</dt><dd data-testid="plan">@(o.Plan?.Name ?? (s.Mode == BillingMode.Free ? "Free" : "—"))</dd>
+          <dt class="tw:text-slate-500">Price</dt><dd>@(o.Price == null ? "—" : PlanService.Describe(o.Price))</dd>
+          <dt class="tw:text-slate-500">Status</dt><dd data-testid="status">@s.Status</dd>
+          @if (s.Status == SubscriptionStatus.Trialing)
+          {
+              <dt class="tw:text-slate-500">Trial ends</dt><dd>@s.TrialEndsUtc?.ToString("d MMMM yyyy")</dd>
+          }
+          @if (s.CurrentPeriodEndUtc != null && s.Status is SubscriptionStatus.Active or SubscriptionStatus.PastDue)
+          {
+              <dt class="tw:text-slate-500">Next payment</dt><dd>@s.CurrentPeriodEndUtc?.ToString("d MMMM yyyy")</dd>
+          }
+          @if (s.Status == SubscriptionStatus.Canceled)
+          {
+              <dt class="tw:text-slate-500">Access until</dt><dd>@s.CurrentPeriodEndUtc?.ToString("d MMMM yyyy")</dd>
+          }
+          @if (s.OutstandingBalance > 0)
+          {
+              <dt class="tw:text-slate-500">Outstanding</dt><dd>@s.OutstandingBalance.ToString("0.00") @(o.Price?.Currency)</dd>
+          }
+        </dl>
+        @if (o.PaysByPayPal)
+        {
+            <p class="tw:mt-4 tw:text-sm"><a asp-page="Cancel" class="tw:text-red-700 tw:hover:underline" data-testid="cancel">Cancel the subscription</a></p>
+        }
+    }
+  </div>
+
+  @if (o.NextPurpose is CheckoutPurpose purpose)
+  {
+      <div class="@card" data-testid="plans">
+        <h2 class="tw:mb-1 tw:text-lg tw:font-semibold tw:text-slate-900">@(purpose == CheckoutPurpose.ChangePlan ? "Change plan" : "Subscribe")</h2>
+        <p class="tw:mb-4 tw:text-sm tw:text-slate-600">@(purpose == CheckoutPurpose.ChangePlan
+            ? "Choose the new price; PayPal asks you to approve the change."
+            : "Choose a plan; you continue at PayPal to pay by PayPal account or card. Your organization becomes active as soon as PayPal confirms.")</p>
+        @if (o.Offered.Count == 0)
+        {
+            <p class="tw:text-sm tw:text-slate-600">No plans are available online at the moment. Please contact Inprem.</p>
+        }
+        @foreach (var plan in o.Offered)
+        {
+            <div class="tw:mb-4 tw:rounded-md tw:border tw:border-slate-200 tw:p-4">
+              <div class="tw:mb-2 tw:font-medium tw:text-slate-900">@plan.Name</div>
+              @if (plan.Description != null)
+              {
+                  <p class="tw:mb-2 tw:text-sm tw:text-slate-600">@plan.Description</p>
+              }
+              <div class="tw:flex tw:flex-wrap tw:gap-3">
+              @foreach (var price in plan.Prices.Where(p => p.Status == PlanStatus.Active && p.PayPalPlanId != null))
+              {
+                  @if (purpose == CheckoutPurpose.ChangePlan && price.Id == s!.PlanPriceId)
+                  {
+                      <span class="tw:rounded-md tw:bg-slate-100 tw:px-4 tw:py-2 tw:text-sm tw:text-slate-600">@PlanService.Describe(price) (current)</span>
+                  }
+                  else
+                  {
+                      <form method="post" asp-page-handler="Subscribe" class="tw:m-0">
+                        <input type="hidden" name="priceId" value="@price.Id" />
+                        <input type="hidden" name="key" value="@Model.IdempotencyKey" />
+                        <button type="submit" class="@button" data-testid="subscribe">@PlanService.Describe(price)</button>
+                      </form>
+                  }
+              }
+              </div>
+            </div>
+        }
+      </div>
+  }
+
+  <div class="@card" data-testid="payments">
+    <h2 class="tw:mb-3 tw:text-lg tw:font-semibold tw:text-slate-900">Payments</h2>
+    @if (o.Payments.Count == 0)
+    {
+        <p class="tw:text-sm tw:text-slate-600">No payments yet. PayPal also emails you a receipt for each payment.</p>
+    }
+    else
+    {
+        <table class="tw:w-full tw:text-left tw:text-sm">
+          <thead><tr class="tw:text-slate-500"><th class="tw:py-1">Date</th><th>Amount</th><th>Status</th><th>Reference</th></tr></thead>
+          <tbody>
+          @foreach (var p in o.Payments)
+          {
+              <tr class="tw:border-t tw:border-slate-100">
+                <td class="tw:py-1">@p.PaidUtc.ToString("d MMM yyyy")</td>
+                <td>@p.Amount.ToString("0.00") @p.Currency</td>
+                <td>@p.Status@(p.RefundedAmount > 0 ? $" ({p.RefundedAmount:0.00} back)" : "")</td>
+                <td>@p.ExternalId</td>
+              </tr>
+          }
+          </tbody>
+        </table>
+    }
+  </div>
+</div>

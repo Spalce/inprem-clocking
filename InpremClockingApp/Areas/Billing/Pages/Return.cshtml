@@ -1,0 +1,46 @@
+@page "/Billing/Return"
+@model InpremClockingApp.Areas.Billing.Pages.ReturnModel
+@{
+    ViewData["Title"] = "Confirming your subscription";
+}
+
+<div class="tw:mx-auto tw:max-w-xl tw:p-6">
+  <div class="tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:p-8 tw:text-center tw:shadow-sm" data-testid="return" data-status="@Model.Status">
+    <h1 class="tw:mb-3 tw:text-lg tw:font-semibold tw:text-slate-900" id="title">Confirming your subscription…</h1>
+    <p class="tw:text-sm tw:text-slate-600" id="message">We are checking with PayPal. This usually takes a few seconds.</p>
+    <p class="tw:mt-6 tw:text-sm"><a href="/Billing" class="tw:text-blue-700 tw:hover:underline">Back to Billing</a></p>
+  </div>
+</div>
+
+<script>
+(function () {
+  var texts = {
+    Active: ["You are subscribed", "Thank you: PayPal confirmed your subscription. A confirmation email is on its way."],
+    Cancelled: ["Checkout was not completed", "The checkout was cancelled at PayPal. Nothing was charged. You can try again from the Billing page."],
+    Expired: ["Checkout was not completed", "The checkout timed out before it was approved. Nothing was charged. You can try again from the Billing page."],
+    Failed: ["We could not activate your subscription", "Please contact Inprem; we have been told and will look into it."],
+    Slow: ["Payment received", "Activation is taking longer than usual. We will email you as soon as it is active; you can close this page."]
+  };
+  var started = Date.now();
+  function show(status) {
+    var t = texts[status];
+    if (!t) return false;
+    document.getElementById("title").textContent = t[0];
+    document.getElementById("message").textContent = t[1];
+    return true;
+  }
+  if (show("@Model.Status")) return;
+  function poll() {
+    var elapsed = Date.now() - started;
+    if (elapsed > 120000) { show("Slow"); return; }
+    fetch("/Billing/Return?handler=Status&key=@Uri.EscapeDataString(Model.Key)", { headers: { "Accept": "application/json" }, credentials: "same-origin" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (data && data.final && show(data.status)) return;
+        setTimeout(poll, elapsed < 30000 ? 2000 : 10000);
+      })
+      .catch(function () { setTimeout(poll, 10000); });
+  }
+  setTimeout(poll, 2000);
+})();
+</script>

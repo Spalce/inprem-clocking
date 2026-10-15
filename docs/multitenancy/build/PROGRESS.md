@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 2 PayPal core (in progress)
-- **Next step:** Phase 2 / Step 2.8 — In-app Billing page (owners) and the console's subscription actions; the sandbox smoke test of steps 2.2–2.7 once the developer has put the PayPal sandbox keys in user-secrets (webhooks also need a public https address, e.g. ngrok, and `PayPal:WebhookId`)
+- **Next step:** Phase 2 / Step 2.9 — Remove replaced billing code (C4; migration M5 moves any old billing rows first); then the Phase 2 bundle, the sandbox end-to-end run (P2-1, P2-4; needs the PayPal sandbox keys, a public https address such as ngrok, and `PayPal:WebhookId`) and the exit review
 - **Branch:** `mt/phase2` (from `mt/integration` `87ab80d`)
 
 ## Phase status
@@ -15,7 +15,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
 | 0 Foundation | Implementation complete (0.1–0.8, 0.10; 0.9 moved to Phase 7). Deployment-dependent exit checks (P0-6 Level 3, P0-9 real copy, P0-11, P0-12) wait for the test-site deployment (developer's decision: deploy after all phases) | — | — |
 | 1 Provider Console | Implementation complete (1.1–1.7), Phase 1 bundle rehearsed. Waiting: developer walkthrough (P1-1), onboarding under 3 minutes on staging (P1-3) | P1-2, P1-4, P1-5, P1-6, P1-7 (automated); P1-1 automated part | 2026-10-15 (`87ab80d`, developer's request, before the P1-1 walkthrough) |
-| 2 PayPal core | In progress (Steps 2.1–2.7 done) | — | — |
+| 2 PayPal core | In progress (Steps 2.1–2.8 done) | — | — |
 | 3 Website API | Not started | — | — |
 | 4 Invoices | Not started | — | — |
 | 5 Twilio | Not started | — | — |
@@ -72,7 +72,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **Rehearsed on synthetic data only (step 0.10).** The Phase 0 bundle was rehearsed with rollback (R2 and R3) on a disposable database with synthetic data, at about the size of the real one. Before a shared or production database, it must be repeated on a restored copy of that database (`rehearse-phase0.ps1 -Existing`). The CTO then signs it (design 11.2–11.4); see `docs/multitenancy/rehearsal-phase0.md`.
 - **M1 is M1a + M1b (step 0.10).** The step's "empty platform tables" already exist from step 0.7: provider users, invitations (named `ProviderInvitations`), audit and recovery records. No duplicate migration was added.
 - **`appsettings.Production.json` on the server (step 0.10).** `prepare-site.ps1` never ships it (a local publish would include the developer's copy). Upload with Web Deploy *without* "remove additional files", or move the connection string into the host's settings.
-- **PayPal sandbox smoke test of steps 2.2 to 2.7 not run yet.** It needs the sandbox keys (`PayPal:ClientId`, `PayPal:Secret`) in user-secrets; the client is tested against a pretend PayPal only.
+- **PayPal sandbox smoke test of steps 2.2 to 2.8 not run yet.** Locally it also needs, besides the keys: `PayPal:ReturnUrlAllowList:0` = the app's https address (e.g. `https://localhost:7xxx`), `PayPal:PlanReturnUrl` = that address + `/Billing/PayPalReturn`, `PayPal:PlanCancelUrl` = that address + `/Billing`. It needs the sandbox keys (`PayPal:ClientId`, `PayPal:Secret`) in user-secrets; the client is tested against a pretend PayPal only.
 - **Low advisory GHSA-g4vj-cjjj-v7hg (NuGet.Packaging / NuGet.Protocol 6.11.0)** is reported in the app and test projects. It was not introduced by step 2.2 (it comes with the existing design-time packages). Low severity, so the CI gate does not fail; it is reviewed with the other packages in Phase 7.
 - **People limit not enforced yet (step 2.7).** `AccessStatus.CanAddPeople` knows the plan's limit (or the console override), but refusing a new staff member or volunteer means touching the approved add-person flows (a C3 change). Decide with the developer whether, and how, before plans with limits are sold.
 - **Kiosk buttons on a page already open (step 2.7).** If an organization becomes read-only while a kiosk page is open, its buttons get the 403 and the approved page shows its usual "Oops! An error occured" toast (the approved page is not changed). Opening the kiosk again shows the friendly "kiosk is paused" page.
@@ -112,6 +112,25 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-15 — Phase 2 / Step 2.8 — In-app Billing page and console subscription actions (C3-1).**
+  - **App site, `Areas/Billing`** (the organization's Owner only; other admins get access denied; support sessions are refused as before; never blocked by read-only mode):
+    - `/Billing`: plan, price, status, trial end, next payment or access-until, outstanding balance; subscribe (trial or lapsed) or change plan (paying) by choosing a published price (one idempotency key per page view, so a double click is one checkout), straight to PayPal's approve link; payment history; link to cancel.
+    - `/Billing/Return?key=…`: the confirm call, then the page polls (2 seconds for 30 seconds, then 10 seconds up to 2 minutes) with the design 7.5 messages, including "taking longer than usual" after 2 minutes. Each poll confirms again (idempotent).
+    - `/Billing/Cancelled` (the buyer cancelled at PayPal); `/Billing/Cancel` (own page with a reason; access to the end of the paid period).
+    - `/Billing/PayPalReturn`: the plans' fallback page. It finds the checkout by PayPal's `subscription_id` and continues as `/Billing/Return`.
+    - Return and cancel addresses are built from the request's host and must be on `PayPal:ReturnUrlAllowList`.
+  - **C3-1:** "Billing" link in the back-office sidebar for the organization's Owner only (not during support sessions). The read-only page links owners to Billing.
+  - **Console:**
+    - The organization's **Subscription** tab shows real data: paid period, cancelled-at-period-end, outstanding balance, PayPal id, free access, people limit, full or read-only.
+    - **Actions** (Owners and Billing): **Extend trial** (own page; also turns an expired trial back into a trial), **Free access** until a date or removed (own page, reason required), **Sync with PayPal** (button), **Cancel subscription** (own page, reason).
+    - The **Invoices and payments** tab lists payments.
+    - The **Billing** menu item lists every subscription, with status and billing filters.
+    - `BillingAccountService` audits each change.
+  - **Tests:**
+    - Integration +4 (`BillingPageTests`): the owner subscribes (to PayPal; back before PayPal confirms = still confirming; the poll sees ACTIVE; change plan offered; fallback page; cancel with a reason); cancel at PayPal; admins have no Billing and a read-only owner can still subscribe; the console actions, each audited, in the Billing list, and refused to Support.
+    - The console matrix and the audit coverage list have the new pages and handlers.
+  - **Results:** Unit 161, Architecture 11, Baseline 312, Integration 157, UI 5.
 
 - **2026-10-15 — Phase 2 / Step 2.7 — Entitlements and enforcement (C3-2, C3-3, C3-4; P2-5, P2-7).**
   - **`IEntitlementService`** (Application) gives an organization's `AccessStatus`: can write, can use the kiosk, can add people (plan limit or console override), can send SMS (false until Phase 5), plus the read-only reason, trial days left and payment problem.
