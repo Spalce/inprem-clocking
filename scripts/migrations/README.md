@@ -76,6 +76,20 @@ sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/phase2-down.sql 
   - An unknown platform migration → refused (50042). Then `phase2-down`, `phase1-down` and `phase0-down` returned it to the approved baseline.
   - The first run found that a second down failed: SQL Server compiles a skipped statement too, and M5's named columns that no longer existed. M5's SQL now runs through `EXEC`, so it is compiled only when it runs.
 
+## All of Phase 3 at once (the bundles)
+
+After the Phase 0 to 2 bundles, Phase 3 adds platform migrations M1h, M1i and M1j (rows 13 to 15):
+
+```
+sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/phase3-up.sql     # ends with "Phase 3 schema complete."
+sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/phase3-down.sql   # ends with "Phase 3 rolled back"
+```
+
+- **Generated:** `build-phase3-bundle.ps1`, same rules and guards as the earlier bundles. CI checks they are up to date.
+- **Guards:** refuses a database without the complete Phase 0 to 2 schema (50050), with app migrations it does not know (50051), or with platform migrations it does not know (50052).
+- **Down** removes website API tokens, stored idempotent answers, signups and billing-access codes; organizations and the audit log stay.
+- **Rehearsal (2026-10-15, LocalDB):** without Phase 2 → refused (50050). After the Phase 0 to 2 bundles: up, up again, down, down again, up; each ended as expected. Verify after up: `M1h=1|2|1|0|0 M1i=1|1|1|0|0 M1j=1|1|1|0`. An unknown platform migration → refused (50052). Then the four down bundles back to the approved baseline. The local database ran it as a no-op (app data unchanged).
+
 ## Running
 
 ```powershell
