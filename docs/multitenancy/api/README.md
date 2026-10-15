@@ -1,6 +1,8 @@
 # Website API description
 
-`public-v1.draft.yaml` is the **draft** OpenAPI 3 description of the website API, written in G0 from design v0.5, section 7. It is documentation only; no code implements it yet.
+**For the web team:** start with [`integration-guide.md`](integration-guide.md) (journeys, examples, errors, limits, staging).
+
+`public-v1.draft.yaml` is the **draft** OpenAPI 3 description of the website API, written in G0 from design v0.5, section 7. Phase 3 implements it; the code's generated document is published at `/api/public/docs` on staging, and a contract test checks it against this file.
 
 Phase 3 builds the API and generates the real description from code (`/api/public/docs` on staging). A contract test then checks the code against the agreed version of this file. Open questions are listed at the end of `info.description` in the YAML.
 

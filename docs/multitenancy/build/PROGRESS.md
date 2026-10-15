@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 3 Website API (in progress; Phase 2's sandbox checks P2-1 and P2-4 still open)
-- **Next step:** Phase 3 / Step 3.7 — Web team handover (`docs/multitenancy/api/integration-guide.md`, staging notes)
+- **Next step:** Phase 3 — bundle (M1h, M1i, M1j) and exit review; the web team's staging run (P3-1, P3-7) waits for the test site
 - **Branch:** `mt/phase3` (from `mt/integration` `9ac52c3`)
 
 ## Phase status
@@ -16,7 +16,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | 0 Foundation | Implementation complete (0.1–0.8, 0.10; 0.9 moved to Phase 7). Deployment-dependent exit checks (P0-6 Level 3, P0-9 real copy, P0-11, P0-12) wait for the test-site deployment (developer's decision: deploy after all phases) | — | — |
 | 1 Provider Console | Implementation complete (1.1–1.7), Phase 1 bundle rehearsed. Waiting: developer walkthrough (P1-1), onboarding under 3 minutes on staging (P1-3) | P1-2, P1-4, P1-5, P1-6, P1-7 (automated); P1-1 automated part | 2026-10-15 (`87ab80d`, developer's request, before the P1-1 walkthrough) |
 | 2 PayPal core | Implementation complete (2.1–2.9), Phase 2 bundle rehearsed. Waiting: PayPal sandbox run (P2-1, P2-4) | P2-2, P2-3, P2-5, P2-6, P2-7 (automated); P2-1 and P2-4 with the pretend PayPal | 2026-10-15 (`9ac52c3`, developer's request, before the sandbox run) |
-| 3 Website API | In progress (Steps 3.1–3.6 done) | — | — |
+| 3 Website API | Implementation complete (Steps 3.1–3.7); bundle and exit review next | — | — |
 | 4 Invoices | Not started | — | — |
 | 5 Twilio | Not started | — | — |
 | 6 Staff alerts | Not started | — | — |
@@ -123,6 +123,16 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-15 — Phase 3 / Step 3.7 — Web team handover.**
+  - **`docs/multitenancy/api/integration-guide.md`:**
+    - the rules (tokens and their lifetimes, cookies ignored, CORS, idempotency, rate limits, every problem code with its meaning);
+    - the public reads with an example;
+    - journeys **J1 to J6** with request and response examples taken from the code's field names, the purpose table, and the polling rules and texts (design 7.5);
+    - **what the website must never do**; CAPTCHA (Turnstile, test keys); the PayPal sandbox;
+    - **staging notes**: base URL, docs, demo site, the values Inprem gives, support with the `traceId`;
+    - the three changes from the draft, to confirm.
+  - `docs/multitenancy/api/README.md` points the web team to the guide first.
 
 - **2026-10-15 — Phase 3 / Step 3.6 — Demo website page (D29).**
   - **`wwwroot/demo-site/`**: plain HTML and `fetch`, no build step, only the public API. Pages:
