@@ -271,6 +271,7 @@ public class SubscriptionLifecycleTests
     [Theory]
     [InlineData("APPROVAL_PENDING", PayPalSubscriptionState.ApprovalPending)]
     [InlineData("APPROVED", PayPalSubscriptionState.Approved)]
+    [InlineData("ApprovalPending", PayPalSubscriptionState.ApprovalPending)]
     [InlineData("active", PayPalSubscriptionState.Active)]
     [InlineData("SUSPENDED", PayPalSubscriptionState.Suspended)]
     [InlineData("CANCELLED", PayPalSubscriptionState.Cancelled)]

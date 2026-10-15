@@ -1,3 +1,4 @@
+using Inprem.Platform.Infrastructure.PayPal;
 using InpremClockingApp.Data;
 using InpremClockingApp.Helpers;
 using InpremClockingApp.Hosting;
@@ -48,6 +49,10 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 // Multi-tenancy platform (docs/multitenancy): PlatformDbContext (schema "platform") on the same
 // database. Data-protection keys now live there (see SiteHosting), not in App_Data.
 builder.Services.AddPlatformInfrastructure(connectionString!);
+
+// PayPal (multi-tenancy Phase 2): section "PayPal", credentials from user-secrets or the host's
+// settings. Without PayPal:ClientId the app runs and PayPal actions say PayPal is not configured.
+builder.Services.AddPayPal(builder.Configuration);
 
 builder.Services.AddDefaultIdentity<AppUser>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddRoles<AppRole>()

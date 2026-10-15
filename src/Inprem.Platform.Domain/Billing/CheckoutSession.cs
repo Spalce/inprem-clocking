@@ -183,12 +183,12 @@ public sealed class CheckoutSession
     }
 }
 
-/// <summary>Maps PayPal's subscription <c>status</c> strings.</summary>
+/// <summary>Maps PayPal's subscription <c>status</c> (as sent, <c>APPROVAL_PENDING</c>, or as the SDK names it, <c>ApprovalPending</c>).</summary>
 public static class PayPalStatus
 {
-    public static PayPalSubscriptionState Parse(string? status) => status?.Trim().ToUpperInvariant() switch
+    public static PayPalSubscriptionState Parse(string? status) => status?.Trim().Replace("_", "").ToUpperInvariant() switch
     {
-        "APPROVAL_PENDING" => PayPalSubscriptionState.ApprovalPending,
+        "APPROVALPENDING" => PayPalSubscriptionState.ApprovalPending,
         "APPROVED" => PayPalSubscriptionState.Approved,
         "ACTIVE" => PayPalSubscriptionState.Active,
         "SUSPENDED" => PayPalSubscriptionState.Suspended,

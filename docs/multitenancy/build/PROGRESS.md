@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 2 PayPal core (in progress)
-- **Next step:** Phase 2 / Step 2.2 — PayPal client (needs the PayPal sandbox app credentials in user-secrets)
+- **Next step:** Phase 2 / Step 2.3 — Plan sync ("Publish to PayPal"); a sandbox smoke test of step 2.2 once the developer has put the PayPal sandbox keys in user-secrets
 - **Branch:** `mt/phase2` (from `mt/integration` `87ab80d`)
 
 ## Phase status
@@ -15,7 +15,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
 | 0 Foundation | Implementation complete (0.1–0.8, 0.10; 0.9 moved to Phase 7). Deployment-dependent exit checks (P0-6 Level 3, P0-9 real copy, P0-11, P0-12) wait for the test-site deployment (developer's decision: deploy after all phases) | — | — |
 | 1 Provider Console | Implementation complete (1.1–1.7), Phase 1 bundle rehearsed. Waiting: developer walkthrough (P1-1), onboarding under 3 minutes on staging (P1-3) | P1-2, P1-4, P1-5, P1-6, P1-7 (automated); P1-1 automated part | 2026-10-15 (`87ab80d`, developer's request, before the P1-1 walkthrough) |
-| 2 PayPal core | In progress (Step 2.1 done) | — | — |
+| 2 PayPal core | In progress (Steps 2.1–2.2 done) | — | — |
 | 3 Website API | Not started | — | — |
 | 4 Invoices | Not started | — | — |
 | 5 Twilio | Not started | — | — |
@@ -72,6 +72,8 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **Rehearsed on synthetic data only (step 0.10).** The Phase 0 bundle was rehearsed with rollback (R2 and R3) on a disposable database with synthetic data, at about the size of the real one. Before a shared or production database, it must be repeated on a restored copy of that database (`rehearse-phase0.ps1 -Existing`). The CTO then signs it (design 11.2–11.4); see `docs/multitenancy/rehearsal-phase0.md`.
 - **M1 is M1a + M1b (step 0.10).** The step's "empty platform tables" already exist from step 0.7: provider users, invitations (named `ProviderInvitations`), audit and recovery records. No duplicate migration was added.
 - **`appsettings.Production.json` on the server (step 0.10).** `prepare-site.ps1` never ships it (a local publish would include the developer's copy). Upload with Web Deploy *without* "remove additional files", or move the connection string into the host's settings.
+- **PayPal sandbox smoke test of step 2.2 not run yet.** It needs the sandbox keys (`PayPal:ClientId`, `PayPal:Secret`) in user-secrets; the client is tested against a pretend PayPal only.
+- **Low advisory GHSA-g4vj-cjjj-v7hg (NuGet.Packaging / NuGet.Protocol 6.11.0)** is reported in the app and test projects. It was not introduced by step 2.2 (it comes with the existing design-time packages). Low severity, so the CI gate does not fail; it is reviewed with the other packages in Phase 7.
 - **P1-1 walkthrough still open.** Phase 1 was merged into `mt/integration` at the developer's request before the walkthrough. Record it here when done.
 - **Existing organizations are on Free (step 2.1, D26).** M1f gives every organization without a subscription a Free one, so billing enforcement (step 2.7) changes nothing for them. Moving one to a paid plan is a console action (step 2.8). Decide per organization before go-live.
 - **Antiforgery on the App site (found in step 1.5).** A POST without a token to an Account-area page got 400, even though `Program.cs` applies `IgnoreAntiforgeryToken` to all pages. Forms built with tag helpers carry the token, so nothing visible breaks. Check how the global convention really behaves before C3-10 (Phase 7).
@@ -106,6 +108,22 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-15 — Phase 2 / Step 2.2 — PayPal client.**
+  - **Verified first** (step text): PayPal's API description marks the create-subscription `application_context` (return and cancel addresses) deprecated, with no replacement. **Developer's decision: both** — the per-subscription addresses, plus our fixed return and cancel pages on every PayPal plan as a fallback. Details: `docs/multitenancy/paypal-notes.md`.
+  - **`IPaymentProvider`** (Application): products, plans, subscriptions (create, get, revise, cancel), webhook verification, the return-address allow-list, `PaymentProviderException` (status and PayPal debug id, no payloads).
+  - **`PayPalPaymentProvider`** (Infrastructure):
+    - PayPalServerSDK **2.4.0** for plans and subscriptions (2.3.0 lacks the subscription status); a typed `HttpClient` for catalog products and webhook verification.
+    - Plans: one regular cycle, `auto_bill_outstanding`, `payment_failure_threshold` 1 (D23), `merchant_preferences` fallback.
+    - Cancel accepts an already cancelled subscription. A 404 on get is "not known".
+  - **One named `HttpClient`:** per-attempt and total timeouts; 3 retries of transient failures (creates carry `PayPal-Request-Id`, so a retry never makes two); a cached OAuth token; a logging handler with PayPal's debug id and no headers or bodies.
+  - **Found and fixed:** the framework's HttpClient logging wrote the app's Basic credentials at Trace level; it is removed for this client.
+  - **`PayPalOptions`**, validated at startup: sandbox/live (live refused without `AllowLive`), credentials together, https origins, plan pages on an allowed origin, timeout range. Without credentials the app runs with PayPal "not configured" (tests, and development until the keys are set).
+  - Registered in `Program.cs` (`AddPayPal`).
+  - **Tests:**
+    - Integration +19 (`PayPalClientTests`, a pretend PayPal): what is sent (custom_id, addresses, request id, D23 rules, fallback pages); how answers are read; the allow-list; retries with the same request id, and no retry on 4xx; the debug id; tokens cached; webhook verification (success, failure, missing header, bad JSON, no webhook id, PayPal down); not configured; startup checks; no payer data, token or credentials in the logs.
+    - Unit +1 (the SDK's status spelling).
+  - **Results:** Unit 161, Architecture 11, Baseline 312, Integration 118, UI 5. No model drift.
 
 - **2026-10-15 — Phase 1 merged; Phase 2 started.** `mt/phase1` fast-forwarded into `mt/integration` (`87ab80d`) and pushed, at the developer's request (P1-1 walkthrough and P1-3 staging timing still open). Branch `mt/phase2` from there.
 
