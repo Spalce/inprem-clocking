@@ -37,6 +37,20 @@ sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/phase0-down.sql 
 - **Rehearsal:** the whole sequence was rehearsed with timings: `docs/multitenancy/rehearsal-phase0.md`, `scripts/rehearsal/rehearse-phase0.ps1`.
 - **Deployment procedure:** `docs/multitenancy/deployment-phase0.md`.
 
+## All of Phase 1 at once (the bundles)
+
+After the Phase 0 bundle, Phase 1 adds platform migrations M1c, M1d and M1e (rows 7 to 9):
+
+```
+sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/phase1-up.sql     # ends with "Phase 1 schema complete."
+sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/phase1-down.sql   # ends with "Phase 1 rolled back"
+```
+
+- **Generated:** `build-phase1-bundle.ps1`, same rules and guards as the Phase 0 bundle. CI checks they are up to date.
+- **Guards:** it refuses a database without the complete Phase 0 schema (error 50030), with app migrations it does not know (50031), or with platform migrations it does not know (50032).
+- **Down** deletes plans, prices, organization profiles, notes, subscriptions and support sessions; the Phase 0 tables and the audit log stay. Phase 0's down bundle refuses to run while Phase 1 is still applied (it does not know those migrations): roll back Phase 1 first.
+- **Rehearsal (2026-10-15, LocalDB, synthetic data, two organizations):** without Phase 0 → refused (50030). After `phase0-up`: up, up again, down, down again, up: each ended as expected, and verify gave `M1c=1|2|1|0|0 M1d=1|3|1|0|0 M1e=1|1|1|0` after up and all zeros after down. An unknown platform migration → refused (50032). Then `phase1-down` and `phase0-down` returned it to the approved baseline.
+
 ## Running
 
 ```powershell

@@ -96,6 +96,14 @@ public class PlanPagesTests : IClassFixture<ProviderFixture>
         Assert.Contains("Standard plan", list.QuerySelector("[data-testid=plans]")!.TextContent);
         var none = await GetDocumentAsync(billing, $"/Provider/Plans?Search={code}&Status=Active");
         Assert.Contains("No plans match", none.QuerySelector("[data-testid=plans]")!.TextContent);
+
+        // Offer it again (one more audit entry).
+        Assert.Equal(HttpStatusCode.Redirect, (await PostFormAsync(billing, $"/Provider/Plans/Details/{id}", action => action.EndsWith("handler=Reactivate", StringComparison.Ordinal))).StatusCode);
+        await using (var db = _app.CreatePlatformDbContext())
+        {
+            Assert.Equal(PlanStatus.Active, (await db.Plans.SingleAsync(p => p.Id == id)).Status);
+        }
+        Assert.Equal("plan.reactivated", (await AuditActionsAsync(id)).Last());
     }
 
     [Fact]

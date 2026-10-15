@@ -172,7 +172,8 @@ jobs:
         shell: pwsh
         run: |
           ./scripts/migrations/build-phase0-bundle.ps1
-          git diff --exit-code -- scripts/migrations/phase0-up.sql scripts/migrations/phase0-down.sql
+          ./scripts/migrations/build-phase1-bundle.ps1
+          git diff --exit-code -- scripts/migrations/phase0-up.sql scripts/migrations/phase0-down.sql scripts/migrations/phase1-up.sql scripts/migrations/phase1-down.sql
 
       # One build for both sites (D8).
       - name: Publish
