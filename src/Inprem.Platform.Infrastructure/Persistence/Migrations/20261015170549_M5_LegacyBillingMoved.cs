@@ -20,10 +20,18 @@ namespace Inprem.Platform.Infrastructure.Persistence.Migrations
     /// </summary>
     public partial class M5_LegacyBillingMoved : Migration
     {
+        /// <summary>
+        /// Runs the SQL through EXEC, so SQL Server checks its column names only when it runs: in the
+        /// idempotent scripts the statements are skipped on a database below or above M5, but a
+        /// skipped statement naming a column that does not exist there (the M1f columns) still fails
+        /// to compile (found in the Phase 2 bundle rehearsal: a second down).
+        /// </summary>
+        private static string Deferred(string sql) => "EXEC(N'" + sql.Replace("'", "''") + "');";
+
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql(@"
+            migrationBuilder.Sql(Deferred(@"
 INSERT INTO [platform].[Payments] ([Id], [TenantId], [SubscriptionId], [Source], [ExternalId], [Amount], [Currency], [Status], [PaidUtc], [RefundedUtc], [RefundedAmount], [RecordedBy])
 SELECT NEWID(), i.[TenantId], ps.[Id], N'Offline', CONCAT(N'legacy-invoice:', i.[InvoiceNumber]), i.[Amount], UPPER(LEFT(i.[Currency], 3)), N'Completed',
        COALESCE(i.[PaidDate], i.[IssuedDate]), NULL, 0, N'migration:M5'
@@ -31,9 +39,9 @@ FROM [dbo].[Invoices] i
 JOIN [dbo].[Tenants] t ON t.[Id] = i.[TenantId]
 LEFT JOIN [platform].[Subscriptions] ps ON ps.[TenantId] = i.[TenantId]
 WHERE i.[Status] = N'Paid' AND i.[Amount] > 0
-  AND NOT EXISTS (SELECT 1 FROM [platform].[Payments] p WHERE p.[Source] = N'Offline' AND p.[ExternalId] = CONCAT(N'legacy-invoice:', i.[InvoiceNumber]));");
+  AND NOT EXISTS (SELECT 1 FROM [platform].[Payments] p WHERE p.[Source] = N'Offline' AND p.[ExternalId] = CONCAT(N'legacy-invoice:', i.[InvoiceNumber]));"));
 
-            migrationBuilder.Sql(@"
+            migrationBuilder.Sql(Deferred(@"
 INSERT INTO [platform].[TenantNotes] ([Id], [TenantId], [Text], [Author], [CreatedUtc])
 SELECT NEWID(), ls.[TenantId],
        CONCAT(N'Moved from the old billing (migration M5): ', FORMAT(ls.[Amount], N'0.00'), N' ', ls.[Currency], N' ', LOWER(ls.[BillingCycle]),
@@ -43,14 +51,14 @@ SELECT NEWID(), ls.[TenantId],
 FROM [dbo].[Subscriptions] ls
 JOIN [dbo].[Tenants] t ON t.[Id] = ls.[TenantId]
 WHERE ls.[Amount] > 0
-  AND NOT EXISTS (SELECT 1 FROM [platform].[TenantNotes] n WHERE n.[TenantId] = ls.[TenantId] AND n.[Author] = N'migration:M5');");
+  AND NOT EXISTS (SELECT 1 FROM [platform].[TenantNotes] n WHERE n.[TenantId] = ls.[TenantId] AND n.[Author] = N'migration:M5');"));
 
-            migrationBuilder.Sql(@"
+            migrationBuilder.Sql(Deferred(@"
 UPDATE ps SET ps.[Mode] = N'Invoiced', ps.[CurrentPeriodStartUtc] = ls.[CurrentPeriodStart], ps.[CurrentPeriodEndUtc] = ls.[CurrentPeriodEnd]
 FROM [platform].[Subscriptions] ps
 JOIN [dbo].[Subscriptions] ls ON ls.[TenantId] = ps.[TenantId]
 WHERE ls.[Amount] > 0 AND ls.[Status] IN (N'Active', N'PastDue')
-  AND ps.[Mode] = N'Free' AND ps.[PlanId] IS NULL AND ps.[ExternalSubscriptionId] IS NULL AND ps.[Status] = N'Active';");
+  AND ps.[Mode] = N'Free' AND ps.[PlanId] IS NULL AND ps.[ExternalSubscriptionId] IS NULL AND ps.[Status] = N'Active';"));
         }
 
         /// <inheritdoc />
@@ -58,13 +66,13 @@ WHERE ls.[Amount] > 0 AND ls.[Status] IN (N'Active', N'PastDue')
         {
             // Back to the M1f state: the moved subscriptions return to Free (only those M5 moved: they
             // carry its note and are still Invoiced without a plan), then the notes and payments go.
-            migrationBuilder.Sql(@"
+            migrationBuilder.Sql(Deferred(@"
 UPDATE ps SET ps.[Mode] = N'Free', ps.[CurrentPeriodStartUtc] = NULL, ps.[CurrentPeriodEndUtc] = NULL
 FROM [platform].[Subscriptions] ps
 WHERE ps.[Mode] = N'Invoiced' AND ps.[PlanId] IS NULL AND ps.[ExternalSubscriptionId] IS NULL
   AND EXISTS (SELECT 1 FROM [platform].[TenantNotes] n WHERE n.[TenantId] = ps.[TenantId] AND n.[Author] = N'migration:M5');
 DELETE FROM [platform].[TenantNotes] WHERE [Author] = N'migration:M5';
-DELETE FROM [platform].[Payments] WHERE [RecordedBy] = N'migration:M5';");
+DELETE FROM [platform].[Payments] WHERE [RecordedBy] = N'migration:M5';"));
         }
     }
 }

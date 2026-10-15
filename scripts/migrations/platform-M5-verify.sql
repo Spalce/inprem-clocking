@@ -3,7 +3,7 @@
 -- LeftForReview: old subscriptions with a price not moved (not Active/PastDue, or the platform row was already changed): check them in the console.
 -- OtherInvoices: unpaid or void old invoices, left in the old table for Phase 4.
 SET NOCOUNT ON;
-IF OBJECT_ID(N'[platform].[__EFMigrationsHistory]') IS NULL OR OBJECT_ID(N'[dbo].[Invoices]') IS NULL
+IF OBJECT_ID(N'[platform].[__EFMigrationsHistory]') IS NULL OR OBJECT_ID(N'[dbo].[Invoices]') IS NULL OR OBJECT_ID(N'[platform].[Payments]') IS NULL
 BEGIN
     SELECT 0 AS Applied, NULL AS LegacyPaying, NULL AS MovedToInvoiced, NULL AS Notes, NULL AS LegacyPaidInvoices, NULL AS MovedPayments, NULL AS LeftForReview, NULL AS OtherInvoices;
     RETURN;

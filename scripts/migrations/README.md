@@ -55,6 +55,25 @@ sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/phase1-down.sql 
 - **Down** deletes plans, prices, organization profiles, notes, subscriptions and support sessions; the Phase 0 tables and the audit log stay. Phase 0's down bundle refuses to run while Phase 1 is still applied (it does not know those migrations): roll back Phase 1 first.
 - **Rehearsal (2026-10-15, LocalDB, synthetic data, two organizations):** without Phase 0 → refused (50030). After `phase0-up`: up, up again, down, down again, up: each ended as expected, and verify gave `M1c=1|2|1|0|0 M1d=1|3|1|0|0 M1e=1|1|1|0` after up and all zeros after down. An unknown platform migration → refused (50032). Then `phase1-down` and `phase0-down` returned it to the approved baseline.
 
+## All of Phase 2 at once (the bundles)
+
+After the Phase 0 and Phase 1 bundles, Phase 2 adds platform migrations M1f, M1g and M5 (rows 10 to 12):
+
+```
+sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/phase2-up.sql     # ends with "Phase 2 schema complete."
+sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/phase2-down.sql   # ends with "Phase 2 rolled back"
+```
+
+- **Generated:** `build-phase2-bundle.ps1`, same rules and guards as the earlier bundles. CI checks they are up to date.
+- **Guards:** it refuses a database without the complete Phase 0 and Phase 1 schema (error 50040), with app migrations it does not know (50041), or with platform migrations it does not know (50042).
+- **Down** removes checkouts, payments, PayPal events and the PayPal fields of subscriptions, and returns the moved old billing rows to Free. The audit log stays. The Phase 1 down bundle refuses to run while Phase 2 is still applied.
+- **Rehearsal (2026-10-15, LocalDB, synthetic data):**
+  - Without Phase 1 → refused (50040).
+  - After `phase0-up` and `phase1-up`: up, up again, down, down again, up; each ended as expected. Verify after up: `M1f=1|3|2|0|2 M1g=1|0|0 M5=1|1|1|1|1|1|0|0`; after down all zeros.
+  - The M5 scripts alone, twice in each direction, also passed.
+  - An unknown platform migration → refused (50042). Then `phase2-down`, `phase1-down` and `phase0-down` returned it to the approved baseline.
+  - The first run found that a second down failed: SQL Server compiles a skipped statement too, and M5's named columns that no longer existed. M5's SQL now runs through `EXEC`, so it is compiled only when it runs.
+
 ## Running
 
 ```powershell
