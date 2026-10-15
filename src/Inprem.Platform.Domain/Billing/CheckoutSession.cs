@@ -65,10 +65,10 @@ public sealed class CheckoutSession
     /// <summary>Random, unguessable; PayPal's <c>custom_id</c>.</summary>
     public string Reference { get; private set; }
 
-    /// <summary>The organization (convert, resubscribe, change plan), or null for a website signup.</summary>
+    /// <summary>The organization. For a website signup ("new") the one its signup created.</summary>
     public int? TenantId { get; private set; }
 
-    /// <summary>The website signup (Phase 3), or null for an organization.</summary>
+    /// <summary>The website signup ("new", Phase 3), or null.</summary>
     public Guid? SignupId { get; private set; }
     public CheckoutPurpose Purpose { get; private set; }
     public Guid PlanPriceId { get; private set; }
@@ -94,8 +94,8 @@ public sealed class CheckoutSession
     public static CheckoutSession Create(CheckoutPurpose purpose, int? tenantId, Guid? signupId, PlanPrice price, string returnUrl, string cancelUrl, string idempotencyKey, string createdBy, DateTime nowUtc)
     {
         if (nowUtc.Kind != DateTimeKind.Utc) throw new ArgumentException("Times are stored in UTC.", nameof(nowUtc));
-        if ((tenantId == null) == (signupId == null)) throw new ArgumentException("A checkout is for one organization or one signup.", nameof(tenantId));
-        if ((purpose == CheckoutPurpose.New) != (signupId != null)) throw new ArgumentException("Only a signup checks out as new; organizations convert, resubscribe or change plan.", nameof(purpose));
+        if (purpose == CheckoutPurpose.New ? signupId == null : tenantId == null || signupId != null)
+            throw new ArgumentException("A signup checks out as new (with its signup); organizations convert, resubscribe or change plan.", nameof(purpose));
         if (price.Status != PlanStatus.Active) throw new ArgumentException("That price is not offered any more.", nameof(price));
         if (string.IsNullOrWhiteSpace(idempotencyKey) || idempotencyKey.Length > 100) throw new ArgumentException("An idempotency key (at most 100 characters) is required.", nameof(idempotencyKey));
         AbsoluteHttps(returnUrl, nameof(returnUrl));
@@ -147,6 +147,17 @@ public sealed class CheckoutSession
             default:
                 return Finish(CheckoutStatus.Failed, $"PayPal reported {state}.", nowUtc);
         }
+    }
+
+    /// <summary>
+    /// PayPal could not be reached when the checkout started: the checkout stays Failed (and audited),
+    /// but gives its idempotency key back, so the same request can safely be sent again.
+    /// </summary>
+    public void ReleaseKey()
+    {
+        if (Status != CheckoutStatus.Failed || ExternalSubscriptionId != null) throw new InvalidOperationException("Only a checkout that never reached PayPal gives its key back.");
+        IdempotencyKey = $"{IdempotencyKey}#released-{Id:N}";
+        if (IdempotencyKey.Length > 100) IdempotencyKey = $"released-{Id:N}";
     }
 
     /// <summary>The buyer came back through the cancel URL (AwaitingApproval → Cancelled).</summary>

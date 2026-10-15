@@ -55,6 +55,7 @@ public class PublicApiFixture : IAsyncLifetime
             services.AddSingleton<Microsoft.AspNetCore.Hosting.IStartupFilter, TestAddressFilter>();
         });
         _ = _app.Server;
+        _app.PayPal.AllowedOrigins.Add(WebsiteOrigin);
         Data = await TestDataSeeder.SeedAsync(_app.Services);
     }
 

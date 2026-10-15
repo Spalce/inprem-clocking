@@ -1,5 +1,6 @@
 using System.Globalization;
 using Inprem.Platform.Application.Billing;
+using Inprem.Platform.Domain.Billing;
 using Inprem.Platform.Application.Organizations;
 using Inprem.Platform.Domain.Billing;
 using Inprem.Platform.Domain.Organizations;
@@ -71,6 +72,51 @@ public static class PublicApiEndpoints
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
+        // Checkout (step 3.4): the Phase 2 checkout, for the signup's or the billing token's organization.
+        api.MapPost("/checkout-sessions", CreateCheckoutAsync)
+            .RequireAuthorization(PublicApiHosting.AnyTokenPolicy)
+            .RequireIdempotency()
+            .WithName("createCheckoutSession")
+            .WithTags("Checkout")
+            .Accepts<CheckoutRequest>("application/json")
+            .Produces<CheckoutCreatedResponse>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests)
+            .ProducesProblem(StatusCodes.Status502BadGateway);
+
+        api.MapGet("/checkout-sessions/{checkoutSessionId:guid}", (HttpContext http, Guid checkoutSessionId, CheckoutService checkout, ICheckoutStore store) =>
+                CheckoutActionAsync(http, checkoutSessionId, checkout, store, null))
+            .RequireAuthorization(PublicApiHosting.AnyTokenPolicy)
+            .WithName("getCheckoutSession")
+            .WithTags("Checkout")
+            .Produces<CheckoutStatusResponse>()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
+        api.MapPost("/checkout-sessions/{checkoutSessionId:guid}/confirm", (HttpContext http, Guid checkoutSessionId, CheckoutService checkout, ICheckoutStore store) =>
+                CheckoutActionAsync(http, checkoutSessionId, checkout, store, (s, ct) => checkout.ConfirmAsync(s.Id, CheckoutSource.Confirm, ct)))
+            .RequireAuthorization(PublicApiHosting.AnyTokenPolicy)
+            .WithName("confirmCheckoutSession")
+            .WithTags("Checkout")
+            .Produces<CheckoutStatusResponse>()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
+        api.MapPost("/checkout-sessions/{checkoutSessionId:guid}/cancel", (HttpContext http, Guid checkoutSessionId, CheckoutService checkout, ICheckoutStore store) =>
+                CheckoutActionAsync(http, checkoutSessionId, checkout, store, (s, ct) => checkout.CancelByBuyerAsync(s.Id, ct)))
+            .RequireAuthorization(PublicApiHosting.AnyTokenPolicy)
+            .WithName("cancelCheckoutSession")
+            .WithTags("Checkout")
+            .Produces<CheckoutStatusResponse>()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         api.MapGet("/slugs/{slug}/availability", GetSlugAvailabilityAsync)
@@ -179,6 +225,87 @@ public static class PublicApiEndpoints
             _ => Problems.Create(http, StatusCodes.Status404NotFound, Problems.NotFound, "No such signup."),
         };
     }
+
+    // ----------------------------------------------------------------- checkout
+
+    private static readonly Dictionary<string, CheckoutPurpose> Purposes = new()
+    {
+        ["new"] = CheckoutPurpose.New, ["convert"] = CheckoutPurpose.Convert, ["resubscribe"] = CheckoutPurpose.Resubscribe, ["change_plan"] = CheckoutPurpose.ChangePlan,
+    };
+
+    /// <summary>Who started a checkout from the website: the token (only that token may see it later).</summary>
+    private static string TokenActor(HttpContext http) => $"token:{PublicApiClaims.TokenIdOf(http.User):N}";
+
+    private static async Task<IResult> CreateCheckoutAsync(HttpContext http, CheckoutRequest? body, CheckoutService checkout)
+    {
+        var errors = new Dictionary<string, string[]>();
+        if (body?.PlanPriceId is null || body.PlanPriceId == Guid.Empty) errors["planPriceId"] = new[] { "Choose a plan price from GET /plans." };
+        if (body?.Purpose == null || !Purposes.TryGetValue(body.Purpose, out var purpose)) { errors["purpose"] = new[] { "Use new, convert, resubscribe or change_plan." }; purpose = default; }
+        if (string.IsNullOrWhiteSpace(body?.ReturnUrl)) errors["returnUrl"] = new[] { "The return address is required." };
+        if (string.IsNullOrWhiteSpace(body?.CancelUrl)) errors["cancelUrl"] = new[] { "The cancel address is required." };
+        if (errors.Count > 0) return Problems.Validation(http, errors);
+
+        // A signup token checks out as "new"; a billing token as convert, resubscribe or change_plan.
+        var signupToken = http.User.FindFirst(PublicApiClaims.Kind)?.Value == nameof(Inprem.Platform.Domain.PublicApi.ApiTokenKind.Signup);
+        if (signupToken != (purpose == CheckoutPurpose.New))
+            return Problems.Validation(http, new Dictionary<string, string[]> { ["purpose"] = new[] { signupToken ? "A signup token checks out as new." : "Use convert, resubscribe or change_plan." } });
+        if (PublicApiClaims.TenantOf(http.User) is not int tenantId) return Problems.Create(http, StatusCodes.Status404NotFound, Problems.NotFound, "No organization for this token.");
+
+        var key = $"{PublicApiClaims.TokenIdOf(http.User):N}:{http.Request.Headers[IdempotencyFilter.Header].ToString().Trim()}";
+        var result = await checkout.StartAsync(new StartCheckout(purpose, tenantId, body!.PlanPriceId!.Value, body.ReturnUrl!, body.CancelUrl!, key, TokenActor(http),
+            signupToken ? PublicApiClaims.SignupOf(http.User) : null), http.RequestAborted);
+        if (result.Succeeded && result.Session?.ApprovalUrl != null)
+        {
+            var s = result.Session;
+            return Results.Created($"{PublicApiHosting.Prefix}/checkout-sessions/{s.Id}", new CheckoutCreatedResponse(s.Id, s.ApprovalUrl, s.ExpiresUtc));
+        }
+
+        return result.Failure switch
+        {
+            CheckoutFailure.ReturnUrlNotAllowed => Problems.Create(http, StatusCodes.Status400BadRequest, Problems.ReturnUrlNotAllowed, "The return or cancel address is not on an allowed website."),
+            CheckoutFailure.PlanNotAvailable => Problems.Create(http, StatusCodes.Status400BadRequest, Problems.PlanNotAvailable, result.Error!),
+            CheckoutFailure.WrongPurpose => Problems.Validation(http, new Dictionary<string, string[]> { ["purpose"] = new[] { result.Error! } }),
+            CheckoutFailure.KeyReused => Problems.Create(http, StatusCodes.Status422UnprocessableEntity, Problems.IdempotencyKeyReused, result.Error!),
+            CheckoutFailure.NotFound => Problems.Create(http, StatusCodes.Status404NotFound, Problems.NotFound, result.Error!),
+            CheckoutFailure.NotAvailable or CheckoutFailure.ProviderUnavailable => Problems.Create(http, StatusCodes.Status502BadGateway, Problems.PaymentProviderUnavailable, result.Error!),
+            _ => Problems.Create(http, StatusCodes.Status409Conflict, Problems.CheckoutFinal, result.Error ?? "This checkout has already ended."),
+        };
+    }
+
+    /// <summary>A checkout this token started (anything else is "not found"), optionally acted on, as its status.</summary>
+    private static async Task<IResult> CheckoutActionAsync(HttpContext http, Guid id, CheckoutService checkout, ICheckoutStore store, Func<CheckoutSession, CancellationToken, Task<CheckoutResult>>? action)
+    {
+        var session = await checkout.FindAsync(id, http.RequestAborted);
+        if (session == null || session.CreatedBy != TokenActor(http)) return Problems.Create(http, StatusCodes.Status404NotFound, Problems.NotFound, "No such checkout.");
+        if (action != null) session = (await action(session, http.RequestAborted)).Session ?? session;
+
+        store.Reset();
+        var subscription = session.TenantId is int tenant ? await store.FindSubscriptionAsync(tenant, http.RequestAborted) : null;
+        var found = await store.FindPriceAsync(session.PlanPriceId, http.RequestAborted);
+        return Results.Ok(new CheckoutStatusResponse(
+            session.Id, session.Status.ToString(), subscription?.Status.ToString(),
+            found is var (plan, price) ? new PlanSummaryResponse(plan.Id, price.Id, plan.Name, price.Cycle.ToString(), Money(price.Amount, price.Currency)) : null,
+            subscription?.CurrentPeriodEndUtc is DateTime next && session.Status == CheckoutStatus.Active ? DateOnly.FromDateTime(next) : null,
+            Message(session.Status)));
+    }
+
+    /// <summary>Design 7.5's texts for the website.</summary>
+    private static string Message(CheckoutStatus status) => status switch
+    {
+        CheckoutStatus.Created or CheckoutStatus.AwaitingApproval => "Continue to PayPal to approve the subscription.",
+        CheckoutStatus.Approved => "Confirming your subscription…",
+        CheckoutStatus.Active => "Your subscription is active. Check your email to set your password, or go to the app.",
+        CheckoutStatus.Cancelled or CheckoutStatus.Expired => "Checkout was not completed. You can try again.",
+        _ => "We could not activate your subscription. Please contact us.",
+    };
+
+    public sealed record CheckoutRequest(Guid? PlanPriceId, string? Purpose, string? ReturnUrl, string? CancelUrl);
+
+    public sealed record CheckoutCreatedResponse(Guid CheckoutSessionId, string ApprovalUrl, DateTime ExpiresAt);
+
+    public sealed record PlanSummaryResponse(Guid PlanId, Guid PlanPriceId, string Name, string BillingCycle, MoneyResponse Price);
+
+    public sealed record CheckoutStatusResponse(Guid CheckoutSessionId, string Status, string? SubscriptionStatus, PlanSummaryResponse? Plan, DateOnly? NextBillingDate, string Message);
 
     public sealed record SignupOwner(string? FirstName, string? LastName, string? Email, string? Mobile);
 

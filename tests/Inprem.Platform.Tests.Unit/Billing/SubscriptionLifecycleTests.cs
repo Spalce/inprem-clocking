@@ -280,6 +280,8 @@ public class SubscriptionLifecycleTests
         price.Retire();
         Assert.Throws<ArgumentException>(() => CheckoutSession.Create(CheckoutPurpose.Convert, 7, null, price, "https://app.test/r", "https://app.test/c", "k", "u", Now));
         Assert.NotNull(CheckoutSession.Create(CheckoutPurpose.New, null, Guid.NewGuid(), Catalog().Price, "https://site.test/r", "https://site.test/c", "k", "signup:1", Now));
+        Assert.NotNull(CheckoutSession.Create(CheckoutPurpose.New, 7, Guid.NewGuid(), Catalog().Price, "https://site.test/r", "https://site.test/c", "k", "signup:1", Now)); // the signup's organization
+        Assert.Throws<ArgumentException>(() => CheckoutSession.Create(CheckoutPurpose.Convert, 7, Guid.NewGuid(), Catalog().Price, "https://site.test/r", "https://site.test/c", "k", "u", Now));
     }
 
     [Theory]

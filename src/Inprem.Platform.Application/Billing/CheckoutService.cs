@@ -56,14 +56,32 @@ public enum CheckoutSource
     Reconciliation,
 }
 
-public sealed record StartCheckout(CheckoutPurpose Purpose, int TenantId, Guid PlanPriceId, string ReturnUrl, string CancelUrl, string IdempotencyKey, string Actor);
+public sealed record StartCheckout(CheckoutPurpose Purpose, int TenantId, Guid PlanPriceId, string ReturnUrl, string CancelUrl, string IdempotencyKey, string Actor, Guid? SignupId = null);
+
+/// <summary>Why a checkout call was refused (the website API maps each to its problem code).</summary>
+public enum CheckoutFailure
+{
+    /// <summary>Online payment is not set up (PayPal not configured).</summary>
+    NotAvailable,
+    KeyReused,
+    ReturnUrlNotAllowed,
+    PlanNotAvailable,
+
+    /// <summary>The purpose does not fit the subscription's state.</summary>
+    WrongPurpose,
+    NotFound,
+    ProviderUnavailable,
+
+    /// <summary>The checkout failed verification (or PayPal declined).</summary>
+    CheckoutFailed,
+}
 
 /// <summary>The result of a checkout call: the session (when there is one) or a message for the person.</summary>
-public sealed record CheckoutResult(bool Succeeded, CheckoutSession? Session, string? Error)
+public sealed record CheckoutResult(bool Succeeded, CheckoutSession? Session, string? Error, CheckoutFailure? Failure = null)
 {
     public static CheckoutResult Ok(CheckoutSession session) => new(true, session, null);
 
-    public static CheckoutResult Fail(string error, CheckoutSession? session = null) => new(false, session, error);
+    public static CheckoutResult Fail(string error, CheckoutSession? session = null, CheckoutFailure failure = CheckoutFailure.CheckoutFailed) => new(false, session, error, failure);
 }
 
 /// <summary>
@@ -102,38 +120,38 @@ public sealed class CheckoutService
     /// </summary>
     public async Task<CheckoutResult> StartAsync(StartCheckout request, CancellationToken ct = default)
     {
-        if (!_paypal.IsConfigured) return CheckoutResult.Fail("Online payment is not available yet. Please contact us.");
-        if (request.Purpose == CheckoutPurpose.New) return CheckoutResult.Fail("New organizations check out from the website (Phase 3).");
+        if (!_paypal.IsConfigured) return CheckoutResult.Fail("Online payment is not available yet. Please contact us.", failure: CheckoutFailure.NotAvailable);
+        if (request.Purpose == CheckoutPurpose.New && request.SignupId == null) return CheckoutResult.Fail("Only a website signup checks out as new.", failure: CheckoutFailure.WrongPurpose);
 
         var existing = await _store.FindByIdempotencyKeyAsync(request.IdempotencyKey.Trim(), ct).ConfigureAwait(false);
         if (existing != null)
         {
             return existing.TenantId == request.TenantId && existing.PlanPriceId == request.PlanPriceId && existing.Purpose == request.Purpose
                 ? (existing.Status == CheckoutStatus.Failed ? CheckoutResult.Fail(existing.FailureReason ?? "This checkout failed.", existing) : CheckoutResult.Ok(existing))
-                : CheckoutResult.Fail("This request was already used for a different checkout.");
+                : CheckoutResult.Fail("This request was already used for a different checkout.", failure: CheckoutFailure.KeyReused);
         }
 
         if (!_paypal.IsAllowedReturnUrl(request.ReturnUrl) || !_paypal.IsAllowedReturnUrl(request.CancelUrl))
-            return CheckoutResult.Fail("The return address is not allowed.");
+            return CheckoutResult.Fail("The return address is not allowed.", failure: CheckoutFailure.ReturnUrlNotAllowed);
 
         var found = await _store.FindPriceAsync(request.PlanPriceId, ct).ConfigureAwait(false);
-        if (found is not var (plan, price) || !plan.IsOffered || price.Status != PlanStatus.Active) return CheckoutResult.Fail("That plan or price is not offered.");
-        if (price.PayPalPlanId == null) return CheckoutResult.Fail("That price is not available for online payment yet.");
+        if (found is not var (plan, price) || !plan.IsOffered || price.Status != PlanStatus.Active) return CheckoutResult.Fail("That plan or price is not offered.", failure: CheckoutFailure.PlanNotAvailable);
+        if (price.PayPalPlanId == null) return CheckoutResult.Fail("That price is not available for online payment yet.", failure: CheckoutFailure.PlanNotAvailable);
 
         var subscription = await _store.FindSubscriptionAsync(request.TenantId, ct).ConfigureAwait(false);
-        if (subscription == null) return CheckoutResult.Fail("This organization has no subscription.");
+        if (subscription == null) return CheckoutResult.Fail("This organization has no subscription.", failure: CheckoutFailure.NotFound);
         var refusal = Refusal(request.Purpose, subscription, price);
-        if (refusal != null) return CheckoutResult.Fail(refusal);
+        if (refusal != null) return CheckoutResult.Fail(refusal, failure: CheckoutFailure.WrongPurpose);
 
         var now = _clock.UtcNow;
         CheckoutSession session;
         try
         {
-            session = CheckoutSession.Create(request.Purpose, request.TenantId, null, price, request.ReturnUrl, request.CancelUrl, request.IdempotencyKey, request.Actor, now);
+            session = CheckoutSession.Create(request.Purpose, request.TenantId, request.SignupId, price, request.ReturnUrl, request.CancelUrl, request.IdempotencyKey, request.Actor, now);
         }
         catch (ArgumentException e)
         {
-            return CheckoutResult.Fail(e.Message);
+            return CheckoutResult.Fail(e.Message, failure: CheckoutFailure.WrongPurpose);
         }
         await _store.AddAsync(session, ct).ConfigureAwait(false);
         await _store.SaveChangesAsync(ct).ConfigureAwait(false); // the idempotency key is taken before PayPal is called
@@ -154,9 +172,10 @@ public sealed class CheckoutService
         catch (PaymentProviderException e)
         {
             session.Fail($"PayPal: {e.Message}", now);
+            session.ReleaseKey(); // the same request may be sent again (design 7.7)
             await AuditAsync(request.Actor, "checkout.failed", session, $"Could not start: {e.Message}{Debug(e)}", ct).ConfigureAwait(false);
             await _store.SaveChangesAsync(ct).ConfigureAwait(false);
-            return CheckoutResult.Fail("PayPal is not answering right now. Please try again in a few minutes.", session);
+            return CheckoutResult.Fail("PayPal is not answering right now. Please try again in a few minutes.", session, CheckoutFailure.ProviderUnavailable);
         }
 
         await AuditAsync(request.Actor, "checkout.started", session, $"{Purpose(session.Purpose)}: {plan.Name}, {PlanService.Describe(price)} (PayPal {session.ExternalSubscriptionId})", ct).ConfigureAwait(false);
@@ -166,6 +185,8 @@ public sealed class CheckoutService
 
     private static string? Refusal(CheckoutPurpose purpose, Subscription s, PlanPrice price) => purpose switch
     {
+        CheckoutPurpose.New when s.Status != SubscriptionStatus.PendingActivation || s.Mode != BillingMode.PayPal =>
+            "This signup has nothing left to pay (use convert, resubscribe or change_plan for an organization).",
         CheckoutPurpose.Convert when s.Status is not (SubscriptionStatus.Trialing or SubscriptionStatus.Expired) || s.Mode == BillingMode.Free =>
             "Only an organization on a trial can start paying this way.",
         CheckoutPurpose.Resubscribe when s.Status is not (SubscriptionStatus.Expired or SubscriptionStatus.Canceled or SubscriptionStatus.Suspended) =>
@@ -342,6 +363,8 @@ public sealed class CheckoutService
         var found = await _store.FindPriceAsync(session.PlanPriceId, ct).ConfigureAwait(false) ?? throw new InvalidOperationException("The price is gone.");
         return (subscription, found.Price);
     }
+
+    public Task<CheckoutSession?> FindAsync(Guid sessionId, CancellationToken ct = default) => _store.FindAsync(sessionId, ct);
 
     /// <summary>The organization's checkout with this idempotency key (the Billing page's return address carries it).</summary>
     public async Task<CheckoutSession?> FindForTenantAsync(int tenantId, string idempotencyKey, CancellationToken ct = default)

@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 3 Website API (in progress; Phase 2's sandbox checks P2-1 and P2-4 still open)
-- **Next step:** Phase 3 / Step 3.4 — Checkout endpoints (`POST /checkout-sessions`, status, confirm, cancel)
+- **Next step:** Phase 3 / Step 3.5 — Existing customers (billing-access links, account subscription and invoices)
 - **Branch:** `mt/phase3` (from `mt/integration` `9ac52c3`)
 
 ## Phase status
@@ -16,7 +16,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | 0 Foundation | Implementation complete (0.1–0.8, 0.10; 0.9 moved to Phase 7). Deployment-dependent exit checks (P0-6 Level 3, P0-9 real copy, P0-11, P0-12) wait for the test-site deployment (developer's decision: deploy after all phases) | — | — |
 | 1 Provider Console | Implementation complete (1.1–1.7), Phase 1 bundle rehearsed. Waiting: developer walkthrough (P1-1), onboarding under 3 minutes on staging (P1-3) | P1-2, P1-4, P1-5, P1-6, P1-7 (automated); P1-1 automated part | 2026-10-15 (`87ab80d`, developer's request, before the P1-1 walkthrough) |
 | 2 PayPal core | Implementation complete (2.1–2.9), Phase 2 bundle rehearsed. Waiting: PayPal sandbox run (P2-1, P2-4) | P2-2, P2-3, P2-5, P2-6, P2-7 (automated); P2-1 and P2-4 with the pretend PayPal | 2026-10-15 (`9ac52c3`, developer's request, before the sandbox run) |
-| 3 Website API | In progress (Steps 3.1–3.3 done) | — | — |
+| 3 Website API | In progress (Steps 3.1–3.4 done) | — | — |
 | 4 Invoices | Not started | — | — |
 | 5 Twilio | Not started | — | — |
 | 6 Staff alerts | Not started | — | — |
@@ -75,6 +75,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **PayPal sandbox smoke test of steps 2.2 to 2.8 not run yet.** Locally it also needs, besides the keys: `PayPal:ReturnUrlAllowList:0` = the app's https address (e.g. `https://localhost:7xxx`), `PayPal:PlanReturnUrl` = that address + `/Billing/PayPalReturn`, `PayPal:PlanCancelUrl` = that address + `/Billing`. It needs the sandbox keys (`PayPal:ClientId`, `PayPal:Secret`) in user-secrets; the client is tested against a pretend PayPal only.
 - **Low advisory GHSA-g4vj-cjjj-v7hg (NuGet.Packaging / NuGet.Protocol 6.11.0)** is reported in the app and test projects. It was not introduced by step 2.2 (it comes with the existing design-time packages). Low severity, so the CI gate does not fail; it is reviewed with the other packages in Phase 7.
 - **PayPal sandbox access from Ghana (2026-10-15).** The developer is in Ghana, where PayPal may only allow send-only personal accounts; it is unclear whether such an account can open developer.paypal.com. If not, the project owner creates the sandbox app on Inprem's PayPal Business account and shares the two sandbox keys privately. ngrok is not affected.
+- **Website return addresses must be on the PayPal allow-list (step 3.4).** The website's return and cancel URLs are checked against `PayPal:ReturnUrlAllowList` (refused with `return_url_not_allowed`). When the website goes live, add its origins there too, next to the app's (`https://inpremclockin.org`, `https://www.inpremclockin.org`, staging).
 - **CAPTCHA needs its secret (step 3.3).** Registration refuses every request until `Captcha:Secret` is set (fail closed). For local testing, Cloudflare publishes test keys: the secret `1x0000000000000000000000000000000AA` always passes and goes in user-secrets (`dotnet user-secrets set "Captcha:Secret" "<test secret>" --project InpremClockingApp`). The real secret comes from whoever runs the website's Cloudflare account (needs list, item 8).
 - **Owner email already has an account (step 3.3).** The draft's `email_in_use` (409) is used, as agreed. It tells a caller that an email has an account; CAPTCHA and the write rate limit make that slow to abuse. Revisit with the web team if they prefer an invitation instead (the console already invites existing accounts).
 - **Signup status "Active" (step 3.3).** `GET /signups/{id}` answers `Active` once the email is verified and the subscription is Trialing or Active, `Verified` when verified but not yet paid (subscribe mode), else `PendingVerification`.
@@ -119,6 +120,22 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-15 — Phase 3 / Step 3.4 — Checkout endpoints (J2, J5).**
+  - **`POST /checkout-sessions`** (signup or billing-access token; `Idempotency-Key`): body `planPriceId`, `purpose`, `returnUrl`, `cancelUrl`. Calls the Phase 2 `CheckoutService.StartAsync` for the token's organization. Answers 201 `{ checkoutSessionId, approvalUrl, expiresAt }`.
+    - A signup token checks out as `new` (the signup's organization, whose subscription waits as PendingActivation). A billing token checks out as `convert`, `resubscribe` or `change_plan`. A mismatch gives `validation_failed` on `purpose`.
+    - **Codes:** `return_url_not_allowed` (not an allow-listed https origin); `plan_not_available` (not offered or not published to PayPal); `validation_failed` (purpose does not fit the state); 422 `idempotency_key_reused`; **502 `payment_provider_unavailable`**, safe to retry with the same key.
+    - The checkout's own idempotency key is the token id plus the header, so two tokens never share one.
+  - **`GET /checkout-sessions/{id}`, `POST …/confirm`, `POST …/cancel`:** only the token that started the checkout (anything else is 404). Answers: status, subscription status, plan summary (plan, price, cycle, amount), next billing date once Active, and the design 7.5 message. Confirm re-reads PayPal (idempotent, as all sources). Cancel marks it Cancelled, or returns the final status if it already ended.
+  - **Phase 2 changes:**
+    - `CheckoutService` now supports `new` (`StartCheckout.SignupId`; refused unless the subscription waits as PendingActivation).
+    - Every refusal carries a `CheckoutFailure` reason; `FindAsync` was added.
+    - `CheckoutSession` allows `new` with its signup's organization.
+    - **A checkout that never reached PayPal gives its idempotency key back** (`ReleaseKey`), so the API's "retry with the same key" works. It stays Failed and audited.
+  - **Tests:**
+    - Unit: the input rule for `new` with an organization.
+    - Integration +5 (`CheckoutApiTests`): J2 end to end (201, the same key returns the same checkout, AwaitingApproval until PayPal confirms, then Active with the next billing date and Active in the database, nothing left to pay after); other tokens get 404; every refusal code; J5 cancel (twice; the organization unchanged); a PayPal outage → 502 then 201 with the same key; a billing token converts a trial.
+  - **Results:** Unit 162, Architecture 11, Baseline 312, Integration 179, UI 5. No model drift.
 
 - **2026-10-15 — Local database: platform migration M1i applied.** Backup `DB_A65635_inpremdb_before_M1i_20261015.bak` taken first and verified; verify `1|1|1|0|0`; app data fingerprint unchanged.
 

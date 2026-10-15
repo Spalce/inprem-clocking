@@ -41,8 +41,11 @@ public sealed class FakePaymentProvider : IPaymentProvider
     /// <summary>What webhook verification answers.</summary>
     public Func<WebhookMessage, bool> Verify { get; set; } = _ => true;
 
+    /// <summary>Origins allowed for return and cancel addresses (the app's own by default; a test adds its website's).</summary>
+    public HashSet<string> AllowedOrigins { get; } = new(StringComparer.OrdinalIgnoreCase) { AllowedOrigin };
+
     public bool IsAllowedReturnUrl(string url) =>
-        Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps && uri.GetLeftPart(UriPartial.Authority) == AllowedOrigin;
+        Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps && AllowedOrigins.Contains(uri.GetLeftPart(UriPartial.Authority));
 
     public Task<string> CreateProductAsync(string name, string? description, string requestId, CancellationToken ct = default)
     {
