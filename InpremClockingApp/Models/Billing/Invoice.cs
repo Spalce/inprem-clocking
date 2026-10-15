@@ -1,3 +1,6 @@
+// LEGACY (multi-tenancy Phase 2 step 2.9): the old invoice table, no longer written or read by the
+// app; paid invoices were carried into platform payments by migration M5. Kept mapped only until
+// migration M6 (Phase 7) drops the table. Invoices return in Phase 4 (platform).
 using System.ComponentModel.DataAnnotations;
 
 namespace InpremClockingApp.Models.Billing;

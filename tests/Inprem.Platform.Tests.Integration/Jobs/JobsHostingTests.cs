@@ -105,7 +105,10 @@ public class JobsHostingTests : IAsyncLifetime
 
         Assert.False(app.Services.GetRequiredService<IOptions<JobsOptions>>().Value.RunServer); // appsettings.json default
         Assert.False(ServerHost(app).IsRunning);
-        Assert.DoesNotContain(app.Services.GetServices<IHostedService>(), s => s is BillingBackgroundService);
+        // The old billing worker's class itself was removed in Phase 2 step 2.9; no hosted service of that name remains.
+        Assert.DoesNotContain(app.Services.GetServices<IHostedService>(), s => s.GetType().Name == "BillingBackgroundService");
+        Assert.Null(typeof(InpremClockingApp.Provider.ProviderPolicies).Assembly.GetType("InpremClockingApp.Services.BillingBackgroundService"));
+        Assert.Null(typeof(InpremClockingApp.Provider.ProviderPolicies).Assembly.GetType("InpremClockingApp.Services.BillingService"));
     }
 
     [Fact]

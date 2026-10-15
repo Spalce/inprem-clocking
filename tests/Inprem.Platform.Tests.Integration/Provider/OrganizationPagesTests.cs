@@ -99,7 +99,7 @@ public class OrganizationPagesTests : IClassFixture<ProviderFixture>
         {
             var tenant = await app.Tenants.IgnoreQueryFilters().SingleAsync(t => t.Id == tenantId);
             Assert.Equal(("Acme Community Centre", "America/Chicago", "1 Test Street"), (tenant.Name, tenant.TimeZoneId, tenant.Address));
-            Assert.True(await app.Subscriptions.IgnoreQueryFilters().AnyAsync(s => s.TenantId == tenantId)); // old app's billing row
+            Assert.False(await app.Subscriptions.IgnoreQueryFilters().AnyAsync(s => s.TenantId == tenantId)); // no old billing row since Phase 2 step 2.9
             var account = await app.Users.IgnoreQueryFilters().SingleAsync(u => u.Email == ownerEmail);
             Assert.Null(account.PasswordHash);
             Assert.Equal(tenantId, account.TenantId);

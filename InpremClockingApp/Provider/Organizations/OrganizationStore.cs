@@ -13,7 +13,6 @@ using InpremClockingApp.Models.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using LegacySubscription = InpremClockingApp.Models.Billing.Subscription;
 using Subscription = Inprem.Platform.Domain.Billing.Subscription;
 
 namespace InpremClockingApp.Provider.Organizations;
@@ -156,13 +155,8 @@ public sealed class OrganizationStore : IOrganizationStore
         _app.Tenants.Add(tenant);
         await _app.SaveChangesAsync(ct);
 
-        // The approved app's own billing row, which its (C4) pages still expect until Phase 2 replaces them.
-        _app.Subscriptions.Add(new LegacySubscription
-        {
-            TenantId = tenant.Id, Amount = 0, Currency = "USD", BillingCycle = Models.Billing.BillingCycle.Monthly,
-            Status = Models.Billing.SubscriptionStatus.Active, CurrentPeriodStart = now, CurrentPeriodEnd = now.AddMonths(1), CreatedAt = now,
-        });
-        await _app.SaveChangesAsync(ct);
+        // No row in the old dbo.Subscriptions any more (Phase 2 step 2.9): the platform subscription,
+        // added below in the same transaction, is the only billing record.
 
         var ownerId = provisioning.ExistingOwnerUserId;
         var isNew = ownerId == null;

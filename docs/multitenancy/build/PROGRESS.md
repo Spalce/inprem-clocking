@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 2 PayPal core (in progress)
-- **Next step:** Phase 2 / Step 2.9 — Remove replaced billing code (C4; migration M5 moves any old billing rows first); then the Phase 2 bundle, the sandbox end-to-end run (P2-1, P2-4; needs the PayPal sandbox keys, a public https address such as ngrok, and `PayPal:WebhookId`) and the exit review
+- **Next step:** Phase 2 — bundle (M1f, M1g, M5), sandbox end-to-end run (P2-1, P2-4; needs the PayPal sandbox keys, a public https address such as ngrok, and `PayPal:WebhookId`) and exit review
 - **Branch:** `mt/phase2` (from `mt/integration` `87ab80d`)
 
 ## Phase status
@@ -15,7 +15,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | G0 Preparation | Done | G0-2 (on test data; see follow-ups), G0-4, CI, OpenAPI valid, no existing app file changed | 2026-10-13 (`ee940f8`) |
 | 0 Foundation | Implementation complete (0.1–0.8, 0.10; 0.9 moved to Phase 7). Deployment-dependent exit checks (P0-6 Level 3, P0-9 real copy, P0-11, P0-12) wait for the test-site deployment (developer's decision: deploy after all phases) | — | — |
 | 1 Provider Console | Implementation complete (1.1–1.7), Phase 1 bundle rehearsed. Waiting: developer walkthrough (P1-1), onboarding under 3 minutes on staging (P1-3) | P1-2, P1-4, P1-5, P1-6, P1-7 (automated); P1-1 automated part | 2026-10-15 (`87ab80d`, developer's request, before the P1-1 walkthrough) |
-| 2 PayPal core | In progress (Steps 2.1–2.8 done) | — | — |
+| 2 PayPal core | Implementation complete (Steps 2.1–2.9); bundle, sandbox run and exit review next | — | — |
 | 3 Website API | Not started | — | — |
 | 4 Invoices | Not started | — | — |
 | 5 Twilio | Not started | — | — |
@@ -74,6 +74,8 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **`appsettings.Production.json` on the server (step 0.10).** `prepare-site.ps1` never ships it (a local publish would include the developer's copy). Upload with Web Deploy *without* "remove additional files", or move the connection string into the host's settings.
 - **PayPal sandbox smoke test of steps 2.2 to 2.8 not run yet.** Locally it also needs, besides the keys: `PayPal:ReturnUrlAllowList:0` = the app's https address (e.g. `https://localhost:7xxx`), `PayPal:PlanReturnUrl` = that address + `/Billing/PayPalReturn`, `PayPal:PlanCancelUrl` = that address + `/Billing`. It needs the sandbox keys (`PayPal:ClientId`, `PayPal:Secret`) in user-secrets; the client is tested against a pretend PayPal only.
 - **Low advisory GHSA-g4vj-cjjj-v7hg (NuGet.Packaging / NuGet.Protocol 6.11.0)** is reported in the app and test projects. It was not introduced by step 2.2 (it comes with the existing design-time packages). Low severity, so the CI gate does not fail; it is reviewed with the other packages in Phase 7.
+- **Old billing tables still mapped (step 2.9).** `Models/Billing` (Subscription, Invoice and their enums) stays as table mappings in `ApplicationDbContext`, marked legacy, so the app's schema does not change before M6 (Phase 7) drops the tables. Nothing reads or writes them any more. This is a deviation from the step text's "remove Models/Billing": removing the mappings would make the next app migration drop the tables early.
+- **Old billing rows to review (step 2.9).** M5 moves paying Active/PastDue old subscriptions to Invoiced; others are left and counted (`LeftForReview`). Unpaid or void old invoices stay for Phase 4. Locally: both paying old subscriptions moved, 1 paid invoice became a payment, 1 void invoice left.
 - **People limit not enforced yet (step 2.7).** `AccessStatus.CanAddPeople` knows the plan's limit (or the console override), but refusing a new staff member or volunteer means touching the approved add-person flows (a C3 change). Decide with the developer whether, and how, before plans with limits are sold.
 - **Kiosk buttons on a page already open (step 2.7).** If an organization becomes read-only while a kiosk page is open, its buttons get the 403 and the approved page shows its usual "Oops! An error occured" toast (the approved page is not changed). Opening the kiosk again shows the friendly "kiosk is paused" page.
 - **Owner emails for payment problems wait for Phase 5 (step 2.5).** Webhooks change the subscription (past due, suspended, cancelled, expired) and audit it, but only activation, plan change and the owner's own cancel email the owners so far. The payment-failed, suspended and similar messages are in the Phase 5 alert catalogue.
@@ -112,6 +114,15 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-15 — Local database: platform migration M5 applied.** Backup `DB_A65635_inpremdb_before_M5_20261015.bak` taken first and verified; verify before `0|2|0|0|1|0|2|1`, after `1|2|2|2|1|1|0|1`; app data fingerprint unchanged.
+
+- **2026-10-15 — Phase 2 / Step 2.9 — Old billing code removed (C4), its rows moved (migration M5).**
+  - **M5** (platform, data only): paid old invoices become offline payments; paying Active/PastDue old subscriptions still on the M1f Free backfill become Invoiced (still Active) with their old period; one note per paying old subscription with its old terms. Re-runnable; down reverses exactly what it added. Rehearsed on LocalDB with synthetic rows.
+  - **Removed:** `Services/BillingService.cs`, `Services/BillingBackgroundService.cs`, the `BillingService` registration in `Program.cs`. The organization wizard no longer writes an old `dbo.Subscriptions` row (the platform subscription is the only billing record).
+  - **Kept:** `Models/Billing` as legacy table mappings until M6 (see the follow-up); nothing reads or writes them.
+  - **Tests:** the wizard test now expects no old billing row; the jobs test checks that the old worker and service types are gone.
+  - **Results:** Unit 161, Architecture 11, Baseline 312, Integration 157, UI 5. No model drift in either context.
 
 - **2026-10-15 — Phase 2 / Step 2.8 — In-app Billing page and console subscription actions (C3-1).**
   - **App site, `Areas/Billing`** (the organization's Owner only; other admins get access denied; support sessions are refused as before; never blocked by read-only mode):

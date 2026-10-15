@@ -30,9 +30,8 @@ builder.Services.AddScoped<StaffClockingService>();
 builder.Services.AddScoped<VolunteerClockingService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<EmailService>();
-builder.Services.AddScoped<BillingService>();
-// BillingBackgroundService is no longer registered (C2-2, step 0.8): background work runs as
-// Hangfire jobs on the App site (AddJobs below). Its billing sweep is replaced in Phase 2.
+// The old BillingService and BillingBackgroundService were removed in multi-tenancy Phase 2
+// step 2.9: billing is the platform's (PayPal, Inprem.Platform.Application.Billing).
 
 // Multi-tenancy (see multi-tenancy.md): resolves the signed-in user's tenant from a claim on
 // their auth cookie, and is the sole source ApplicationDbContext's query filters read from.

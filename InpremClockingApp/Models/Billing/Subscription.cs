@@ -1,3 +1,6 @@
+// LEGACY (multi-tenancy Phase 2 step 2.9): the old billing table, no longer written or read by the
+// app; its rows were carried into the platform tables by migration M5. Kept mapped only so the
+// schema stays as it is until migration M6 (Phase 7) drops the table. Use Inprem.Platform.Domain.Billing.
 using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 

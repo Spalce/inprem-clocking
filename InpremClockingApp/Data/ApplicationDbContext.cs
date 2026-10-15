@@ -120,7 +120,9 @@ namespace InpremClockingApp.Data
             builder.Entity<Subscription>().Property(e => e.Amount).HasPrecision(10, 2);
             builder.Entity<Invoice>().Property(e => e.Amount).HasPrecision(10, 2);
 
-            // Backs BillingService.GenerateInvoiceAsync's idempotency check ("does a non-void
+            // (The old tables only: BillingService was removed in multi-tenancy Phase 2 step 2.9 and
+            // the tables are dropped in Phase 7, M6. Kept mapped so the app's schema does not change.)
+            // Backed BillingService.GenerateInvoiceAsync's idempotency check ("does a non-void
             // invoice already exist for this period") with a real DB constraint, the same
             // defense-in-depth every other one-row-per-tenant invariant in this schema has
             // (Subscription). Filtered (not a plain unique index) because voiding a
