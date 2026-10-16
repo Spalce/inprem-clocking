@@ -52,6 +52,10 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<Subscription> Subscriptions { get; set; } = null!;
     public DbSet<CheckoutSession> CheckoutSessions { get; set; } = null!;
     public DbSet<Payment> Payments { get; set; } = null!;
+    public DbSet<Invoice> Invoices { get; set; } = null!;
+
+    /// <summary>The database sequence behind invoice numbers (<c>INV-100001</c>, …; M1k).</summary>
+    public const string InvoiceNumberSequence = "InvoiceNumbers";
     public DbSet<BillingEvent> BillingEvents { get; set; } = null!;
     public DbSet<Inprem.Platform.Domain.PublicApi.ApiToken> ApiTokens { get; set; } = null!;
     public DbSet<Inprem.Platform.Domain.PublicApi.IdempotencyRecord> IdempotencyRecords { get; set; } = null!;
@@ -266,6 +270,53 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
             payment.HasIndex(p => new { p.Source, p.ExternalId }).IsUnique().HasFilter("[ExternalId] IS NOT NULL");
             payment.HasIndex(p => new { p.TenantId, p.PaidUtc });
             payment.HasOne<Subscription>().WithMany().HasForeignKey(p => p.SubscriptionId).OnDelete(DeleteBehavior.Restrict);
+            payment.Property(p => p.Method).HasConversion<string>().HasMaxLength(20);
+            payment.HasIndex(p => p.InvoiceId);
+            payment.HasOne<Invoice>().WithMany().HasForeignKey(p => p.InvoiceId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Starts above the old billing code's numbers (INV-000001 …, moved as payments by M5).
+        modelBuilder.HasSequence<long>(InvoiceNumberSequence).StartsAt(100001);
+
+        modelBuilder.Entity<Invoice>(invoice =>
+        {
+            invoice.ToTable("Invoices");
+            invoice.HasKey(i => i.Id);
+            invoice.Property(i => i.Id).ValueGeneratedNever();
+            invoice.Property(i => i.Source).HasConversion<string>().HasMaxLength(20);
+            invoice.Property(i => i.Status).HasConversion<string>().HasMaxLength(20);
+            invoice.Property(i => i.Number).HasMaxLength(20).IsUnicode(false);
+            invoice.Property(i => i.Currency).HasMaxLength(3).IsFixedLength().IsUnicode(false);
+            invoice.Property(i => i.Total).HasPrecision(12, 2);
+            invoice.Property(i => i.PaidAmount).HasPrecision(12, 2);
+            invoice.Property(i => i.RefundedAmount).HasPrecision(12, 2);
+            invoice.Property(i => i.Notes).HasMaxLength(Invoice.MaxNotesLength);
+            invoice.Property(i => i.ExternalInvoiceId).HasMaxLength(50).IsUnicode(false);
+            invoice.Property(i => i.PaymentUrl).HasMaxLength(2000);
+            invoice.Property(i => i.CreatedBy).HasMaxLength(300);
+            invoice.Property(i => i.CancelReason).HasMaxLength(500);
+            invoice.Ignore(i => i.Outstanding);
+            invoice.HasIndex(i => i.Number).IsUnique();
+            invoice.HasIndex(i => i.ExternalInvoiceId).IsUnique().HasFilter("[ExternalInvoiceId] IS NOT NULL");
+            // One invoice that is not cancelled per subscription period (the old billing code's rule).
+            invoice.HasIndex(i => new { i.SubscriptionId, i.PeriodStart }).IsUnique()
+                .HasFilter("[SubscriptionId] IS NOT NULL AND [PeriodStart] IS NOT NULL AND [Status] <> 'Cancelled'")
+                .HasDatabaseName("IX_Invoices_OnePerPeriod");
+            invoice.HasIndex(i => new { i.TenantId, i.IssueDate });
+            invoice.HasIndex(i => new { i.Status, i.DueDate });
+            invoice.HasOne<Subscription>().WithMany().HasForeignKey(i => i.SubscriptionId).OnDelete(DeleteBehavior.Restrict);
+            invoice.OwnsMany(i => i.Lines, line =>
+            {
+                line.ToTable("InvoiceLines");
+                line.WithOwner().HasForeignKey("InvoiceId");
+                line.HasKey("InvoiceId", nameof(InvoiceLine.Position));
+                line.Property(l => l.Position).ValueGeneratedNever();
+                line.Property(l => l.Description).HasMaxLength(InvoiceLine.MaxDescriptionLength);
+                line.Property(l => l.Quantity).HasPrecision(8, 2);
+                line.Property(l => l.UnitAmount).HasPrecision(12, 2);
+                line.Ignore(l => l.Amount);
+            });
+            invoice.Navigation(i => i.Lines).UsePropertyAccessMode(PropertyAccessMode.Field);
         });
 
         modelBuilder.Entity<BillingEvent>(billingEvent =>

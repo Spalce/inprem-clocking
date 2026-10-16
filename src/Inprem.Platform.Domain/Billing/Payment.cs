@@ -28,7 +28,13 @@ public sealed class Payment
     public Guid Id { get; private set; }
     public int TenantId { get; private set; }
     public Guid? SubscriptionId { get; private set; }
+
+    /// <summary>The invoice it pays (Phase 4), or null for a subscription payment.</summary>
+    public Guid? InvoiceId { get; private set; }
     public PaymentSource Source { get; private set; }
+
+    /// <summary>How an offline payment was made (null for PayPal, and for payments moved from the old billing code).</summary>
+    public OfflinePaymentMethod? Method { get; private set; }
 
     /// <summary>PayPal sale id (unique), or the offline reference.</summary>
     public string? ExternalId { get; private set; }
@@ -40,8 +46,10 @@ public sealed class Payment
     public decimal RefundedAmount { get; private set; }
     public string RecordedBy { get; private set; }
 
-    public static Payment Record(int tenantId, Guid? subscriptionId, PaymentSource source, string? externalId, decimal amount, string currency, DateTime paidUtc, string recordedBy)
+    public static Payment Record(int tenantId, Guid? subscriptionId, PaymentSource source, string? externalId, decimal amount, string currency, DateTime paidUtc, string recordedBy,
+        Guid? invoiceId = null, OfflinePaymentMethod? method = null)
     {
+        if (source == PaymentSource.PayPal && method != null) throw new ArgumentException("A PayPal payment has no offline method.", nameof(method));
         if (paidUtc.Kind != DateTimeKind.Utc) throw new ArgumentException("Times are stored in UTC.", nameof(paidUtc));
         if (amount <= 0 || decimal.Round(amount, 2) != amount) throw new ArgumentOutOfRangeException(nameof(amount), "A positive amount with at most two decimals.");
         var code = (currency ?? "").Trim().ToUpperInvariant();
@@ -50,7 +58,7 @@ public sealed class Payment
         if (externalId?.Length > 100) throw new ArgumentException("At most 100 characters.", nameof(externalId));
         return new Payment
         {
-            Id = Guid.NewGuid(), TenantId = tenantId, SubscriptionId = subscriptionId, Source = source, ExternalId = externalId,
+            Id = Guid.NewGuid(), TenantId = tenantId, SubscriptionId = subscriptionId, InvoiceId = invoiceId, Source = source, ExternalId = externalId, Method = method,
             Amount = amount, Currency = code, Status = PaymentStatus.Completed, PaidUtc = paidUtc, RecordedBy = recordedBy,
         };
     }

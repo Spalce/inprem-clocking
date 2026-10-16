@@ -33,6 +33,7 @@ public sealed class PayPalPaymentProvider : IPaymentProvider
     private readonly PayPalAccessTokens _tokens;
     private readonly ILogger<PayPalPaymentProvider> _log;
     private readonly Lazy<PaypalServerSdkClient> _sdk;
+    private readonly PayPalRest _rest;
 
     public PayPalPaymentProvider(IOptions<PayPalOptions> options, IHttpClientFactory httpFactory, PayPalAccessTokens tokens, ILogger<PayPalPaymentProvider> log)
     {
@@ -40,6 +41,7 @@ public sealed class PayPalPaymentProvider : IPaymentProvider
         _http = httpFactory.CreateClient(HttpClientName);
         _tokens = tokens;
         _log = log;
+        _rest = new PayPalRest(_http, tokens);
         _sdk = new Lazy<PaypalServerSdkClient>(() => new PaypalServerSdkClient.Builder()
             .Environment(_options.Mode == PayPalMode.Live ? PaypalServerSdk.Standard.Environment.Production : PaypalServerSdk.Standard.Environment.Sandbox)
             .ClientCredentialsAuth(new ClientCredentialsAuthModel.Builder(_options.ClientId!, _options.Secret!).Build())
@@ -303,37 +305,10 @@ public sealed class PayPalPaymentProvider : IPaymentProvider
         }
     }
 
-    private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, JsonNode body, string? requestId, CancellationToken ct)
-    {
-        try
-        {
-            var token = await _tokens.GetAsync(ct).ConfigureAwait(false);
-            using var request = new HttpRequestMessage(method, path) { Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json") };
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            if (requestId != null) request.Headers.Add("PayPal-Request-Id", requestId);
-            return await _http.SendAsync(request, ct).ConfigureAwait(false);
-        }
-        catch (Exception e) when (e is HttpRequestException or TaskCanceledException or TimeoutException)
-        {
-            throw new PaymentProviderException($"PayPal did not answer ({path}).", null, null, e);
-        }
-    }
+    private Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, JsonNode body, string? requestId, CancellationToken ct) =>
+        _rest.SendAsync(method, path, body, requestId, ct);
 
-    private static async Task<JsonNode> ReadAsync(HttpResponseMessage response, string what, CancellationToken ct)
-    {
-        if (!response.IsSuccessStatusCode)
-            throw new PaymentProviderException($"PayPal could not {what} (HTTP {(int)response.StatusCode}).", (int)response.StatusCode, DebugId(response));
-        var text = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-        try
-        {
-            return JsonNode.Parse(text) ?? new JsonObject();
-        }
-        catch (JsonException e)
-        {
-            throw new PaymentProviderException($"PayPal answered with something that is not JSON ({what}).", (int)response.StatusCode, DebugId(response), e);
-        }
-    }
+    private static Task<JsonNode> ReadAsync(HttpResponseMessage response, string what, CancellationToken ct) => PayPalRest.ReadAsync(response, what, ct);
 
-    private static string? DebugId(HttpResponseMessage response) =>
-        response.Headers.TryGetValues("PayPal-Debug-Id", out var values) ? values.FirstOrDefault() : null;
+    private static string? DebugId(HttpResponseMessage response) => PayPalRest.DebugId(response);
 }

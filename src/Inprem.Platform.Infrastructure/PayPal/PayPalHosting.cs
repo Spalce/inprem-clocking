@@ -12,7 +12,8 @@ public static class PayPalHosting
     /// <summary>
     /// Registers PayPal (Phase 2 step 2.2): options validated at startup, one named HttpClient with
     /// logging, a per-attempt timeout and retries of transient failures (5xx, 408, 429, network).
-    /// Creates send a PayPal-Request-Id, so a retried create is not made twice.
+    /// Creates send a PayPal-Request-Id, so a retried create is not made twice; calls that cannot carry
+    /// one (invoice send, recorded payments and refunds) are not retried.
     /// </summary>
     public static IServiceCollection AddPayPal(this IServiceCollection services, IConfiguration configuration)
     {
@@ -36,12 +37,19 @@ public static class PayPalHosting
             {
                 var options = context.ServiceProvider.GetRequiredService<IOptions<PayPalOptions>>().Value;
                 pipeline.AddTimeout(TimeSpan.FromSeconds(options.TimeoutSeconds * 3));
-                pipeline.AddRetry(new HttpRetryStrategyOptions { MaxRetryAttempts = 3, UseJitter = true, Delay = TimeSpan.FromSeconds(1) });
+                var retry = new HttpRetryStrategyOptions { MaxRetryAttempts = 3, UseJitter = true, Delay = TimeSpan.FromSeconds(1) };
+                var transient = retry.ShouldHandle;
+                // A call PayPal cannot make safe to repeat (no PayPal-Request-Id) is never retried (step 4.1).
+                retry.ShouldHandle = args => args.Context.GetRequestMessage()?.Options.TryGetValue(PayPalRest.NoRetry, out var noRetry) == true && noRetry
+                    ? PredicateResult.False()
+                    : transient(args);
+                pipeline.AddRetry(retry);
                 pipeline.AddTimeout(TimeSpan.FromSeconds(options.TimeoutSeconds));
             });
 
         services.AddSingleton<PayPalAccessTokens>();
         services.AddSingleton<IPaymentProvider, PayPalPaymentProvider>();
+        services.AddSingleton<IInvoiceProvider, PayPalInvoiceProvider>();
         return services;
     }
 

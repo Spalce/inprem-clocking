@@ -29,11 +29,12 @@ public sealed record WebhookMessage(IReadOnlyDictionary<string, string> Headers,
 /// <summary>A PayPal call failed (after retries); never carries payloads or personal data.</summary>
 public sealed class PaymentProviderException : Exception
 {
-    public PaymentProviderException(string message, int? statusCode = null, string? debugId = null, Exception? inner = null)
+    public PaymentProviderException(string message, int? statusCode = null, string? debugId = null, Exception? inner = null, string? issue = null)
         : base(message, inner)
     {
         StatusCode = statusCode;
         DebugId = debugId;
+        Issue = issue;
     }
 
     /// <summary>The HTTP status PayPal answered with (null: no answer, e.g. a timeout).</summary>
@@ -41,6 +42,9 @@ public sealed class PaymentProviderException : Exception
 
     /// <summary>PayPal's <c>PayPal-Debug-Id</c>, for PayPal support.</summary>
     public string? DebugId { get; }
+
+    /// <summary>PayPal's error code (<c>details[0].issue</c>, else <c>name</c>), e.g. <c>DUPLICATE_INVOICE_NUMBER</c>; never values.</summary>
+    public string? Issue { get; }
 }
 
 /// <summary>

@@ -45,6 +45,9 @@ internal class InpremAppFactory : WebApplicationFactory<Program>
     /// <summary>The pretend PayPal every test host uses.</summary>
     public FakePaymentProvider PayPal { get; } = new();
 
+    /// <summary>The pretend PayPal Invoicing every test host uses (Phase 4).</summary>
+    public FakeInvoiceProvider Invoicing { get; } = new();
+
     public InpremAppFactory(
         string connectionString,
         IReadOnlyDictionary<string, string?>? settings = null,
@@ -99,6 +102,8 @@ internal class InpremAppFactory : WebApplicationFactory<Program>
             services.AddSingleton<Inprem.Platform.Application.PublicApi.ICaptchaVerifier, FakeCaptchaVerifier>();
             services.RemoveAll<Inprem.Platform.Application.Billing.IPaymentProvider>();
             services.AddSingleton<Inprem.Platform.Application.Billing.IPaymentProvider>(PayPal);
+            services.RemoveAll<Inprem.Platform.Application.Billing.IInvoiceProvider>();
+            services.AddSingleton<Inprem.Platform.Application.Billing.IInvoiceProvider>(Invoicing);
 
             _configureServices?.Invoke(services);
         });

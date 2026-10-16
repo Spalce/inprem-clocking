@@ -25,6 +25,7 @@ Whoever deploys runs them, in order, before the new build goes live. Back up the
 | 13 | `20261015175927_M1h_PublicApi` (Phase 3, step 3.1) | `PlatformDbContext` | `platform-M1h-up.idempotent.sql` | `platform-M1h-down.idempotent.sql` | `platform-M1h-verify.sql` | Additive: `platform.ApiTokens` (website API tokens, stored as SHA-256 hashes, unique) and `platform.IdempotencyRecords` (key per endpoint and caller, the first answer, 24 hours). **Apply before the step 3.1 build.** Down drops both tables (tokens stop working; stored answers are lost). |
 | 14 | `20261015194018_M1i_Signups` (Phase 3, step 3.3) | `PlatformDbContext` | `platform-M1i-up.idempotent.sql` | `platform-M1i-down.idempotent.sql` | `platform-M1i-verify.sql` | Additive: `platform.Signups` (one per organization registered on the website: owner, mode, price, verification status, resend count), foreign keys to `dbo.Tenants` and `platform.PlanPrices`. **Apply before the step 3.3 build.** Down drops the table (the organizations stay; their signup history is lost). |
 | 15 | `20261015203907_M1j_BillingAccessCodes` (Phase 3, step 3.5) | `PlatformDbContext` | `platform-M1j-up.idempotent.sql` | `platform-M1j-down.idempotent.sql` | `platform-M1j-verify.sql` | Additive: `platform.BillingAccessCodes` (one-time codes of the emailed billing links, stored as SHA-256 hashes, 15 minutes, single use), foreign key to `dbo.Tenants`. **Apply before the step 3.5 build.** Down drops the table (open links stop working). |
+| 16 | `20261016022134_M1k_Invoices` (Phase 4, step 4.1) | `PlatformDbContext` | `platform-M1k-up.idempotent.sql` | `platform-M1k-down.idempotent.sql` | `platform-M1k-verify.sql` | Additive: `platform.Invoices` and `platform.InvoiceLines` (numbers from the new sequence `platform.InvoiceNumbers`, starting at 100001; one invoice that is not cancelled per subscription period), `InvoiceId` and `Method` on `platform.Payments`, foreign keys to `dbo.Tenants` and the platform tables. **Apply before the step 4.1 build.** Down drops the invoice tables, the sequence and the two payment columns (invoices and offline methods are lost). |
 
 ## All of Phase 0 at once (the bundles)
 
@@ -123,6 +124,8 @@ sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/platform-M1i-up.
 sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/platform-M1i-verify.sql  # expect 1|1|1|<pending>|<verified>
 sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/platform-M1j-up.idempotent.sql
 sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/platform-M1j-verify.sql  # expect 1|1|1|<unused codes>
+sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/platform-M1k-up.idempotent.sql
+sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/platform-M1k-verify.sql  # expect 1|2|1|4|2|<invoices>
 ```
 
 Always pass `-I` (`QUOTED_IDENTIFIER ON`). `sqlcmd` turns it off by default, and statements touching `dbo.AspNetUsers` fail without it, because that table has filtered indexes.

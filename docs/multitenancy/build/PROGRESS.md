@@ -4,8 +4,8 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 
 ## Current position
 
-- **Phase:** 3 Website API (implementation and bundle done; staging checks P3-1 and P3-7 wait for the test site; Phase 2's sandbox checks P2-1 and P2-4 still open)
-- **Next step:** merge `mt/phase3` into `mt/integration` (developer's decision), then Phase 4 / Step 4.1 (invoices)
+- **Phase:** 4 Invoices (in progress; Phase 3 merged; the developer is testing Phases 1 to 3 by hand)
+- **Next step:** Phase 4 / Step 4.2 — Console invoice screens, offline payments and refunds
 - **Branch:** `mt/phase3` (from `mt/integration` `9ac52c3`)
 
 ## Phase status
@@ -16,8 +16,8 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | 0 Foundation | Implementation complete (0.1–0.8, 0.10; 0.9 moved to Phase 7). Deployment-dependent exit checks (P0-6 Level 3, P0-9 real copy, P0-11, P0-12) wait for the test-site deployment (developer's decision: deploy after all phases) | — | — |
 | 1 Provider Console | Implementation complete (1.1–1.7), Phase 1 bundle rehearsed. Waiting: developer walkthrough (P1-1), onboarding under 3 minutes on staging (P1-3) | P1-2, P1-4, P1-5, P1-6, P1-7 (automated); P1-1 automated part | 2026-10-15 (`87ab80d`, developer's request, before the P1-1 walkthrough) |
 | 2 PayPal core | Implementation complete (2.1–2.9), Phase 2 bundle rehearsed. Waiting: PayPal sandbox run (P2-1, P2-4) | P2-2, P2-3, P2-5, P2-6, P2-7 (automated); P2-1 and P2-4 with the pretend PayPal | 2026-10-15 (`9ac52c3`, developer's request, before the sandbox run) |
-| 3 Website API | Implementation complete (3.1–3.7), Phase 3 bundle rehearsed. Waiting: J1–J6 with the PayPal sandbox and the web team's site on staging (P3-1); load test on staging (P3-7) | P3-2, P3-3, P3-4, P3-5, P3-6, P3-8, P3-9 (automated); P3-1 with the demo site and the pretend PayPal | — |
-| 4 Invoices | Not started | — | — |
+| 3 Website API | Implementation complete (3.1–3.7), Phase 3 bundle rehearsed. Waiting: J1–J6 with the PayPal sandbox and the web team's site on staging (P3-1); load test on staging (P3-7) | P3-2, P3-3, P3-4, P3-5, P3-6, P3-8, P3-9 (automated); P3-1 with the demo site and the pretend PayPal | 2026-10-16 (`ceeb80c`, developer's request, before the staging checks) |
+| 4 Invoices | In progress (Step 4.1 done) | — | — |
 | 5 Twilio | Not started | — | — |
 | 6 Staff alerts | Not started | — | — |
 | Cutover | Not started | — | — |
@@ -123,6 +123,27 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-16 — Phase 4 / Step 4.1 — Invoicing client and invoice records (platform migration M1k).**
+  - **Checked first:** PayPal's Invoicing v2 description (version 2.12.0) and webhook event names; endpoints, retry rules, statuses, methods and refunds are recorded in `docs/multitenancy/paypal-notes.md`.
+  - **`IInvoiceProvider`** (Application) and **`PayPalInvoiceProvider`** (typed client on the shared `PayPal` HttpClient):
+    - create a draft (our number; a repeat finds PayPal's first invoice by number), send (returns the payer's page), read, cancel (a draft is deleted), record offline payments and refunds;
+    - give money back: a subscription payment as a PayPal sale (v1), an invoice payment as a capture (v2), both with our `PayPal-Request-Id`;
+    - calls PayPal cannot make safe to repeat (create, send, recorded payments and refunds) are never retried by the pipeline (`PayPalRest.NoRetry`);
+    - errors carry PayPal's error code (`PaymentProviderException.Issue`), never values; payloads are never logged.
+    - The REST helpers of step 2.2 moved to `PayPalRest`, shared by both clients (no behaviour change; its tests still pass).
+  - **Domain `Invoice`** (with `InvoiceLine`): sources Subscription, PayPalInvoice and Manual; Draft → Sent → PartiallyPaid / Paid → PartiallyRefunded / Refunded, or Cancelled (only without payments). The status follows the amounts paid and refunded. Numbers `INV-100001`, … from a database sequence; 1 to 100 lines; amounts with at most two decimals.
+  - **`Payment`** gets `InvoiceId` and `Method` (`OfflinePaymentMethod`: bank transfer, cash, cheque, **mobile money**, other; PayPal has no mobile money, so it is sent as OTHER).
+  - **`IInvoiceStore`:** next number, add, find (by id or PayPal id), list per organization, save; a second invoice for the same subscription period that is not cancelled is refused (`DuplicatePeriod`).
+  - **Migration M1k:** `platform.Invoices`, `platform.InvoiceLines`, sequence `platform.InvoiceNumbers` (starts at 100001, above the old billing code's numbers), the two payment columns, foreign keys to `dbo.Tenants` and the platform tables. Scripts `platform-M1k-up/down/verify` rehearsed on LocalDB (after the Phase 0 to 3 bundles: up, up, down, down, up; verify `1|2|1|4|2|0`).
+    - **Found in the rehearsal:** the old app's `dbo.Invoices` uses two of the same foreign-key names, so the verify script counts foreign keys in the platform schema only.
+  - **Local database:** M1k applied; verify `1|2|1|4|2|0`; app data unchanged (fingerprint). **The backup before applying failed** (a wrong file path in the command; nothing was written), and this was only noticed after applying. A verified backup was taken right after: `DB_A65635_inpremdb_after_M1k_20261016.bak`. Before M1k, the database is reachable with `platform-M1k-down.idempotent.sql` (rehearsed) or the `before_M1j` backup of 2026-10-15.
+  - **Test hosts:** `FakeInvoiceProvider` (in memory; pay by PayPal, fail next) on every app fixture (`Invoicing`).
+  - **Tests:**
+    - Unit +8: numbers, lines and totals, sending, the status from the amounts, cancelling, payments linked with their method.
+    - Integration +30: the client against a pretend PayPal (the body sent, a repeated create, no retry for create and recorded payments, retried refunds with one request id, sale and capture refunds, send already sent, reading, cancel draft / sent / cancelled, offline payments and refunds, all 16 statuses, not configured, no payer data in logs); the store (numbers unique and from 100001 when 20 are taken at once, lines saved, payments linked, one per period unless cancelled, a real organization required).
+  - **Results:** Unit 170, Architecture 11, Baseline 312, Integration 212, UI 10. No model drift.
+    - **Flaky under load (watch):** in the first full run, while the developer was running the app on the same computer, `ApiSkeletonTests.Idempotency_…` got one 429 (it ran 10 s instead of 2 s) and two UI tests timed out (`J3_J4_…`, `Ui_Kiosk_Volunteer_Clock_In_Button`). All three passed on a rerun. If one repeats on a quiet machine, look at it.
 
 - **2026-10-15 — Phase 3 bundle and exit review.**
   - **Bundles:** `scripts/migrations/phase3-up.sql` and `phase3-down.sql`, generated by `build-phase3-bundle.ps1` from M1h, M1i and M1j, with the earlier guards (also refusing a database without the Phase 2 schema). CI checks they are up to date. Rehearsed on LocalDB (see `scripts/migrations/README.md`); a no-op on the local database.

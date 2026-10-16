@@ -27,6 +27,8 @@ public class AppFixture : IAsyncLifetime
     /// <summary>The pretend PayPal (nothing reaches PayPal in tests).</summary>
     public FakePaymentProvider PayPal => Factory.PayPal;
 
+    public FakeInvoiceProvider Invoicing => Factory.Invoicing;
+
     /// <summary>Runs the billing-link emails the app queued (as the job server would).</summary>
     public Task RunBillingAccessJobsAsync() =>
         ((InlineBillingAccessQueue)Services.GetRequiredService<Inprem.Platform.Application.PublicApi.IBillingAccessQueue>()).RunAllAsync();

@@ -43,7 +43,35 @@ Findings from checking PayPal's current documentation and SDK (Phase 2 step 2.2)
   - the event exactly as received (`webhook_event`).
 - Only `verification_status = SUCCESS` passes. A missing header, a body that is not JSON, a missing webhook id or a PayPal error all refuse the event; PayPal redelivers later.
 
+## Invoicing v2 and refunds (checked 2026-10-16, Phase 4 step 4.1)
+
+- **What was checked.** PayPal's Invoicing v2 description (`developer.paypal.com/api/invoicing/v2/schema.json`, version 2.12.0) and the webhook event list. Invoicing v1 is under PayPal's `/deprecated/` pages. The SDK does not cover Invoicing, so it uses the typed client (`PayPalInvoiceProvider`, same `PayPal` HttpClient and token cache as step 2.2).
+- **Endpoints used** (base `v2/invoicing`):
+
+| Call | Endpoint | Retried by the client? |
+|---|---|---|
+| Create a draft | `POST /invoices` with `Prefer: return=representation` | No: no `PayPal-Request-Id`. Our invoice number makes a repeat safe: PayPal refuses a second invoice with the same number (`DUPLICATE_INVOICE_NUMBER`), and the client then finds the first with `POST /search-invoices`. |
+| Send | `POST /invoices/{id}/send` (`send_to_recipient`, `send_to_invoicer`) | No (a repeat would email twice). `INVOICE_ALREADY_SENT` counts as sent; the payer page is then read from the invoice. |
+| Read | `GET /invoices/{id}` | Yes (a read) |
+| Cancel | `POST /invoices/{id}/cancel`; a draft is deleted with `DELETE /invoices/{id}` | Yes (cancelling twice changes nothing) |
+| Record an offline payment | `POST /invoices/{id}/payments` (`method`, `payment_date`, `amount`) | No (a repeat would record it twice) |
+| Record an offline refund | `POST /invoices/{id}/refunds` | No |
+
+- **The payer's page** is the `href` of the send answer, or `detail.metadata.recipient_view_url` of the invoice.
+- **Statuses.** PayPal has 16 (`DRAFT`, `SENT`, `SCHEDULED`, `PAID`, `MARKED_AS_PAID`, `CANCELLED`, `REFUNDED`, `PARTIALLY_PAID`, `PARTIALLY_REFUNDED`, `MARKED_AS_REFUNDED`, `UNPAID`, `PAYMENT_PENDING`, `AUTO_CANCELLED`, `PAID_EXTERNAL`, `REFUNDED_EXTERNAL`, `SHARED`). The client groups them (`PayPalInvoiceProvider.State`); an unknown one is `Unknown`, never guessed.
+- **Payment methods.** PayPal knows `BANK_TRANSFER`, `CASH`, `CHECK`, `CREDIT_CARD`, `DEBIT_CARD`, `PAYPAL`, `WIRE_TRANSFER` and `OTHER`. It has no mobile money: we send `OTHER` and keep `MobileMoney` in our own records.
+- **Giving money back** is not part of Invoicing (its "refunds" only record offline ones):
+  - a subscription payment (a PayPal sale) is refunded with `POST v1/payments/sale/{id}/refund`;
+  - a PayPal invoice payment (a capture) with `POST v2/payments/captures/{id}/refund`.
+  - Both carry our `PayPal-Request-Id`, so PayPal refunds once and the client may retry.
+  - **To confirm in the sandbox:** that the `payment_id` PayPal lists for a PayPal-paid invoice is the capture id the v2 refund takes.
+- **Retries.** The resilience pipeline skips any request marked "no retry" (`PayPalRest.NoRetry`); everything else keeps the step 2.2 rules.
+- **Errors** carry PayPal's error code (`details[0].issue`, else `name`) on `PaymentProviderException.Issue`, only when it looks like a code (upper-case letters, digits, `_`), so no values reach logs or pages.
+- **Webhook events for step 4.3:** `INVOICING.INVOICE.CREATED`, `.UPDATED`, `.SCHEDULED`, `.PAID` (fully or partly paid, or a payment pending), `.CANCELLED`, `.REFUNDED`; `PAYMENT.CAPTURE.REFUNDED` and `.REVERSED` for invoice payments; `PAYMENT.SALE.REFUNDED` and `.REVERSED` (already handled) for subscription payments.
+
 ## Sources
 
 - [PayPal Subscriptions API v1](https://developer.paypal.com/docs/api/subscriptions/v1/) and its [schema](https://developer.paypal.com/api/subscriptions/v1/schema.json), read 2026-10-15.
+- [PayPal Invoicing API v2](https://developer.paypal.com/docs/api/invoicing/v2/) and its [schema](https://developer.paypal.com/api/invoicing/v2/schema.json) (version 2.12.0), read 2026-10-16.
+- [PayPal webhook event names](https://developer.paypal.com/api/rest/webhooks/event-names/), read 2026-10-16.
 - [PayPalServerSDK on NuGet](https://www.nuget.org/packages/PayPalServerSDK), versions 2.3.0 and 2.4.0, inspected 2026-10-15.

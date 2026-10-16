@@ -23,6 +23,9 @@ namespace Inprem.Platform.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.HasSequence("InvoiceNumbers")
+                .StartsAt(100001L);
+
             modelBuilder.Entity("Inprem.Platform.Domain.Audit.AuditEntry", b =>
                 {
                     b.Property<long>("Id")
@@ -207,6 +210,119 @@ namespace Inprem.Platform.Infrastructure.Persistence.Migrations
                     b.ToTable("CheckoutSessions", "platform");
                 });
 
+            modelBuilder.Entity("Inprem.Platform.Domain.Billing.Invoice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("CancelledUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .IsUnicode(false)
+                        .HasColumnType("char(3)")
+                        .IsFixedLength();
+
+                    b.Property<DateOnly>("DueDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("ExternalInvoiceId")
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<DateOnly>("IssueDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<decimal>("PaidAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<DateTime?>("PaidUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PaymentUrl")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateOnly?>("PeriodEnd")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("PeriodStart")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("RefundedAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<DateTime?>("SentUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid?>("SubscriptionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExternalInvoiceId")
+                        .IsUnique()
+                        .HasFilter("[ExternalInvoiceId] IS NOT NULL");
+
+                    b.HasIndex("Number")
+                        .IsUnique();
+
+                    b.HasIndex("Status", "DueDate");
+
+                    b.HasIndex("SubscriptionId", "PeriodStart")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Invoices_OnePerPeriod")
+                        .HasFilter("[SubscriptionId] IS NOT NULL AND [PeriodStart] IS NOT NULL AND [Status] <> 'Cancelled'");
+
+                    b.HasIndex("TenantId", "IssueDate");
+
+                    b.ToTable("Invoices", "platform");
+                });
+
             modelBuilder.Entity("Inprem.Platform.Domain.Billing.Payment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -226,6 +342,13 @@ namespace Inprem.Platform.Infrastructure.Persistence.Migrations
                     b.Property<string>("ExternalId")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid?>("InvoiceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Method")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime>("PaidUtc")
                         .HasColumnType("datetime2");
@@ -259,6 +382,8 @@ namespace Inprem.Platform.Infrastructure.Persistence.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("InvoiceId");
 
                     b.HasIndex("SubscriptionId");
 
@@ -1065,8 +1190,52 @@ namespace Inprem.Platform.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Inprem.Platform.Domain.Billing.Invoice", b =>
+                {
+                    b.HasOne("Inprem.Platform.Domain.Billing.Subscription", null)
+                        .WithMany()
+                        .HasForeignKey("SubscriptionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.OwnsMany("Inprem.Platform.Domain.Billing.InvoiceLine", "Lines", b1 =>
+                        {
+                            b1.Property<Guid>("InvoiceId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<int>("Position")
+                                .HasColumnType("int");
+
+                            b1.Property<string>("Description")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("nvarchar(200)");
+
+                            b1.Property<decimal>("Quantity")
+                                .HasPrecision(8, 2)
+                                .HasColumnType("decimal(8,2)");
+
+                            b1.Property<decimal>("UnitAmount")
+                                .HasPrecision(12, 2)
+                                .HasColumnType("decimal(12,2)");
+
+                            b1.HasKey("InvoiceId", "Position");
+
+                            b1.ToTable("InvoiceLines", "platform");
+
+                            b1.WithOwner()
+                                .HasForeignKey("InvoiceId");
+                        });
+
+                    b.Navigation("Lines");
+                });
+
             modelBuilder.Entity("Inprem.Platform.Domain.Billing.Payment", b =>
                 {
+                    b.HasOne("Inprem.Platform.Domain.Billing.Invoice", null)
+                        .WithMany()
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Inprem.Platform.Domain.Billing.Subscription", null)
                         .WithMany()
                         .HasForeignKey("SubscriptionId")
