@@ -56,6 +56,11 @@ h1.pc-title { font-size: 22px; font-weight: 600; margin: 0 0 4px; }
 .pc-btn-danger { border-color: #fecaca; color: var(--pc-warn-text); }
 .pc-btn-danger:hover { background: var(--pc-warn-bg); }
 .pc-btn-small { padding: 4px 10px; font-size: 13px; }
+/* Links styled as buttons ("+ New organization", "Edit", ...): ".pc a" is more specific than the
+   button classes, which left blue text on the blue primary button until hovered. */
+.pc a.pc-btn, .pc a.pc-btn:hover { color: var(--pc-text); text-decoration: none; }
+.pc a.pc-btn-primary, .pc a.pc-btn-primary:hover { color: #fff; }
+.pc a.pc-btn-danger, .pc a.pc-btn-danger:hover { color: var(--pc-warn-text); }
 
 .pc-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 .pc-filters input, .pc-filters select, .pc-form input, .pc-form select, .pc-form textarea {
