@@ -69,9 +69,20 @@ Findings from checking PayPal's current documentation and SDK (Phase 2 step 2.2)
 - **Errors** carry PayPal's error code (`details[0].issue`, else `name`) on `PaymentProviderException.Issue`, only when it looks like a code (upper-case letters, digits, `_`), so no values reach logs or pages.
 - **Webhook events for step 4.3:** `INVOICING.INVOICE.CREATED`, `.UPDATED`, `.SCHEDULED`, `.PAID` (fully or partly paid, or a payment pending), `.CANCELLED`, `.REFUNDED`; `PAYMENT.CAPTURE.REFUNDED` and `.REVERSED` for invoice payments; `PAYMENT.SALE.REFUNDED` and `.REVERSED` (already handled) for subscription payments.
 
+## Webhooks for invoices and refunds, and the monthly report (Phase 4 step 4.3)
+
+- **Invoice events** (`INVOICING.INVOICE.*`): the job re-reads the invoice (`GET /v2/invoicing/invoices/{id}`) and applies it. Payments the payer made through PayPal are recorded once by PayPal's payment id. Refunds PayPal lists are recorded once by refund id. A cancellation at PayPal cancels ours if nothing was paid. A draft whose send answer was lost is marked sent.
+  - PayPal's **external** (offline) lines are not imported: offline payments are recorded from the console only (which also records them at PayPal).
+- **Refund events:** `PAYMENT.SALE.REFUNDED` (subscriptions: the resource is the refund, with `sale_id`) and `PAYMENT.CAPTURE.REFUNDED` (invoice payments: the capture is the refund's `up` link). Each is one row by refund id, so partial refunds add up and a refund made from the console is not counted twice. `PAYMENT.CAPTURE.REVERSED` marks the capture reversed (a chargeback) and reopens its invoice.
+- **Daily check:** every PayPal invoice not finished is re-read once a day, so a dropped message is corrected within a day.
+- **Transaction Search** (`GET /v1/reporting/transactions`, version 1.10, checked 2026-10-16): `start_date` / `end_date` (at most 31 days), `fields=transaction_info`, `balance_affecting_records_only=Y`, `page_size=500`, all pages. PayPal lists transactions up to about three hours late.
+  - The report counts T00xx with a positive amount as payments and T1105, T1107 and T1108 with a negative amount as refunds. Other T11xx (e.g. T1106 chargeback reversals) are listed for information. Everything else (fees, transfers, withdrawals) stays out. Denied (`D`) is ignored.
+  - **To confirm in the sandbox:** that the transaction id of a subscription payment is the sale id and of an invoice payment the capture id, as the report assumes, and that PayPal lists the refund under the refund id.
+
 ## Sources
 
 - [PayPal Subscriptions API v1](https://developer.paypal.com/docs/api/subscriptions/v1/) and its [schema](https://developer.paypal.com/api/subscriptions/v1/schema.json), read 2026-10-15.
 - [PayPal Invoicing API v2](https://developer.paypal.com/docs/api/invoicing/v2/) and its [schema](https://developer.paypal.com/api/invoicing/v2/schema.json) (version 2.12.0), read 2026-10-16.
+- [PayPal Transaction Search API v1](https://developer.paypal.com/docs/api/transaction-search/v1/) and its [schema](https://developer.paypal.com/api/transaction-search/v1/schema.json) (version 1.10), read 2026-10-16.
 - [PayPal webhook event names](https://developer.paypal.com/api/rest/webhooks/event-names/), read 2026-10-16.
 - [PayPalServerSDK on NuGet](https://www.nuget.org/packages/PayPalServerSDK), versions 2.3.0 and 2.4.0, inspected 2026-10-15.

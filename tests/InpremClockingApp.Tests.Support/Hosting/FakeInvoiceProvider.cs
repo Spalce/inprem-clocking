@@ -32,6 +32,25 @@ public sealed class FakeInvoiceProvider : IInvoiceProvider
 
     public IReadOnlyCollection<Entry> All => _invoices.Values.ToList();
 
+    /// <summary>What PayPal's transaction search returns (tests add to it).</summary>
+    public ConcurrentQueue<PayPalTransaction> Transactions { get; } = new();
+
+    public Task<IReadOnlyList<PayPalTransaction>> SearchTransactionsAsync(DateTime fromUtc, DateTime toUtc, CancellationToken ct = default)
+    {
+        Check();
+        return Task.FromResult<IReadOnlyList<PayPalTransaction>>(Transactions.Where(t => t.DateUtc >= fromUtc && t.DateUtc < toUtc).ToList());
+    }
+
+    /// <summary>A refund made at PayPal on an invoice payment (e.g. from PayPal's site); returns the refund id.</summary>
+    public string RefundAtPayPal(string invoiceId, decimal amount)
+    {
+        var entry = _invoices[invoiceId];
+        var id = "RF-" + Guid.NewGuid().ToString("N")[..12].ToUpperInvariant();
+        entry.Refunds.Add(new PayPalInvoiceRefund(id, false, DateOnly.FromDateTime(DateTime.UtcNow), amount, entry.Request.Currency));
+        entry.State = Paid(entry);
+        return id;
+    }
+
     public Entry Get(string id) => _invoices[id];
 
     public Task<string> CreateDraftAsync(NewPayPalInvoice invoice, CancellationToken ct = default)

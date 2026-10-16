@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 4 Invoices (in progress; Phase 3 merged; the developer is testing Phases 1 to 3 by hand)
-- **Next step:** Phase 4 / Step 4.3 — Invoice webhooks and the monthly reconciliation report
+- **Next step:** Phase 4 / Step 4.4 — Organization view of invoices (in-app Billing page, website `GET /account/invoices`), then the Phase 4 bundle and exit review
 - **Branch:** `mt/phase3` (from `mt/integration` `9ac52c3`)
 
 ## Phase status
@@ -17,7 +17,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | 1 Provider Console | Implementation complete (1.1–1.7), Phase 1 bundle rehearsed. Waiting: developer walkthrough (P1-1), onboarding under 3 minutes on staging (P1-3) | P1-2, P1-4, P1-5, P1-6, P1-7 (automated); P1-1 automated part | 2026-10-15 (`87ab80d`, developer's request, before the P1-1 walkthrough) |
 | 2 PayPal core | Implementation complete (2.1–2.9), Phase 2 bundle rehearsed. Waiting: PayPal sandbox run (P2-1, P2-4) | P2-2, P2-3, P2-5, P2-6, P2-7 (automated); P2-1 and P2-4 with the pretend PayPal | 2026-10-15 (`9ac52c3`, developer's request, before the sandbox run) |
 | 3 Website API | Implementation complete (3.1–3.7), Phase 3 bundle rehearsed. Waiting: J1–J6 with the PayPal sandbox and the web team's site on staging (P3-1); load test on staging (P3-7) | P3-2, P3-3, P3-4, P3-5, P3-6, P3-8, P3-9 (automated); P3-1 with the demo site and the pretend PayPal | 2026-10-16 (`ceeb80c`, developer's request, before the staging checks) |
-| 4 Invoices | In progress (Steps 4.1–4.2 done) | — | — |
+| 4 Invoices | In progress (Steps 4.1–4.3 done) | — | — |
 | 5 Twilio | Not started | — | — |
 | 6 Staff alerts | Not started | — | — |
 | Cutover | Not started | — | — |
@@ -123,6 +123,28 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-16 — Phase 4 / Step 4.3 — Invoice webhooks and the monthly reconciliation report.**
+  - **`InvoiceSync`** (Application):
+    - **Invoice events** (`INVOICING.INVOICE.PAID`, `.CANCELLED`, `.REFUNDED`, `.UPDATED`, …): PayPal is re-read. Payments through PayPal are recorded once by PayPal's id (`payment.received`), refunds once by refund id, a cancellation at PayPal cancels ours (nothing paid), and a lost send answer marks the draft sent.
+    - **Refund events** now record one row per refund: `PAYMENT.SALE.REFUNDED` (subscriptions) and `PAYMENT.CAPTURE.REFUNDED` (invoices). This fixes the Phase 2 behaviour (see step 4.2), and the old `Payment.Refund` (last amount as total) is removed. A refund made from the console and then reported by PayPal stays one row; a pending refund that completes or fails is updated (`payment.refund-updated`).
+    - **`PAYMENT.CAPTURE.REVERSED`** marks the invoice payment reversed (`payment.reversed`) and reopens the invoice.
+    - **Daily check:** `BillingReconciliation.DailyAsync` also re-reads every unfinished PayPal invoice; corrections go into the provider summary.
+  - **Monthly report** (`MonthlyBillingReport`, P4-3): the console's PayPal payments and refunds for a UTC month against PayPal's Transaction Search (new `IInvoiceProvider.SearchTransactionsAsync`), matched by PayPal ids.
+    - Results per line: Matched, AmountDiffers, OnlyInConsole, OnlyAtPayPal; offline money apart; chargebacks for information; fees and transfers left out.
+    - Totals per currency with **Equal / Different**; differences listed first.
+    - If PayPal cannot be asked, the report says so and shows the console's side.
+    - **CSV** for accounting: UTF-8 with BOM, text cells protected against spreadsheet formulas, amounts as plain numbers.
+  - **Console:** Billing gets a third tab, **Reconciliation**: month picker (the previous month by default), totals, differences, all lines, **Download CSV**. Owners and Billing; read only.
+  - **No migration in this step.** PayPal notes updated (events, Transaction Search, what to confirm in the sandbox).
+  - **Tests:**
+    - Integration +9:
+      - `InvoiceWebhookTests` (6): paid at PayPal recorded once over three messages; capture refunds 20 + 5 = 25 and a repeat changes nothing; sale refunds 10 + 5 = 15, then a console refund reported by PayPal stays one row (19); cancelled at PayPal; a chargeback reopens the invoice; a dropped message corrected by the daily check.
+      - `MonthlyReportTests` (2): September matched, differs, only-here, only-at-PayPal, offline, chargeback, a transfer and a denied payment left out, totals and Different, CSV lines, the page and its CSV download, a bad month → 400; PayPal unreachable → said so.
+      - Transaction Search client (1): all pages, dates, filter, no payer data in logs, more than 31 days refused.
+    - Role matrix +1 page.
+    - Unit: the payment test uses the refunded total instead of the removed method.
+  - **Results:** Unit 174, Architecture 11, Baseline 312, Integration 229, UI 11. No model drift.
 
 - **2026-10-16 — Fix from the developer's manual testing: console "+ New …" buttons readable without hovering.**
   - **Found:** the button-style links (**+ New organization**, **+ New plan**, **+ New invoice**) showed their text only on mouse hover. The console's general link colour (`.pc a`, blue) is more specific than `.pc-btn-primary`, so the text was blue on the blue button; only the hover rule won.

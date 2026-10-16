@@ -63,17 +63,6 @@ public sealed class Payment
         };
     }
 
-    /// <summary>PAYMENT.SALE.REFUNDED (fully or partly). Returns false when nothing changed.</summary>
-    public bool Refund(decimal amount, DateTime nowUtc)
-    {
-        if (amount <= 0 || amount > Amount) throw new ArgumentOutOfRangeException(nameof(amount), "More than 0 and at most the payment.");
-        if (Status == PaymentStatus.Reversed || (Status == PaymentStatus.Refunded && RefundedAmount == amount)) return false;
-        Status = PaymentStatus.Refunded;
-        RefundedAmount = amount;
-        RefundedUtc = nowUtc;
-        return true;
-    }
-
     /// <summary>
     /// The refunded total from the payment's refunds (Phase 4: one <see cref="PaymentRefund"/> per refund,
     /// failed ones excluded). Returns false when nothing changed.

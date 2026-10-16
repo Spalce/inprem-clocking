@@ -45,9 +45,11 @@ public sealed class BillingReconciliation
     private readonly IProviderStore _provider;
     private readonly IEmailSender _email;
     private readonly IClock _clock;
+    private readonly InvoiceSync _invoices;
 
-    public BillingReconciliation(IReconciliationStore reconciliation, ICheckoutStore store, CheckoutService checkout, SubscriptionSync sync, IProviderStore provider, IEmailSender email, IClock clock)
+    public BillingReconciliation(IReconciliationStore reconciliation, ICheckoutStore store, CheckoutService checkout, SubscriptionSync sync, IProviderStore provider, IEmailSender email, IClock clock, InvoiceSync invoices)
     {
+        _invoices = invoices;
         _reconciliation = reconciliation;
         _store = store;
         _checkout = checkout;
@@ -100,6 +102,11 @@ public sealed class BillingReconciliation
                 _store.Reset();
             }
         }
+
+        // PayPal invoices not finished (step 4.3): a dropped INVOICING webhook is corrected here.
+        var (invoiceChanges, invoiceFailures) = await _invoices.SyncOpenAsync("job:reconciliation", ct).ConfigureAwait(false);
+        corrections.AddRange(invoiceChanges);
+        failed += invoiceFailures;
 
         var trials = await _reconciliation.EndedTrialsAsync(_clock.UtcNow, ct).ConfigureAwait(false);
         foreach (var tenant in trials)

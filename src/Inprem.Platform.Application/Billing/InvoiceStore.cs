@@ -58,4 +58,21 @@ public interface IInvoiceStore
 
     /// <summary>The active Owners' emails of an organization (invoices go to them).</summary>
     Task<IReadOnlyList<string>> OwnerEmailsAsync(int tenantId, CancellationToken ct = default);
+
+    // Webhooks and reconciliation (step 4.3).
+
+    /// <summary>A payment by its PayPal (or offline) id (tracked).</summary>
+    Task<Payment?> FindPaymentAsync(PaymentSource source, string externalId, CancellationToken ct = default);
+
+    /// <summary>A refund by PayPal's refund id (tracked).</summary>
+    Task<PaymentRefund?> FindRefundAsync(string externalRefundId, CancellationToken ct = default);
+
+    /// <summary>PayPal ids of invoices still to be paid or with PayPal payments (the daily check).</summary>
+    Task<IReadOnlyList<string>> OpenPayPalInvoiceIdsAsync(CancellationToken ct = default);
+
+    /// <summary>Payments received in [from, to), with organization names (the monthly report).</summary>
+    Task<IReadOnlyList<(Payment Payment, string TenantName)>> PaymentsBetweenAsync(DateTime fromUtc, DateTime toUtc, CancellationToken ct = default);
+
+    /// <summary>Refunds made in [from, to), with their payment and organization name (the monthly report).</summary>
+    Task<IReadOnlyList<(PaymentRefund Refund, Payment Payment, string TenantName)>> RefundsBetweenAsync(DateTime fromUtc, DateTime toUtc, CancellationToken ct = default);
 }

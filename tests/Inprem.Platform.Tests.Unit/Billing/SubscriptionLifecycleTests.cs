@@ -304,9 +304,9 @@ public class SubscriptionLifecycleTests
     {
         var p = Payment.Record(7, null, PaymentSource.PayPal, "SALE-1", 29m, "usd", Now, "webhook");
         Assert.Equal(("USD", PaymentStatus.Completed), (p.Currency, p.Status));
-        Assert.True(p.Refund(10m, Now));
-        Assert.False(p.Refund(10m, Now));
-        Assert.Throws<ArgumentOutOfRangeException>(() => p.Refund(30m, Now));
+        Assert.True(p.SetRefundedTotal(10m, Now)); // the total of its refunds (step 4.2: one row per refund)
+        Assert.False(p.SetRefundedTotal(10m, Now));
+        Assert.Throws<ArgumentOutOfRangeException>(() => p.SetRefundedTotal(30m, Now));
         Assert.True(p.Reverse(Now));
         Assert.False(p.Reverse(Now));
         Assert.Equal((PaymentStatus.Reversed, 29m), (p.Status, p.RefundedAmount));

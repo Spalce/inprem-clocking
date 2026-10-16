@@ -1,0 +1,69 @@
+@page
+@model InpremClockingApp.Areas.Provider.Pages.Billing.ReconciliationModel
+@using Inprem.Platform.Application.Billing
+@{
+    var r = Model.Report;
+    ViewData["Title"] = "Reconciliation";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<h1 class="pc-title">PayPal reconciliation</h1>
+<p class="pc-subtitle">The console's PayPal payments and refunds for a month (UTC), against PayPal's own list of transactions. PayPal lists transactions up to about three hours late.</p>
+<p class="pc-tabs"><a asp-page="/Billing/Index">Subscriptions</a> <a asp-page="/Billing/Invoices/Index">Invoices</a> <a asp-page="/Billing/Reconciliation" class="pc-tab-current">Reconciliation</a></p>
+
+<form method="get" class="pc-filters">
+  <label>Month <input type="month" name="Month" value="@Model.Month" /></label>
+  <button type="submit" class="pc-btn">Show</button>
+  <a asp-page="/Billing/Reconciliation" asp-page-handler="Csv" asp-route-month="@Model.Month" class="pc-btn" data-testid="csv">Download CSV</a>
+</form>
+
+@if (r.PayPalError != null)
+{
+    <div class="pc-error" data-testid="paypal-error">@r.PayPalError</div>
+}
+
+<h2 class="pc-section">@r.Label</h2>
+<table class="pc-table" data-testid="totals">
+  <thead><tr><th>Currency</th><th>Console: received</th><th>PayPal: received</th><th>Console: refunded</th><th>PayPal: refunded</th><th>Offline: received</th><th>Offline: refunded</th><th></th></tr></thead>
+  <tbody>
+  @foreach (var t in r.Totals)
+  {
+      <tr>
+        <td>@t.Currency</td>
+        <td>@t.ConsoleReceived.ToString("#,0.00")</td><td>@(r.PayPalChecked ? t.PayPalReceived.ToString("#,0.00") : "—")</td>
+        <td>@t.ConsoleRefunded.ToString("#,0.00")</td><td>@(r.PayPalChecked ? t.PayPalRefunded.ToString("#,0.00") : "—")</td>
+        <td>@t.OfflineReceived.ToString("#,0.00")</td><td>@t.OfflineRefunded.ToString("#,0.00")</td>
+        <td data-testid="equal">@(r.PayPalChecked ? (t.PayPalEqual ? "Equal" : "Different") : "")</td>
+      </tr>
+  }
+  @if (r.Totals.Count == 0)
+  {
+      <tr><td colspan="8" class="pc-muted">No payments or refunds this month.</td></tr>
+  }
+  </tbody>
+</table>
+
+<h2 class="pc-section">Differences (@r.Differences.Count)</h2>
+@if (r.Differences.Count == 0)
+{
+    <p class="pc-muted" data-testid="no-differences">@(r.PayPalChecked ? "None: every PayPal payment and refund matches." : "PayPal was not checked.")</p>
+}
+
+<table class="pc-table" data-testid="lines">
+  <thead><tr><th>Kind</th><th>Date (UTC)</th><th>Organization</th><th>Source</th><th>Console reference</th><th>PayPal id</th><th>Console</th><th>PayPal</th><th>Result</th><th>Note</th></tr></thead>
+  <tbody>
+  @foreach (var l in r.Lines)
+  {
+      <tr data-match="@l.Match">
+        <td>@l.Kind</td><td>@l.DateUtc.ToString("yyyy-MM-dd HH:mm")</td><td>@l.Organization</td><td>@l.Source</td>
+        <td>@l.ConsoleReference</td><td>@l.PayPalId</td>
+        <td>@(l.ConsoleAmount?.ToString("#,0.00") ?? "")</td><td>@(l.PayPalAmount?.ToString("#,0.00") ?? "")</td>
+        <td><span class="pc-badge">@l.Match</span></td><td>@l.Note</td>
+      </tr>
+  }
+  </tbody>
+</table>
+@if (r.OtherPayPalTransactions > 0)
+{
+    <p class="pc-muted">@r.OtherPayPalTransactions other PayPal transaction(s) this month (fees, transfers, withdrawals and the like) are not part of this report.</p>
+}

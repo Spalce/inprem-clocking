@@ -86,6 +86,37 @@ public sealed class InvoiceStore : IInvoiceStore
                where m.TenantId == tenantId && m.Role == MembershipRole.Owner && m.Status == MembershipStatus.Active && a.Email != null
                select a.Email!).Distinct().OrderBy(e => e).ToListAsync(ct).ConfigureAwait(false);
 
+    public Task<Payment?> FindPaymentAsync(PaymentSource source, string externalId, CancellationToken ct = default) =>
+        _db.Payments.FirstOrDefaultAsync(p => p.Source == source && p.ExternalId == externalId, ct);
+
+    public Task<PaymentRefund?> FindRefundAsync(string externalRefundId, CancellationToken ct = default) =>
+        _db.PaymentRefunds.FirstOrDefaultAsync(r => r.ExternalRefundId == externalRefundId, ct);
+
+    public async Task<IReadOnlyList<string>> OpenPayPalInvoiceIdsAsync(CancellationToken ct = default) =>
+        await _db.Invoices.AsNoTracking()
+            .Where(i => i.ExternalInvoiceId != null && (i.Status == InvoiceStatus.Draft || i.Status == InvoiceStatus.Sent || i.Status == InvoiceStatus.PartiallyPaid
+                || i.Status == InvoiceStatus.Paid || i.Status == InvoiceStatus.PartiallyRefunded))
+            .Select(i => i.ExternalInvoiceId!).ToListAsync(ct).ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<(Payment Payment, string TenantName)>> PaymentsBetweenAsync(DateTime fromUtc, DateTime toUtc, CancellationToken ct = default) =>
+        (await (from p in _db.Payments.AsNoTracking()
+                where p.PaidUtc >= fromUtc && p.PaidUtc < toUtc
+                join t in _db.Tenants.AsNoTracking() on p.TenantId equals t.Id into tenants
+                from t in tenants.DefaultIfEmpty()
+                orderby p.PaidUtc
+                select new { p, Name = t == null ? null : t.Name }).ToListAsync(ct).ConfigureAwait(false))
+        .Select(r => (r.p, r.Name ?? $"#{r.p.TenantId}")).ToList();
+
+    public async Task<IReadOnlyList<(PaymentRefund Refund, Payment Payment, string TenantName)>> RefundsBetweenAsync(DateTime fromUtc, DateTime toUtc, CancellationToken ct = default) =>
+        (await (from r in _db.PaymentRefunds.AsNoTracking()
+                where r.RefundedUtc >= fromUtc && r.RefundedUtc < toUtc
+                join p in _db.Payments.AsNoTracking() on r.PaymentId equals p.Id
+                join t in _db.Tenants.AsNoTracking() on r.TenantId equals t.Id into tenants
+                from t in tenants.DefaultIfEmpty()
+                orderby r.RefundedUtc
+                select new { r, p, Name = t == null ? null : t.Name }).ToListAsync(ct).ConfigureAwait(false))
+        .Select(x => (x.r, x.p, x.Name ?? $"#{x.r.TenantId}")).ToList();
+
     public async Task<InvoiceSaveResult> SaveAsync(CancellationToken ct = default)
     {
         try

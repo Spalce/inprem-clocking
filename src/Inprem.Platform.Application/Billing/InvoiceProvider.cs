@@ -69,6 +69,13 @@ public enum RefundTarget
 public sealed record ProviderRefund(string Id, string? Status);
 
 /// <summary>
+/// A transaction on Inprem's PayPal account (Transaction Search, step 4.3): money in (positive) or
+/// out (negative), with PayPal's event code (T00xx payments, T11xx refunds and reversals) and status
+/// (S success, P pending, V reversed, D denied).
+/// </summary>
+public sealed record PayPalTransaction(string Id, string? EventCode, DateTime DateUtc, decimal Amount, string Currency, string? Status, string? InvoiceId);
+
+/// <summary>
 /// PayPal Invoicing v2 and refunds (Phase 4 step 4.1), through a typed HTTP client: the SDK does
 /// not cover them. Calls that PayPal cannot make safe to repeat (send, record payment, record refund)
 /// are never retried automatically; see docs/multitenancy/paypal-notes.md.
@@ -100,4 +107,10 @@ public interface IInvoiceProvider
 
     /// <summary>Gives money back through PayPal. <paramref name="requestId"/> makes a retry safe (PayPal refunds once).</summary>
     Task<ProviderRefund> RefundAsync(RefundTarget target, string transactionId, decimal amount, string currency, string requestId, string? note, CancellationToken ct = default);
+
+    /// <summary>
+    /// The account's balance-affecting transactions from <paramref name="fromUtc"/> up to (not
+    /// including) <paramref name="toUtc"/>; at most 31 days. PayPal lists them up to about three hours late.
+    /// </summary>
+    Task<IReadOnlyList<PayPalTransaction>> SearchTransactionsAsync(DateTime fromUtc, DateTime toUtc, CancellationToken ct = default);
 }

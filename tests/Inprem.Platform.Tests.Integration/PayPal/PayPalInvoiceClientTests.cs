@@ -272,6 +272,35 @@ public class PayPalInvoiceClientTests
         Assert.DoesNotContain(logs.Lines, l => l.Contains("MoMo"));
     }
 
+    [Fact]
+    public async Task Transaction_Search_Reads_Every_Page_For_The_Month()
+    {
+        var (invoicing, fake, logs, sp) = Create();
+        using var _ = sp;
+        fake.Answer("GET /v1/reporting/transactions", HttpStatusCode.OK, """
+            {"transaction_details":[{"transaction_info":{"transaction_id":"8MC585209K746392H","transaction_event_code":"T0002","transaction_initiation_date":"2026-09-03T10:00:00+0000",
+               "transaction_amount":{"currency_code":"USD","value":"29.00"},"transaction_status":"S"},"payer_info":{"email_address":"treasurer-secret@centre.test"}}],
+             "total_pages":2,"page":1}
+            """).Answer("GET /v1/reporting/transactions", HttpStatusCode.OK, """
+            {"transaction_details":[{"transaction_info":{"transaction_id":"1JU08902781691411","transaction_event_code":"T1107","transaction_initiation_date":"2026-09-06T10:00:00+0000",
+               "transaction_amount":{"currency_code":"USD","value":"-10.00"},"transaction_status":"S","invoice_id":"INV-100007"}}],
+             "total_pages":2,"page":2}
+            """);
+
+        var found = await invoicing.SearchTransactionsAsync(new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        Assert.Equal(new[] { ("8MC585209K746392H", "T0002", 29m), ("1JU08902781691411", "T1107", -10m) }, found.Select(t => (t.Id, t.EventCode!, t.Amount)));
+        Assert.Equal((new DateTime(2026, 9, 6, 10, 0, 0, DateTimeKind.Utc), "INV-100007"), (found[1].DateUtc, found[1].InvoiceId));
+        var asked = fake.To("/v1/reporting/transactions");
+        Assert.Equal(2, asked.Count);
+        Assert.Contains("start_date=2026-09-01T00%3A00%3A00Z", asked[0].Query);
+        Assert.Contains("end_date=2026-09-30T23%3A59%3A59Z", asked[0].Query);
+        Assert.Contains("balance_affecting_records_only=Y", asked[0].Query);
+        Assert.Contains("page=2", asked[1].Query);
+        Assert.DoesNotContain(logs.Lines, l => l.Contains("treasurer-secret"));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => invoicing.SearchTransactionsAsync(new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc)));
+    }
+
     [Theory]
     [InlineData("DRAFT", PayPalInvoiceState.Draft)]
     [InlineData("SCHEDULED", PayPalInvoiceState.Scheduled)]

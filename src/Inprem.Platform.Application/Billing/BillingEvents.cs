@@ -112,10 +112,12 @@ public sealed class BillingEventProcessor
     private readonly IPaymentProvider _paypal;
     private readonly CheckoutService _checkout;
     private readonly SubscriptionSync _sync;
+    private readonly InvoiceSync _invoices;
     private readonly IClock _clock;
 
-    public BillingEventProcessor(IBillingEventStore events, ICheckoutStore store, IPaymentProvider paypal, CheckoutService checkout, SubscriptionSync sync, IClock clock)
+    public BillingEventProcessor(IBillingEventStore events, ICheckoutStore store, IPaymentProvider paypal, CheckoutService checkout, SubscriptionSync sync, InvoiceSync invoices, IClock clock)
     {
+        _invoices = invoices;
         _events = events;
         _store = store;
         _paypal = paypal;
@@ -140,8 +142,22 @@ public sealed class BillingEventProcessor
                 await SubscriptionEventAsync(type, BillingWebhookService.Text(resource, "id"), ct).ConfigureAwait(false);
             else if (type == "PAYMENT.SALE.COMPLETED")
                 await SaleCompletedAsync(resource, ct).ConfigureAwait(false);
-            else if (type is "PAYMENT.SALE.REFUNDED" or "PAYMENT.SALE.REVERSED")
+            else if (type == "PAYMENT.SALE.REFUNDED")
+                await RefundAsync(BillingWebhookService.Text(resource, "sale_id"), resource, ct).ConfigureAwait(false);
+            else if (type == "PAYMENT.SALE.REVERSED")
                 await SaleReturnedAsync(type, resource, ct).ConfigureAwait(false);
+            else if (type.StartsWith("INVOICING.INVOICE.", StringComparison.Ordinal))
+            {
+                var invoiceId = BillingWebhookService.Text(resource, "id");
+                if (!string.IsNullOrWhiteSpace(invoiceId)) await _invoices.SyncAsync(invoiceId, $"paypal:webhook {type}", ct).ConfigureAwait(false);
+            }
+            else if (type == "PAYMENT.CAPTURE.REFUNDED")
+                await RefundAsync(CaptureOf(resource), resource, ct).ConfigureAwait(false);
+            else if (type == "PAYMENT.CAPTURE.REVERSED")
+            {
+                var capture = CaptureOf(resource) ?? BillingWebhookService.Text(resource, "id");
+                if (!string.IsNullOrWhiteSpace(capture)) await _invoices.CaptureReversedAsync(capture, "paypal:webhook PAYMENT.CAPTURE.REVERSED", ct).ConfigureAwait(false);
+            }
             // Other event types are stored and marked processed: nothing to apply.
 
             var processed = await _events.FindAsync(externalEventId, ct).ConfigureAwait(false) ?? billingEvent;
@@ -208,10 +224,36 @@ public sealed class BillingEventProcessor
         await _sync.SyncAsync(subscriptionId, "paypal:webhook PAYMENT.SALE.COMPLETED", ct).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// A refund (step 4.3): the resource is the refund (its id, amount and state or status), of a sale
+    /// (<c>sale_id</c>) or a capture (the "up" link). Recorded once per refund id, so partial refunds add up.
+    /// </summary>
+    private async Task RefundAsync(string? paymentExternalId, JsonElement refund, CancellationToken ct)
+    {
+        var refundId = BillingWebhookService.Text(refund, "id");
+        if (string.IsNullOrWhiteSpace(paymentExternalId) || string.IsNullOrWhiteSpace(refundId)) return;
+        var state = (BillingWebhookService.Text(refund, "status") ?? BillingWebhookService.Text(refund, "state") ?? "COMPLETED").ToUpperInvariant();
+        var status = state == "PENDING" ? RefundStatus.Pending : state is "FAILED" or "CANCELLED" ? RefundStatus.Failed : RefundStatus.Completed;
+        await _invoices.RefundReportedAsync(paymentExternalId, refundId, Money(refund).Amount, status, "paypal:webhook", ct).ConfigureAwait(false);
+    }
+
+    /// <summary>The capture a v2 refund belongs to: its "up" link (<c>…/v2/payments/captures/{id}</c>).</summary>
+    private static string? CaptureOf(JsonElement resource)
+    {
+        if (!resource.TryGetProperty("links", out var links) || links.ValueKind != JsonValueKind.Array) return null;
+        foreach (var link in links.EnumerateArray())
+        {
+            var href = BillingWebhookService.Text(link, "href");
+            if (BillingWebhookService.Text(link, "rel") == "up" && href != null && href.Contains("/captures/", StringComparison.Ordinal))
+                return href.TrimEnd('/').Split('/').Last();
+        }
+        return null;
+    }
+
     private async Task SaleReturnedAsync(string type, JsonElement resource, CancellationToken ct)
     {
-        // REFUNDED: the resource is the refund (sale_id + amount); REVERSED: the resource is the sale.
-        var saleId = type == "PAYMENT.SALE.REFUNDED" ? BillingWebhookService.Text(resource, "sale_id") : BillingWebhookService.Text(resource, "id");
+        // REVERSED (a chargeback): the resource is the sale. (Refunds go through RefundAsync.)
+        var saleId = BillingWebhookService.Text(resource, "id");
         if (string.IsNullOrWhiteSpace(saleId)) return;
         var payment = await _store.FindPaymentAsync(PaymentSource.PayPal, saleId, ct).ConfigureAwait(false);
         if (payment == null) return; // a payment we never recorded: nothing to change
@@ -220,10 +262,9 @@ public sealed class BillingEventProcessor
         {
             _store.Reset();
             var current = (await _store.FindPaymentAsync(PaymentSource.PayPal, saleId, ct).ConfigureAwait(false))!;
-            var changed = type == "PAYMENT.SALE.REFUNDED" ? current.Refund(Math.Min(Money(resource).Amount, current.Amount), _clock.UtcNow) : current.Reverse(_clock.UtcNow);
-            if (changed)
+            if (current.Reverse(_clock.UtcNow))
             {
-                await _store.AddAuditAsync(AuditEntry.Record("paypal:webhook", type == "PAYMENT.SALE.REFUNDED" ? "payment.refunded" : "payment.reversed", saleId,
+                await _store.AddAuditAsync(AuditEntry.Record("paypal:webhook", "payment.reversed", saleId,
                     $"{current.RefundedAmount:0.00} {current.Currency} of {current.Amount:0.00}", _clock.UtcNow, current.TenantId), ct).ConfigureAwait(false);
                 await _store.SaveChangesAsync(ct).ConfigureAwait(false);
             }

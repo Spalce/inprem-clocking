@@ -162,6 +162,35 @@ public sealed class PayPalInvoiceProvider : IInvoiceProvider
         return new ProviderRefund(id, (refund["status"] ?? refund["state"])?.GetValue<string>()?.ToUpperInvariant());
     }
 
+    public async Task<IReadOnlyList<PayPalTransaction>> SearchTransactionsAsync(DateTime fromUtc, DateTime toUtc, CancellationToken ct = default)
+    {
+        RequireConfigured();
+        if (toUtc <= fromUtc || toUtc - fromUtc > TimeSpan.FromDays(31)) throw new ArgumentOutOfRangeException(nameof(toUtc), "PayPal searches at most 31 days at once.");
+        var start = Uri.EscapeDataString(fromUtc.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture));
+        var end = Uri.EscapeDataString(toUtc.AddSeconds(-1).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture));
+        var list = new List<PayPalTransaction>();
+        for (var page = 1; ; page++)
+        {
+            using var response = await _rest.SendAsync(HttpMethod.Get,
+                $"v1/reporting/transactions?start_date={start}&end_date={end}&fields=transaction_info&balance_affecting_records_only=Y&page_size=500&page={page}",
+                null, null, ct).ConfigureAwait(false);
+            var found = await PayPalRest.ReadAsync(response, "search transactions", ct).ConfigureAwait(false);
+            foreach (var detail in found["transaction_details"] as JsonArray ?? new JsonArray())
+            {
+                var info = detail?["transaction_info"];
+                var id = info?["transaction_id"]?.GetValue<string>();
+                var amount = Amount(info?["transaction_amount"]?["value"]?.GetValue<string>());
+                if (id == null || amount == null) continue;
+                var when = DateTimeOffset.TryParse(info!["transaction_initiation_date"]?.GetValue<string>(), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var t) ? t.UtcDateTime : fromUtc;
+                list.Add(new PayPalTransaction(id, info["transaction_event_code"]?.GetValue<string>(), when, amount.Value,
+                    info["transaction_amount"]?["currency_code"]?.GetValue<string>() ?? "", info["transaction_status"]?.GetValue<string>(), info["invoice_id"]?.GetValue<string>()));
+            }
+            var pages = found["total_pages"]?.GetValue<int>() ?? 1;
+            if (page >= pages || page >= 100) break;
+        }
+        return list;
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private async Task<string?> FindByNumberAsync(string number, CancellationToken ct)

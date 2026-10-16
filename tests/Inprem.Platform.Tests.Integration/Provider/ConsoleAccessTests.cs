@@ -81,6 +81,7 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
         ["/Billing/Invoices/Cancel"] = (BillingAndOwner, x => $"/Provider/Billing/Invoices/Cancel/{x.InvoiceId}"),
         ["/Billing/Invoices/RecordPayment"] = (BillingAndOwner, x => $"/Provider/Billing/Invoices/RecordPayment/{x.InvoiceId}"),
         ["/Billing/Payments/Refund"] = (BillingAndOwner, x => $"/Provider/Billing/Payments/Refund/{x.PaymentId}"),
+        ["/Billing/Reconciliation"] = (BillingAndOwner, _ => "/Provider/Billing/Reconciliation"),
     };
 
     /// <summary>A sent offline invoice of Alpha with a partial offline payment (Phase 4 pages).</summary>
