@@ -59,6 +59,15 @@ public class ConsoleAuditCoverageTests
         ["Tenants.FreeAccessModel.OnPostAsync"] = ("subscription.free-access-granted / -removed", "BillingPageTests"),
         ["Tenants.CancelSubscriptionModel.OnPostAsync"] = ("subscription.canceled", "BillingPageTests"),
 
+        // Invoices, offline payments and refunds (Phase 4 step 4.2).
+        ["Billing.Invoices.NewModel.OnPostReviewAsync"] = ("none (checks only; nothing saved)", "InvoicePagesTests"),
+        ["Billing.Invoices.NewModel.OnPostEditAsync"] = ("none (back to the form)", "InvoicePagesTests"),
+        ["Billing.Invoices.NewModel.OnPostCreateAsync"] = ("invoice.created + invoice.sent / invoice.send-failed", "InvoicePagesTests"),
+        ["Billing.Invoices.DetailsModel.OnPostResendAsync"] = ("invoice.sent / invoice.resent / invoice.resend-failed", "InvoicePagesTests"),
+        ["Billing.Invoices.CancelModel.OnPostAsync"] = ("invoice.cancelled / invoice.cancel-failed", "InvoicePagesTests"),
+        ["Billing.Invoices.RecordPaymentModel.OnPostAsync"] = ("payment.recorded-offline / payment.record-failed", "InvoicePagesTests"),
+        ["Billing.Payments.RefundModel.OnPostAsync"] = ("payment.refunded / payment.refund-failed", "InvoicePagesTests"),
+
         // Webhook events.
         ["Webhooks.DetailsModel.OnPostReplayAsync"] = ("billing-event.replayed", "WebhookTests"),
     };

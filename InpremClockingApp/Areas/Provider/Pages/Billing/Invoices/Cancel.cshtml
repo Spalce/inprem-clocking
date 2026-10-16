@@ -1,0 +1,26 @@
+@page "{id:guid}"
+@model InpremClockingApp.Areas.Provider.Pages.Billing.Invoices.CancelModel
+@{
+    ViewData["Title"] = "Cancel invoice";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<p><a asp-page="Details" asp-route-id="@RouteData.Values["id"]">&larr; Back to the invoice</a></p>
+<h1 class="pc-title">Cancel invoice @Model.Number?</h1>
+<p class="pc-subtitle">The organization is told the invoice is cancelled (PayPal emails it for a PayPal invoice). An invoice with payments cannot be cancelled: refund instead.</p>
+
+@if (Model.Error != null)
+{
+    <div class="pc-error" data-testid="error">@Model.Error</div>
+}
+
+<form method="post" class="pc-card pc-form">
+  <div class="pc-field">
+    <label for="Reason">Reason <span class="pc-muted">(required; sent to PayPal and recorded in the audit log)</span></label>
+    <textarea id="Reason" name="Reason" rows="3" maxlength="500" required>@Model.Reason</textarea>
+  </div>
+  <div class="pc-actions">
+    <button type="submit" class="pc-btn pc-btn-danger" data-testid="confirm">Cancel invoice</button>
+    <a asp-page="Details" asp-route-id="@RouteData.Values["id"]" class="pc-btn">Keep it</a>
+  </div>
+</form>

@@ -53,6 +53,8 @@ builder.Services.AddPlatformInfrastructure(connectionString!);
 // PayPal (multi-tenancy Phase 2): section "PayPal", credentials from user-secrets or the host's
 // settings. Without PayPal:ClientId the app runs and PayPal actions say PayPal is not configured.
 builder.Services.AddPayPal(builder.Configuration);
+// Billing:RefundLimit (D28): what a Provider Billing user may refund at once; 0 = Owners only.
+builder.Services.AddSingleton(sp => sp.GetRequiredService<IConfiguration>().GetSection(Inprem.Platform.Application.Billing.BillingOptions.Section).Get<Inprem.Platform.Application.Billing.BillingOptions>() ?? new());
 // PayPal webhooks are processed by a background job (InpremClockingApp/Billing).
 builder.Services.AddScoped<Inprem.Platform.Application.Billing.IBillingEventQueue, InpremClockingApp.Billing.HangfireBillingEventQueue>();
 builder.Services.AddScoped<InpremClockingApp.Billing.BillingEventJob>();

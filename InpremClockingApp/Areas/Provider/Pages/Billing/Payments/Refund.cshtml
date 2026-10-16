@@ -1,0 +1,62 @@
+@page "{id:guid}"
+@model InpremClockingApp.Areas.Provider.Pages.Billing.Payments.RefundModel
+@using Inprem.Platform.Application.Billing
+@using Inprem.Platform.Domain.Billing
+@{
+    var payment = Model.Details.Payment;
+    ViewData["Title"] = "Refund";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<p>@if (Model.Details.Invoice != null)
+   {
+       <a asp-page="/Billing/Invoices/Details" asp-route-id="@Model.Details.Invoice.Id">&larr; Back to invoice @Model.Details.Invoice.Number</a>
+   }
+   else
+   {
+       <a asp-page="/Tenants/Details" asp-route-id="@payment.TenantId" asp-route-tab="invoices">&larr; Back to the organization</a>
+   }</p>
+<h1 class="pc-title">Refund a payment of @Model.Details.TenantName</h1>
+<p class="pc-subtitle">@InvoiceService.Money(payment.Amount, payment.Currency) paid @payment.PaidUtc.ToString("yyyy-MM-dd")
+  (@(payment.Source == PaymentSource.PayPal ? "PayPal" : payment.Method?.ToString() ?? "offline"), @payment.ExternalId)
+  &middot; up to @InvoiceService.Money(Model.Details.Refundable, payment.Currency) can be refunded.</p>
+<p class="pc-note">@(payment.Source == PaymentSource.PayPal
+    ? "PayPal gives the money back to the payer now. This cannot be undone."
+    : "Give the money back yourself (bank transfer, cash, mobile money); this records it.")
+  @(Model.IsOwner ? "" : Model.Limit == 0 ? " Only Provider Owners can refund." : $" Billing users can refund up to {InvoiceService.Money(Model.Limit, payment.Currency)} at once.")</p>
+
+@if (Model.Error != null)
+{
+    <div class="pc-error" data-testid="error">@Model.Error</div>
+}
+
+@if (Model.Details.Refundable > 0)
+{
+    <form method="post" class="pc-card pc-form" onsubmit="return confirm('Refund ' + document.getElementById('Amount').value + ' @payment.Currency? This cannot be undone.');">
+      <div class="pc-field">
+        <label for="Amount">Amount to refund (@payment.Currency)</label>
+        <input type="number" id="Amount" name="Amount" value="@Model.Amount?.ToString(System.Globalization.CultureInfo.InvariantCulture)" min="0.01" step="0.01" required />
+      </div>
+      <div class="pc-field">
+        <label for="Reason">Reason <span class="pc-muted">(required; shown to the payer by PayPal and recorded in the audit log)</span></label>
+        <textarea id="Reason" name="Reason" rows="3" maxlength="300" required>@Model.Reason</textarea>
+      </div>
+      <div class="pc-actions">
+        <button type="submit" class="pc-btn pc-btn-danger" data-testid="confirm">Refund</button>
+      </div>
+    </form>
+}
+
+@if (Model.Details.Refunds.Count > 0)
+{
+    <h2 class="pc-section">Earlier refunds</h2>
+    <table class="pc-table" data-testid="refunds">
+      <thead><tr><th>When (UTC)</th><th>Amount</th><th>Status</th><th>Reason</th><th>By</th></tr></thead>
+      <tbody>
+      @foreach (var r in Model.Details.Refunds)
+      {
+          <tr><td>@r.RefundedUtc.ToString("yyyy-MM-dd HH:mm")</td><td>@InvoiceService.Money(r.Amount, r.Currency)</td><td>@r.Status</td><td>@r.Reason</td><td>@r.RecordedBy</td></tr>
+      }
+      </tbody>
+    </table>
+}

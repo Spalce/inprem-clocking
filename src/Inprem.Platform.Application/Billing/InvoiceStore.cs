@@ -29,4 +29,33 @@ public interface IInvoiceStore
 
     /// <summary>Saves the changes; a second invoice for the same subscription period is refused, not saved.</summary>
     Task<InvoiceSaveResult> SaveAsync(CancellationToken ct = default);
+
+    // Console (step 4.2).
+
+    /// <summary>A page of invoices matching the filter, newest first, with organization names.</summary>
+    Task<InvoicePage> SearchAsync(InvoiceFilter filter, int pageSize, CancellationToken ct = default);
+
+    /// <summary>The payments recorded against an invoice (tracked), oldest first.</summary>
+    Task<IReadOnlyList<Payment>> PaymentsForInvoiceAsync(Guid invoiceId, CancellationToken ct = default);
+
+    Task<Payment?> FindPaymentAsync(Guid paymentId, CancellationToken ct = default);
+
+    /// <summary>The refunds of these payments (tracked), oldest first.</summary>
+    Task<IReadOnlyList<PaymentRefund>> RefundsForPaymentsAsync(IReadOnlyCollection<Guid> paymentIds, CancellationToken ct = default);
+
+    /// <summary>True when an offline payment with this reference is already recorded (any organization).</summary>
+    Task<bool> OfflineReferenceExistsAsync(string reference, CancellationToken ct = default);
+
+    /// <summary>True when a refund with this PayPal id is already recorded.</summary>
+    Task<bool> RefundExistsAsync(string? externalRefundId, CancellationToken ct = default);
+
+    Task AddPaymentAsync(Payment payment, CancellationToken ct = default);
+    Task AddRefundAsync(PaymentRefund refund, CancellationToken ct = default);
+    Task AddAuditAsync(Inprem.Platform.Domain.Audit.AuditEntry entry, CancellationToken ct = default);
+
+    /// <summary>The organization's name, or null when there is no such organization.</summary>
+    Task<string?> TenantNameAsync(int tenantId, CancellationToken ct = default);
+
+    /// <summary>The active Owners' emails of an organization (invoices go to them).</summary>
+    Task<IReadOnlyList<string>> OwnerEmailsAsync(int tenantId, CancellationToken ct = default);
 }

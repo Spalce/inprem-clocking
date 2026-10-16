@@ -1,0 +1,124 @@
+@page "{id:guid}"
+@model InpremClockingApp.Areas.Provider.Pages.Billing.Invoices.DetailsModel
+@using Inprem.Platform.Application.Billing
+@using Inprem.Platform.Domain.Billing
+@{
+    var invoice = Model.Details.Invoice;
+    ViewData["Title"] = invoice.Number;
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+    var open = invoice.Status is not (InvoiceStatus.Cancelled) && (invoice.Status == InvoiceStatus.Draft || invoice.Outstanding > 0);
+}
+
+<p><a asp-page="Index">&larr; Invoices</a></p>
+<h1 class="pc-title">@invoice.Number <span class="pc-badge" data-testid="status">@invoice.Status</span></h1>
+<p class="pc-subtitle"><a asp-page="/Tenants/Details" asp-route-id="@invoice.TenantId" asp-route-tab="invoices">@Model.Details.TenantName</a>
+  &middot; @(invoice.Source == InvoiceSource.Manual ? "offline payment" : invoice.Source == InvoiceSource.PayPalInvoice ? "PayPal invoice" : "subscription")
+  &middot; issued @invoice.IssueDate.ToString("yyyy-MM-dd") &middot; due @invoice.DueDate.ToString("yyyy-MM-dd")</p>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="pc-success" data-testid="success">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="pc-error" data-testid="error">@error</div>
+}
+
+<div class="pc-actions">
+  @if (open)
+  {
+      <form method="post" asp-page-handler="Resend" asp-route-id="@invoice.Id" class="pc-inline"
+            onsubmit="return confirm('@(invoice.Status == InvoiceStatus.Draft ? "Send the invoice now?" : "Send the organization a reminder of this invoice?")');">
+        <button type="submit" class="pc-btn" data-testid="resend">@(invoice.Status == InvoiceStatus.Draft ? "Send" : "Send again")</button>
+      </form>
+  }
+  @if (invoice.Status is InvoiceStatus.Sent or InvoiceStatus.PartiallyPaid)
+  {
+      <a asp-page="RecordPayment" asp-route-id="@invoice.Id" class="pc-btn" data-testid="record-payment">Record offline payment</a>
+  }
+  @if (invoice.Status != InvoiceStatus.Cancelled && invoice.PaidAmount == 0)
+  {
+      <a asp-page="Cancel" asp-route-id="@invoice.Id" class="pc-btn pc-btn-danger" data-testid="cancel">Cancel invoice</a>
+  }
+  @if (invoice.PaymentUrl != null)
+  {
+      <a href="@invoice.PaymentUrl" class="pc-btn" target="_blank" rel="noopener" data-testid="paypal-link">Open at PayPal</a>
+  }
+</div>
+
+<div class="pc-card">
+  <dl class="pc-dl">
+    <dt>Total</dt><dd data-testid="total">@InvoiceService.Money(invoice.Total, invoice.Currency)</dd>
+    <dt>Paid</dt><dd data-testid="paid">@InvoiceService.Money(invoice.PaidAmount, invoice.Currency)</dd>
+    @if (invoice.RefundedAmount > 0)
+    {
+        <dt>Refunded</dt><dd>@InvoiceService.Money(invoice.RefundedAmount, invoice.Currency)</dd>
+    }
+    <dt>Still to pay</dt><dd data-testid="outstanding">@InvoiceService.Money(invoice.Outstanding, invoice.Currency)</dd>
+    @if (invoice.ExternalInvoiceId != null)
+    {
+        <dt>PayPal invoice</dt><dd>@invoice.ExternalInvoiceId</dd>
+    }
+    @if (invoice.Notes != null)
+    {
+        <dt>Note</dt><dd>@invoice.Notes</dd>
+    }
+    @if (invoice.CancelReason != null)
+    {
+        <dt>Cancelled</dt><dd>@invoice.CancelledUtc?.ToString("yyyy-MM-dd HH:mm") UTC: @invoice.CancelReason</dd>
+    }
+  </dl>
+</div>
+
+<h2 class="pc-section">Lines</h2>
+<table class="pc-table" data-testid="lines">
+  <thead><tr><th>Item</th><th>Quantity</th><th>Price</th><th>Amount</th></tr></thead>
+  <tbody>
+  @foreach (var l in invoice.Lines)
+  {
+      <tr><td>@l.Description</td><td>@l.Quantity.ToString("0.##")</td><td>@InvoiceService.Money(l.UnitAmount, invoice.Currency)</td><td>@InvoiceService.Money(l.Amount, invoice.Currency)</td></tr>
+  }
+  </tbody>
+</table>
+
+<h2 class="pc-section">Payments</h2>
+@if (Model.Details.Payments.Count == 0)
+{
+    <p class="pc-muted">No payments yet.</p>
+}
+else
+{
+    <table class="pc-table" data-testid="payments">
+      <thead><tr><th>Paid</th><th>Amount</th><th>How</th><th>Reference</th><th>Refunded</th><th></th></tr></thead>
+      <tbody>
+      @foreach (var p in Model.Details.Payments)
+      {
+          <tr>
+            <td>@p.PaidUtc.ToString("yyyy-MM-dd")</td>
+            <td>@InvoiceService.Money(p.Amount, p.Currency)</td>
+            <td>@(p.Source == PaymentSource.PayPal ? "PayPal" : p.Method?.ToString() ?? "Offline")</td>
+            <td>@p.ExternalId</td>
+            <td>@(p.RefundedAmount > 0 ? InvoiceService.Money(p.RefundedAmount, p.Currency) : "")</td>
+            <td>@if (p.Status != PaymentStatus.Reversed && p.RefundedAmount < p.Amount)
+                {
+                    <a asp-page="/Billing/Payments/Refund" asp-route-id="@p.Id" class="pc-btn pc-btn-small" data-testid="refund">Refund</a>
+                }</td>
+          </tr>
+      }
+      </tbody>
+    </table>
+}
+
+@if (Model.Details.Refunds.Count > 0)
+{
+    <h2 class="pc-section">Refunds</h2>
+    <table class="pc-table" data-testid="refunds">
+      <thead><tr><th>When (UTC)</th><th>Amount</th><th>Status</th><th>Reason</th><th>By</th></tr></thead>
+      <tbody>
+      @foreach (var r in Model.Details.Refunds)
+      {
+          <tr><td>@r.RefundedUtc.ToString("yyyy-MM-dd HH:mm")</td><td>@InvoiceService.Money(r.Amount, r.Currency)</td><td>@r.Status</td><td>@r.Reason</td><td>@r.RecordedBy</td></tr>
+      }
+      </tbody>
+    </table>
+}

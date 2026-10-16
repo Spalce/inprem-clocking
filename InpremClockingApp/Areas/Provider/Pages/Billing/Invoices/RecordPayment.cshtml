@@ -1,0 +1,46 @@
+@page "{id:guid}"
+@model InpremClockingApp.Areas.Provider.Pages.Billing.Invoices.RecordPaymentModel
+@using Inprem.Platform.Application.Billing
+@using Inprem.Platform.Domain.Billing
+@{
+    var invoice = Model.Details.Invoice;
+    ViewData["Title"] = "Record offline payment";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<p><a asp-page="Details" asp-route-id="@invoice.Id">&larr; Back to the invoice</a></p>
+<h1 class="pc-title">Record an offline payment for @invoice.Number</h1>
+<p class="pc-subtitle">@Model.Details.TenantName &middot; still to pay @InvoiceService.Money(invoice.Outstanding, invoice.Currency)@(invoice.ExternalInvoiceId != null ? " · also recorded on the PayPal invoice" : "")</p>
+
+@if (Model.Error != null)
+{
+    <div class="pc-error" data-testid="error">@Model.Error</div>
+}
+
+<form method="post" class="pc-card pc-form">
+  <div class="pc-field">
+    <label for="PaidOn">Date received</label>
+    <input type="date" id="PaidOn" name="PaidOn" value="@Model.PaidOn?.ToString("yyyy-MM-dd")" required />
+  </div>
+  <div class="pc-field">
+    <label for="Method">Method</label>
+    <select id="Method" name="Method">
+      @foreach (var method in Enum.GetValues<OfflinePaymentMethod>())
+      {
+          <option value="@method" selected="@(Model.Method == method)">@InpremClockingApp.Areas.Provider.Pages.Billing.Invoices.RecordPaymentModel.Label(method)</option>
+      }
+    </select>
+  </div>
+  <div class="pc-field">
+    <label for="Reference">Reference <span class="pc-muted">(bank or mobile money reference, receipt or cheque number; must be unique)</span></label>
+    <input type="text" id="Reference" name="Reference" value="@Model.Reference" maxlength="100" required />
+  </div>
+  <div class="pc-field">
+    <label for="Amount">Amount (@invoice.Currency)</label>
+    <input type="number" id="Amount" name="Amount" value="@Model.Amount?.ToString(System.Globalization.CultureInfo.InvariantCulture)" min="0.01" step="0.01" required />
+  </div>
+  <div class="pc-actions">
+    <button type="submit" class="pc-btn pc-btn-primary" data-testid="confirm">Record payment</button>
+    <a asp-page="Details" asp-route-id="@invoice.Id" class="pc-btn">Cancel</a>
+  </div>
+</form>

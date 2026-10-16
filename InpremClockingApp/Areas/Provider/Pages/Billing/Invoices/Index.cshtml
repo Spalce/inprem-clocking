@@ -1,0 +1,72 @@
+@page
+@model InpremClockingApp.Areas.Provider.Pages.Billing.Invoices.IndexModel
+@using Inprem.Platform.Application.Billing
+@using Inprem.Platform.Domain.Billing
+@{
+    ViewData["Title"] = "Invoices";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<h1 class="pc-title">Invoices</h1>
+<p class="pc-subtitle">Invoices sent through PayPal and invoices paid offline. Open one for its payments and actions.</p>
+<p class="pc-tabs"><a asp-page="/Billing/Index">Subscriptions</a> <a asp-page="/Billing/Invoices/Index" class="pc-tab-current">Invoices</a></p>
+
+<p><a asp-page="New" asp-route-tenantId="@Model.TenantId" class="pc-btn pc-btn-primary" data-testid="new-invoice">+ New invoice</a></p>
+
+<form method="get" class="pc-filters">
+  <select name="Status" aria-label="Status">
+    <option value="">Any status</option>
+    @foreach (var status in Enum.GetValues<InvoiceStatus>())
+    {
+        <option value="@status" selected="@(Model.Status == status)">@status</option>
+    }
+  </select>
+  <select name="Source" aria-label="Kind">
+    <option value="">Any kind</option>
+    <option value="@InvoiceSource.PayPalInvoice" selected="@(Model.Source == InvoiceSource.PayPalInvoice)">PayPal</option>
+    <option value="@InvoiceSource.Manual" selected="@(Model.Source == InvoiceSource.Manual)">Offline</option>
+    <option value="@InvoiceSource.Subscription" selected="@(Model.Source == InvoiceSource.Subscription)">Subscription</option>
+  </select>
+  <label>Issued from <input type="date" name="From" value="@Model.From?.ToString("yyyy-MM-dd")" /></label>
+  <label>to <input type="date" name="To" value="@Model.To?.ToString("yyyy-MM-dd")" /></label>
+  @if (Model.TenantId != null)
+  {
+      <input type="hidden" name="TenantId" value="@Model.TenantId" />
+  }
+  <button type="submit" class="pc-btn">Filter</button>
+</form>
+
+<table class="pc-table" data-testid="invoices">
+  <thead><tr><th>Number</th><th>Organization</th><th>Kind</th><th>Status</th><th>Total</th><th>To pay</th><th>Issued</th><th>Due</th></tr></thead>
+  <tbody>
+  @foreach (var i in Model.Result.Items)
+  {
+      <tr>
+        <td><a asp-page="Details" asp-route-id="@i.Id">@i.Number</a></td>
+        <td><a asp-page="/Tenants/Details" asp-route-id="@i.TenantId" asp-route-tab="invoices">@i.TenantName</a></td>
+        <td>@(i.Source == InvoiceSource.Manual ? "Offline" : i.Source == InvoiceSource.PayPalInvoice ? "PayPal" : "Subscription")</td>
+        <td><span class="pc-badge">@i.Status</span></td>
+        <td>@InvoiceService.Money(i.Total, i.Currency)</td>
+        <td>@(i.Outstanding > 0 ? InvoiceService.Money(i.Outstanding, i.Currency) : "")</td>
+        <td>@i.IssueDate.ToString("yyyy-MM-dd")</td>
+        <td>@i.DueDate.ToString("yyyy-MM-dd")</td>
+      </tr>
+  }
+  @if (Model.Result.Items.Count == 0)
+  {
+      <tr><td colspan="8" class="pc-muted">No invoices match.</td></tr>
+  }
+  </tbody>
+</table>
+
+<div class="pc-pager">
+  <span class="pc-muted">@Model.Result.Total invoice@(Model.Result.Total == 1 ? "" : "s") &middot; page @Model.Result.Page of @Model.Result.Pages</span>
+  @if (Model.Result.Page > 1)
+  {
+      <a asp-page="Index" asp-all-route-data="Model.Route(Model.Result.Page - 1)" class="pc-btn pc-btn-small">Previous</a>
+  }
+  @if (Model.Result.Page < Model.Result.Pages)
+  {
+      <a asp-page="Index" asp-all-route-data="Model.Route(Model.Result.Page + 1)" class="pc-btn pc-btn-small">Next</a>
+  }
+</div>

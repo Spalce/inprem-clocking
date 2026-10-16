@@ -143,6 +143,12 @@ public class ProviderFixture : IAsyncLifetime
 
     /// <summary>The pretend PayPal (nothing reaches PayPal in tests).</summary>
     public FakePaymentProvider PayPal => _app.PayPal;
+
+    /// <summary>The pretend PayPal Invoicing (Phase 4).</summary>
+    public FakeInvoiceProvider Invoicing => _app.Invoicing;
+
+    /// <summary>What a Provider Billing user may refund at once in these tests (D28; the default is 0 = Owners only).</summary>
+    public const decimal RefundLimit = 50m;
     public IServiceProvider Services => _app.Services;
     public string ConnectionString => _db.ConnectionString;
 
@@ -159,6 +165,7 @@ public class ProviderFixture : IAsyncLifetime
             ["Security:RecoveryApprovers:1"] = Approver2,
             ["Security:Mailbox"] = Mailbox,
             ["Links:AdminBaseUrl"] = "https://localhost/Provider",
+            ["Billing:RefundLimit"] = RefundLimit.ToString(System.Globalization.CultureInfo.InvariantCulture),
         }, configureServices: services => services.AddSingleton<IClock>(Clock));
         _ = _app.Server;
         Data = await TestDataSeeder.SeedAsync(_app.Services);

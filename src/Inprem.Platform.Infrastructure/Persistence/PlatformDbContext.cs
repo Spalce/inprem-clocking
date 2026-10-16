@@ -53,6 +53,7 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<CheckoutSession> CheckoutSessions { get; set; } = null!;
     public DbSet<Payment> Payments { get; set; } = null!;
     public DbSet<Invoice> Invoices { get; set; } = null!;
+    public DbSet<PaymentRefund> PaymentRefunds { get; set; } = null!;
 
     /// <summary>The database sequence behind invoice numbers (<c>INV-100001</c>, …; M1k).</summary>
     public const string InvoiceNumberSequence = "InvoiceNumbers";
@@ -273,6 +274,24 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
             payment.Property(p => p.Method).HasConversion<string>().HasMaxLength(20);
             payment.HasIndex(p => p.InvoiceId);
             payment.HasOne<Invoice>().WithMany().HasForeignKey(p => p.InvoiceId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PaymentRefund>(refund =>
+        {
+            refund.ToTable("PaymentRefunds");
+            refund.HasKey(r => r.Id);
+            refund.Property(r => r.Id).ValueGeneratedNever();
+            refund.Property(r => r.ExternalRefundId).HasMaxLength(100).IsUnicode(false);
+            refund.Property(r => r.Amount).HasPrecision(10, 2);
+            refund.Property(r => r.Currency).HasMaxLength(3).IsFixedLength().IsUnicode(false);
+            refund.Property(r => r.Status).HasConversion<string>().HasMaxLength(20);
+            refund.Property(r => r.Reason).HasMaxLength(PaymentRefund.MaxReasonLength);
+            refund.Property(r => r.RecordedBy).HasMaxLength(300);
+            // One row per PayPal refund: a repeated or late PayPal message about it changes nothing.
+            refund.HasIndex(r => r.ExternalRefundId).IsUnique().HasFilter("[ExternalRefundId] IS NOT NULL");
+            refund.HasIndex(r => r.PaymentId);
+            refund.HasIndex(r => new { r.TenantId, r.RefundedUtc });
+            refund.HasOne<Payment>().WithMany().HasForeignKey(r => r.PaymentId).OnDelete(DeleteBehavior.Restrict);
         });
 
         // Starts above the old billing code's numbers (INV-000001 …, moved as payments by M5).

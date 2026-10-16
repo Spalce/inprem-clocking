@@ -74,6 +74,20 @@ public sealed class Payment
         return true;
     }
 
+    /// <summary>
+    /// The refunded total from the payment's refunds (Phase 4: one <see cref="PaymentRefund"/> per refund,
+    /// failed ones excluded). Returns false when nothing changed.
+    /// </summary>
+    public bool SetRefundedTotal(decimal total, DateTime nowUtc)
+    {
+        if (total < 0 || total > Amount) throw new ArgumentOutOfRangeException(nameof(total), "From 0 to the payment's amount.");
+        if (Status == PaymentStatus.Reversed || RefundedAmount == total) return false;
+        RefundedAmount = total;
+        Status = total > 0 ? PaymentStatus.Refunded : PaymentStatus.Completed;
+        RefundedUtc = total > 0 ? nowUtc : null;
+        return true;
+    }
+
     /// <summary>PAYMENT.SALE.REVERSED (chargeback). Returns false when already reversed.</summary>
     public bool Reverse(DateTime nowUtc)
     {

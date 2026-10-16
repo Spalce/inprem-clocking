@@ -21,11 +21,13 @@ public class DetailsModel : PageModel
     private readonly Inprem.Platform.Application.Support.SupportSessionService _support;
     private readonly Inprem.Platform.Application.Memberships.IClock _clock;
     private readonly Inprem.Platform.Application.Billing.BillingAccountService _billing;
+    private readonly Inprem.Platform.Application.Billing.InvoiceService _invoices;
 
     public DetailsModel(OrganizationService organizations, IAuthorizationService authorization,
         Inprem.Platform.Application.Support.SupportSessionService support, Inprem.Platform.Application.Memberships.IClock clock,
-        Inprem.Platform.Application.Billing.BillingAccountService billing)
+        Inprem.Platform.Application.Billing.BillingAccountService billing, Inprem.Platform.Application.Billing.InvoiceService invoices)
     {
+        _invoices = invoices;
         _organizations = organizations;
         _authorization = authorization;
         _support = support;
@@ -35,6 +37,9 @@ public class DetailsModel : PageModel
 
     /// <summary>The organization's billing (Subscription and payments tabs, step 2.8).</summary>
     public Inprem.Platform.Application.Billing.BillingOverview? Billing { get; private set; }
+
+    /// <summary>The organization's invoices, newest first (Invoices and payments tab, Phase 4).</summary>
+    public IReadOnlyList<Inprem.Platform.Application.Billing.InvoiceListItem> Invoices { get; private set; } = Array.Empty<Inprem.Platform.Application.Billing.InvoiceListItem>();
 
     /// <summary>Owners and Billing users change subscriptions.</summary>
     public bool CanBill { get; private set; }
@@ -57,6 +62,7 @@ public class DetailsModel : PageModel
         CanSupport = (await _authorization.AuthorizeAsync(User, ProviderPolicies.SupportSessions)).Succeeded;
         CanBill = (await _authorization.AuthorizeAsync(User, ProviderPolicies.Billing)).Succeeded;
         if (Tab is "subscription" or "invoices") Billing = await _billing.GetAsync(id, HttpContext.RequestAborted);
+        if (Tab == "invoices" && CanBill) Invoices = (await _invoices.ListAsync(new(TenantId: id), HttpContext.RequestAborted)).Items;
         ActiveSupport = (await _support.ListForTenantAsync(id, HttpContext.RequestAborted)).Where(s => s.IsActive(_clock.UtcNow)).ToList();
         return Page();
     }

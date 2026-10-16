@@ -45,7 +45,7 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
     /// Pages below the menu: who may open them (written out independently), and their address for
     /// a plan id. Plans: everyone views; Billing and Owners change.
     /// </summary>
-    private sealed record Ids(Guid PlanId, int TenantId, string AdminUserId, string ProviderUserId, string WebhookEventId);
+    private sealed record Ids(Guid PlanId, int TenantId, string AdminUserId, string ProviderUserId, string WebhookEventId, Guid InvoiceId, Guid PaymentId);
 
     private static readonly ProviderRole[] Everyone = { ProviderRole.Support, ProviderRole.Billing, ProviderRole.Owner };
     private static readonly ProviderRole[] BillingAndOwner = { ProviderRole.Billing, ProviderRole.Owner };
@@ -75,7 +75,30 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
         ["/Tenants/ExtendTrial"] = (BillingAndOwner, x => $"/Provider/Tenants/ExtendTrial/{x.TenantId}"),
         ["/Tenants/FreeAccess"] = (BillingAndOwner, x => $"/Provider/Tenants/FreeAccess/{x.TenantId}"),
         ["/Tenants/CancelSubscription"] = (BillingAndOwner, x => $"/Provider/Tenants/CancelSubscription/{x.TenantId}"),
+        ["/Billing/Invoices/Index"] = (BillingAndOwner, _ => "/Provider/Billing/Invoices"),
+        ["/Billing/Invoices/New"] = (BillingAndOwner, x => $"/Provider/Billing/Invoices/New?tenantId={x.TenantId}"),
+        ["/Billing/Invoices/Details"] = (BillingAndOwner, x => $"/Provider/Billing/Invoices/Details/{x.InvoiceId}"),
+        ["/Billing/Invoices/Cancel"] = (BillingAndOwner, x => $"/Provider/Billing/Invoices/Cancel/{x.InvoiceId}"),
+        ["/Billing/Invoices/RecordPayment"] = (BillingAndOwner, x => $"/Provider/Billing/Invoices/RecordPayment/{x.InvoiceId}"),
+        ["/Billing/Payments/Refund"] = (BillingAndOwner, x => $"/Provider/Billing/Payments/Refund/{x.PaymentId}"),
     };
+
+    /// <summary>A sent offline invoice of Alpha with a partial offline payment (Phase 4 pages).</summary>
+    private async Task<(Guid InvoiceId, Guid PaymentId)> InvoiceAndPaymentAsync()
+    {
+        await using var db = _app.CreatePlatformDbContext();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var invoice = Inprem.Platform.Domain.Billing.Invoice.Create(_app.Data.Alpha.Id, null, Inprem.Platform.Domain.Billing.InvoiceSource.Manual,
+            $"INV-{Random.Shared.Next(900000, 999999)}", "USD", new[] { ("Matrix item", 1m, 20m) }, today, today.AddDays(7), null, null, null, "test", DateTime.UtcNow);
+        invoice.MarkSent(null, DateTime.UtcNow);
+        var payment = Inprem.Platform.Domain.Billing.Payment.Record(_app.Data.Alpha.Id, null, Inprem.Platform.Domain.Billing.PaymentSource.Offline,
+            $"MATRIX-{Guid.NewGuid():N}"[..20], 5m, "USD", DateTime.UtcNow, "test", invoice.Id, Inprem.Platform.Domain.Billing.OfflinePaymentMethod.Cash);
+        invoice.ApplyAmounts(5m, 0m, DateTime.UtcNow);
+        db.Invoices.Add(invoice);
+        db.Payments.Add(payment);
+        await db.SaveChangesAsync();
+        return (invoice.Id, payment.Id);
+    }
 
     private async Task<string> WebhookEventIdAsync()
     {
@@ -158,7 +181,8 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
 
         var supportEmail = $"target-{Guid.NewGuid():N}"[..18] + "@console.test";
         await CreateEnrolledProviderUserAsync(_app.Services, _app.CreatePlatformDbContext, supportEmail, ProviderRole.Support);
-        var ids = new Ids(await PlanIdAsync(), _app.Data.Alpha.Id, _app.Data.Alpha.Owner!.UserId, (await _app.FindUserAsync(supportEmail)).Id, await WebhookEventIdAsync());
+        var (invoiceId, paymentId) = await InvoiceAndPaymentAsync();
+        var ids = new Ids(await PlanIdAsync(), _app.Data.Alpha.Id, _app.Data.Alpha.Owner!.UserId, (await _app.FindUserAsync(supportEmail)).Id, await WebhookEventIdAsync(), invoiceId, paymentId);
         foreach (var (page, (roles, url)) in SubPages)
         {
             Assert.EndsWith("/Provider/Login", Location(await anonymous.GetAsync(url(ids))));

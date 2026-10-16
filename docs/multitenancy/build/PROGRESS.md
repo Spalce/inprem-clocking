@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 4 Invoices (in progress; Phase 3 merged; the developer is testing Phases 1 to 3 by hand)
-- **Next step:** Phase 4 / Step 4.2 — Console invoice screens, offline payments and refunds
+- **Next step:** Phase 4 / Step 4.3 — Invoice webhooks and the monthly reconciliation report
 - **Branch:** `mt/phase3` (from `mt/integration` `9ac52c3`)
 
 ## Phase status
@@ -17,7 +17,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | 1 Provider Console | Implementation complete (1.1–1.7), Phase 1 bundle rehearsed. Waiting: developer walkthrough (P1-1), onboarding under 3 minutes on staging (P1-3) | P1-2, P1-4, P1-5, P1-6, P1-7 (automated); P1-1 automated part | 2026-10-15 (`87ab80d`, developer's request, before the P1-1 walkthrough) |
 | 2 PayPal core | Implementation complete (2.1–2.9), Phase 2 bundle rehearsed. Waiting: PayPal sandbox run (P2-1, P2-4) | P2-2, P2-3, P2-5, P2-6, P2-7 (automated); P2-1 and P2-4 with the pretend PayPal | 2026-10-15 (`9ac52c3`, developer's request, before the sandbox run) |
 | 3 Website API | Implementation complete (3.1–3.7), Phase 3 bundle rehearsed. Waiting: J1–J6 with the PayPal sandbox and the web team's site on staging (P3-1); load test on staging (P3-7) | P3-2, P3-3, P3-4, P3-5, P3-6, P3-8, P3-9 (automated); P3-1 with the demo site and the pretend PayPal | 2026-10-16 (`ceeb80c`, developer's request, before the staging checks) |
-| 4 Invoices | In progress (Step 4.1 done) | — | — |
+| 4 Invoices | In progress (Steps 4.1–4.2 done) | — | — |
 | 5 Twilio | Not started | — | — |
 | 6 Staff alerts | Not started | — | — |
 | Cutover | Not started | — | — |
@@ -123,6 +123,32 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-16 — Fix from the developer's manual testing: console "+ New …" buttons readable without hovering.**
+  - **Found:** the button-style links (**+ New organization**, **+ New plan**, **+ New invoice**) showed their text only on mouse hover. The console's general link colour (`.pc a`, blue) is more specific than `.pc-btn-primary`, so the text was blue on the blue button; only the hover rule won.
+  - **Fix** (`wwwroot/provider/console.css`, our own console style sheet): link buttons keep the button's text colour (white on primary, normal on plain, red on danger), also on hover, with no underline. Covers all 31 console pages with link buttons.
+  - **Test:** UI +1 (`ConsoleStyleTests`, a real browser computes the colours): it failed on the old style sheet (text `rgb(37, 99, 235)` on background `rgb(37, 99, 235)`) and passes now.
+
+- **2026-10-16 — Phase 4 / Step 4.2 — Console invoices, offline payments and refunds (platform migration M1l).**
+  - **`InvoiceService`** (Application). Every action writes one audit entry with the organization. PayPal is asked first, so a PayPal failure changes nothing here and is audited as failed.
+    - **New invoice:** organization, PayPal or offline, up to 8 lines, due date, note. **Review** checks without saving; **Create and send** saves and sends.
+      - A **PayPal invoice** goes to the organization's active Owner email. PayPal emails it, and the payer page link is kept. If PayPal is unreachable, the invoice stays a draft and **Send** on its page finishes it.
+      - An **offline invoice** is emailed by us with its lines and total.
+    - **Send again:** a draft is sent, a sent invoice is reminded (`invoice.resent`).
+    - **Cancel:** only without payments (refund instead), with a reason, also at PayPal.
+    - **Record offline payment:** date, method (bank transfer, cash, cheque, mobile money, other), reference (required and unique, so the same bank reference cannot be recorded twice), amount up to what is still to pay. It is also recorded on the PayPal invoice. The invoice status follows: PartiallyPaid, then Paid.
+    - **Refund:** a PayPal payment is refunded through PayPal (a subscription payment as a sale, an invoice payment as a capture), with a request id derived from the payment and amount, so a double click refunds once. An offline payment is recorded as returned (and on the PayPal invoice). The invoice follows: PartiallyRefunded or Refunded.
+      - **Owners refund any amount; Billing users up to `Billing:RefundLimit`** (D28; default 0 = Owners only).
+      - The page needs a **fresh two-factor code** (`[RequireRecentTwoFactor]`, design 5.5) and asks for confirmation.
+  - **One row per refund (`PaymentRefund`, migration M1l).** Found while building this: the Phase 2 webhook stores a refund's amount as the payment's refunded total, so a second partial refund would replace the first. Refunds are now rows, and the payment's total is their sum (`Payment.SetRefundedTotal`). M1l gives each payment refunded before one row with its total. The webhook moves to the rows in step 4.3 (PayPal refund ids are unique, so its repeats change nothing).
+  - **Pages** (Owners and Billing): Billing has two tabs, **Subscriptions** and **Invoices** (list with filters for status, kind and issue dates, and **+ New invoice**). Also the invoice page (total, paid, still to pay, lines, payments with **Refund**, refunds, **Send / Send again**, **Record offline payment**, **Cancel invoice**, **Open at PayPal**), the Cancel, Record payment and Refund pages, and on the organization's **Invoices and payments** tab its invoices, **+ New invoice** and **Refund** per payment.
+  - **Migration M1l:** `platform.PaymentRefunds`. Scripts rehearsed on LocalDB after the Phase 0 to 3 bundles and M1k, with an old refunded payment: up, up, down, down, up; verify `1|1|2|0|1`, and the old refund got exactly one row. **Not applied to the local database yet** (nor will later ones be), while the developer tests Phases 1 to 3 on it; M1k is already there.
+  - **Tests:**
+    - Unit +4: refund rules and totals.
+    - Integration +7 (`InvoicePagesTests`): review saves nothing; created and sent by PayPal to the owner, with audit; an offline payment on a PayPal invoice is recorded at PayPal; PayPal unreachable → draft, then sent, then reminded; offline invoice emailed, paid in two parts, a reference refused twice, more than owed refused, cancel refused once paid; cancel at PayPal; an Owner refund needs a fresh code, and two partial refunds add up (10 + 5 = 15); the Billing limit (60 refused, 50 allowed), Owners only with a limit of 0, Support cannot open the page; an offline refund moves the invoice to PartiallyRefunded.
+    - Role matrix +6 pages; audit coverage +7 handlers.
+  - **Configuration:** `Billing:RefundLimit` (read at first use, so host and test settings apply).
+  - **Results:** Unit 174, Architecture 11, Baseline 312, Integration 220, UI 10 (run group by group with the developer's app closed; an earlier full run was stopped for low memory). No model drift.
 
 - **2026-10-16 — Fix from the developer's manual testing (test guide T1-3): accepting an invitation now offers "Choose organization".**
   - **Found:** an admin of one organization accepted another organization's invitation (`/Account/Invitations` → Accept) and stayed in the first one, without the choice. The accept handler refreshed the sign-in, which keeps the current organization (by design of the step 0.3 refresh), and then went to the kiosk page.

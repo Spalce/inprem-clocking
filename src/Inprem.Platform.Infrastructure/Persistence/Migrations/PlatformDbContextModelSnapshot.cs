@@ -396,6 +396,64 @@ namespace Inprem.Platform.Infrastructure.Persistence.Migrations
                     b.ToTable("Payments", "platform");
                 });
 
+            modelBuilder.Entity("Inprem.Platform.Domain.Billing.PaymentRefund", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .IsUnicode(false)
+                        .HasColumnType("char(3)")
+                        .IsFixedLength();
+
+                    b.Property<string>("ExternalRefundId")
+                        .HasMaxLength(100)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<Guid>("PaymentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("RecordedBy")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateTime>("RefundedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExternalRefundId")
+                        .IsUnique()
+                        .HasFilter("[ExternalRefundId] IS NOT NULL");
+
+                    b.HasIndex("PaymentId");
+
+                    b.HasIndex("TenantId", "RefundedUtc");
+
+                    b.ToTable("PaymentRefunds", "platform");
+                });
+
             modelBuilder.Entity("Inprem.Platform.Domain.Billing.Plan", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1240,6 +1298,15 @@ namespace Inprem.Platform.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("SubscriptionId")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Inprem.Platform.Domain.Billing.PaymentRefund", b =>
+                {
+                    b.HasOne("Inprem.Platform.Domain.Billing.Payment", null)
+                        .WithMany()
+                        .HasForeignKey("PaymentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Inprem.Platform.Domain.Billing.PlanPrice", b =>
