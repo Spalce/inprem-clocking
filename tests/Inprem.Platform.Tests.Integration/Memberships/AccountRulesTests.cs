@@ -153,6 +153,37 @@ public class AccountRulesTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task Account_Accepting_A_Second_Organization_Offers_The_Choice_At_Once()
+    {
+        // Manual test T1-3 (2026-10-16): an Alpha admin accepted Beta's invitation and stayed in Alpha.
+        var (userId, email) = await CreateAccountAsync(_app.Data.Alpha.Id);
+        await using (var db = _app.CreatePlatformDbContext())
+        {
+            db.TenantMemberships.Add(TenantMembership.CreateActive(userId, _app.Data.Alpha.Id, MembershipRole.Admin, DateTime.UtcNow));
+            db.TenantMemberships.Add(TenantMembership.CreateInvited(userId, _app.Data.Beta.Id, MembershipRole.Admin, _app.Data.Beta.Owner!.UserId, DateTime.UtcNow));
+            await db.SaveChangesAsync();
+        }
+        using var client = _app.CreateClient();
+        await SignIn.AsAsync(client, email, _app.Data.Password);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/Staff")).StatusCode); // in Alpha, the only organization so far
+
+        using var accepted = await SubmitAsync(client, "/Account/Invitations", "Accept");
+        Assert.Equal("/Account/ChooseOrganization", accepted.Headers.Location!.ToString());
+
+        var chooser = new HtmlParser().ParseDocument(await (await client.GetAsync("/Account/ChooseOrganization")).Content.ReadAsStringAsync());
+        var forms = chooser.QuerySelectorAll("form[method=post]").Where(f => f.QuerySelector("input[name=membershipId]") != null).ToList();
+        Assert.Equal(2, forms.Count);
+        var beta = forms.Single(f => f.TextContent.Contains(_app.Data.Beta.Name, StringComparison.Ordinal));
+        var fields = beta.QuerySelectorAll("input[type=hidden]").ToDictionary(i => i.GetAttribute("name")!, i => i.GetAttribute("value") ?? "");
+        using var chosen = await client.PostAsync("/Account/ChooseOrganization", new FormUrlEncodedContent(fields));
+        Assert.Equal(HttpStatusCode.Redirect, chosen.StatusCode);
+
+        var staff = await (await client.GetAsync("/Staff")).Content.ReadAsStringAsync();
+        Assert.Contains(_app.Data.Beta.Staff[0].LastName, staff);
+        Assert.DoesNotContain(_app.Data.Alpha.Staff[0].LastName, staff);
+    }
+
+    [Fact]
     public async Task Account_Dashboard_Admin_Count_Includes_Members_Who_Joined_By_Invitation()
     {
         // Measured before and after, because other tests in this class add accounts too.

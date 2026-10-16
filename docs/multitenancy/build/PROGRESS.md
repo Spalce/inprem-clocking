@@ -124,6 +124,16 @@ _(date — what was tested — result)_
 
 ## Log
 
+- **2026-10-16 — Fix from the developer's manual testing (test guide T1-3): accepting an invitation now offers "Choose organization".**
+  - **Found:** an admin of one organization accepted another organization's invitation (`/Account/Invitations` → Accept) and stayed in the first one, without the choice. The accept handler refreshed the sign-in, which keeps the current organization (by design of the step 0.3 refresh), and then went to the kiosk page.
+  - **Fix** (`Areas/Account/Pages/Invitations.cshtml.cs`, our own Phase 0 page): after accepting, someone with more than one active organization goes to `/Account/ChooseOrganization`; with one, to the kiosk page as before.
+  - **Test:** Integration +1 (`Account_Accepting_A_Second_Organization_Offers_The_Choice_At_Once`): accept, the chooser lists both, choosing Beta shows Beta's staff and not Alpha's. It failed on the old code and passes on the new.
+  - **Test guide:** rewritten with click-by-click directions from the real pages (developer's feedback); T1-3 describes the problem until the fixed build is running; T1-4 says who sends the console invitation.
+  - **Two tests hardened (they failed on a busy machine, while the developer ran the app):**
+    - `ApiSkeletonTests.Idempotency_…`: a duplicate that arrives while the first is still running waits up to 10 s, then answers 429 "still being processed" (by design, design 7.7). The test now retries a 429 as a client would, and still checks that the record was made once.
+    - `DemoSiteBrowserTests`: Playwright waits up to 30 s instead of 5 s. `J3_J4_…` failed once more after this, at 47 s, without its message captured; it passed alone and in the next full UI run. **Watch:** if it fails on a quiet machine, keep the full log (`--logger "console;verbosity=normal"`).
+  - **Results:** Unit 170, Architecture 11, Baseline 312, Integration 213, UI 10.
+
 - **2026-10-16 — Phase 4 / Step 4.1 — Invoicing client and invoice records (platform migration M1k).**
   - **Checked first:** PayPal's Invoicing v2 description (version 2.12.0) and webhook event names; endpoints, retry rules, statuses, methods and refunds are recorded in `docs/multitenancy/paypal-notes.md`.
   - **`IInvoiceProvider`** (Application) and **`PayPalInvoiceProvider`** (typed client on the shared `PayPal` HttpClient):

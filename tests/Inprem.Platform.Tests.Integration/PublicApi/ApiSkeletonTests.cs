@@ -164,7 +164,18 @@ public class ApiSkeletonTests : IClassFixture<PublicApiFixture>
         // At the same moment: still one.
         var concurrentKey = Guid.NewGuid().ToString();
         var counted = _app.Endpoints.Created;
-        var all = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => client.SendAsync(Post("/test/create", """{"b":1}""", concurrentKey))));
+        var all = await Task.WhenAll(Enumerable.Range(0, 5).Select(async _ =>
+        {
+            // A duplicate waits up to 10 s for the first, then answers 429 "still being processed"
+            // (by design); on a busy machine that happens, so it is retried as a client would.
+            var response = await client.SendAsync(Post("/test/create", """{"b":1}""", concurrentKey));
+            for (var attempt = 0; response.StatusCode == HttpStatusCode.TooManyRequests && attempt < 5; attempt++)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(1));
+                response = await client.SendAsync(Post("/test/create", """{"b":1}""", concurrentKey));
+            }
+            return response;
+        }));
         Assert.All(all, r => Assert.Equal(HttpStatusCode.Created, r.StatusCode));
         Assert.Equal(counted + 1, _app.Endpoints.Created);
 

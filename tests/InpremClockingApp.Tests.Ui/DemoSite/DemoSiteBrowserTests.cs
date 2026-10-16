@@ -65,6 +65,8 @@ public class DemoSiteBrowserTests : IClassFixture<DemoSiteFixture>, IAsyncLifeti
     public async Task InitializeAsync()
     {
         await _app.PrepareAsync();
+        // Each journey waits on the server (signup, emails, PayPal steps): a busy machine needs more than Playwright's 5 s.
+        Assertions.SetDefaultExpectTimeout(30_000);
         _playwright = await Playwright.CreateAsync();
         _browser = await _playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
     }
@@ -81,6 +83,7 @@ public class DemoSiteBrowserTests : IClassFixture<DemoSiteFixture>, IAsyncLifeti
     private async Task<IPage> PageAsync(bool approve = true)
     {
         var context = await _browser.NewContextAsync(new BrowserNewContextOptions { BaseURL = Origin });
+        context.SetDefaultTimeout(30_000);
         var page = await context.NewPageAsync();
         await page.RouteAsync("https://www.sandbox.paypal.com/**", async route =>
         {

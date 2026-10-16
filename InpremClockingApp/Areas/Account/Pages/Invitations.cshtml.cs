@@ -50,6 +50,13 @@ public class InvitationsModel : PageModel
             await _signInManager.RefreshSignInAsync(user);
         }
 
+        // The refresh keeps the organization this session was in, so with more than one organization
+        // the choice is offered now (found in manual testing, T1-3, 2026-10-16).
+        if ((await _memberships.ListActiveAsync(UserId)).Count > 1)
+        {
+            return LocalRedirect(Url.Content("~/Account/ChooseOrganization"));
+        }
+
         return LocalRedirect(Url.Content("~/VolunteerAttendance"));
     }
 
