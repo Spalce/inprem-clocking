@@ -224,7 +224,10 @@ POST /billing-access/sessions
    - **Pay** (J3, convert a trial), **subscribe again** (after cancellation, expiry or suspension) or **change plan** (J4): `POST /checkout-sessions` with `purpose` = `convert`, `resubscribe` or `change_plan`, then the same PayPal, confirm and poll steps as J2.
    - **Cancel:** `POST /account/subscription/cancel` → `{ "status": "Canceled", "cancelAtPeriodEnd": true, "accessEndsAt": "2026-11-15T00:00:00Z" }`. The organization keeps full access until then.
    - `POST /account/subscription/keep` answers `409 cannot_keep`: PayPal cannot reactivate a cancelled subscription. Offer "Subscribe again" instead.
-   - `GET /account/invoices` → `[]` until invoices arrive (Phase 4).
+   - `GET /account/invoices` → the organization's invoices, newest first (drafts are never shown):
+     `[{ "invoiceId": "…", "number": "INV-100012", "status": "Sent", "total": { "amount": "70.00", "currency": "USD" }, "amountDue": { "amount": "70.00", "currency": "USD" }, "amountRefunded": null, "issuedAt": "2026-10-16T00:00:00Z", "dueDate": "2026-10-30", "periodStart": null, "periodEnd": null, "paymentUrl": "https://www.paypal.com/invoice/p/#…" }]`.
+     - `status`: `Sent`, `PartiallyPaid`, `Overdue` (still to pay after the due date), `Paid`, `Refunded`, `Cancelled`.
+     - Show a **Pay** button only when `paymentUrl` is set (a PayPal invoice with something still to pay). An invoice paid offline has no link: ask the payer to quote the `number`.
 
 Which `purpose` to use, from `status`:
 
@@ -313,8 +316,9 @@ Emails on staging (verification and billing links) go to the addresses you regis
 
 ## 8. Changes from the draft
 
-The agreed draft ([`public-v1.draft.yaml`](public-v1.draft.yaml)) was written before the code. Building it changed three things, to confirm with the web team:
+The agreed draft ([`public-v1.draft.yaml`](public-v1.draft.yaml)) was written before the code. Building it changed four things, to confirm with the web team:
 
 - `internal_error` was added to the problem codes (the draft had none for a 500).
 - `limits.maxPeople` (staff and volunteers together) was added to plans; the draft's separate staff, volunteer and admin limits wait for the plan catalogue decision.
 - `POST /account/subscription/keep` always answers `409 cannot_keep`, because PayPal cancellations are final. An "undo" would need cancellation scheduled at the period end instead.
+- Invoices have an optional `amountRefunded` (Phase 4): a partly refunded invoice stays `Paid` with the amount given back. `Void` and `Draft` from the draft's status list are never returned (drafts are not shown).

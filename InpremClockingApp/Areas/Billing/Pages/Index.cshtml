@@ -98,6 +98,37 @@
       </div>
   }
 
+  @if (Model.Invoices.Count > 0)
+  {
+      <div class="@card" data-testid="invoices">
+        <h2 class="tw:mb-3 tw:text-lg tw:font-semibold tw:text-slate-900">Invoices</h2>
+        <table class="tw:w-full tw:text-left tw:text-sm">
+          <thead><tr class="tw:text-slate-500"><th class="tw:py-1">Number</th><th>Issued</th><th>Due</th><th>Total</th><th>To pay</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+          @foreach (var i in Model.Invoices)
+          {
+              <tr class="tw:border-t tw:border-slate-100" data-number="@i.Number">
+                <td class="tw:py-1"><a href="/Billing/Invoices/@i.Id" class="tw:text-blue-700 tw:hover:underline">@i.Number</a></td>
+                <td>@i.IssueDate.ToString("d MMM yyyy")</td>
+                <td>@i.DueDate.ToString("d MMM yyyy")</td>
+                <td>@InvoiceService.Money(i.Total, i.Currency)</td>
+                <td>@(i.AmountDue > 0 ? InvoiceService.Money(i.AmountDue, i.Currency) : "")</td>
+                <td data-testid="invoice-status">@i.Status@(i.AmountRefunded > 0 ? $" ({InvoiceService.Money(i.AmountRefunded, i.Currency)} back)" : "")</td>
+                <td>@if (i.PaymentUrl != null)
+                    {
+                        <a href="@i.PaymentUrl" class="@button" target="_blank" rel="noopener" data-testid="pay">Pay at PayPal</a>
+                    }
+                    else if (i.PaysOffline)
+                    {
+                        <span class="tw:text-slate-500">Pay by bank transfer or mobile money, quoting @i.Number</span>
+                    }</td>
+              </tr>
+          }
+          </tbody>
+        </table>
+      </div>
+  }
+
   <div class="@card" data-testid="payments">
     <h2 class="tw:mb-3 tw:text-lg tw:font-semibold tw:text-slate-900">Payments</h2>
     @if (o.Payments.Count == 0)

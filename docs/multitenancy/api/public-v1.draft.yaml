@@ -779,6 +779,7 @@ components:
         status: { type: string, enum: [Draft, Sent, Paid, PartiallyPaid, Overdue, Cancelled, Refunded, Void] }
         total: { $ref: "#/components/schemas/Money" }
         amountDue: { $ref: "#/components/schemas/Money" }
+        amountRefunded: { allOf: [{ $ref: "#/components/schemas/Money" }], nullable: true, description: "Given back so far (a refunded invoice keeps status Paid until all is refunded)." }
         issuedAt: { type: string, format: date-time }
         dueDate: { type: string, format: date, nullable: true }
         periodStart: { type: string, format: date, nullable: true }

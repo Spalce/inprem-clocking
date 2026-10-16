@@ -38,6 +38,17 @@ public sealed record InvoicePage(IReadOnlyList<InvoiceListItem> Items, int Total
 /// <summary>An invoice with what was paid on it and the refunds of those payments.</summary>
 public sealed record InvoiceDetails(Invoice Invoice, string TenantName, IReadOnlyList<Payment> Payments, IReadOnlyList<PaymentRefund> Refunds);
 
+/// <summary>
+/// An invoice as its organization sees it (Phase 4 step 4.4: the in-app Billing page and the
+/// website's <c>GET /account/invoices</c>). Drafts are never shown. <see cref="Status"/> uses the
+/// website API's words: Sent, PartiallyPaid, Overdue (to pay and past its due date), Paid, Refunded, Cancelled.
+/// </summary>
+public sealed record OrganizationInvoice(Guid Id, string Number, string Status, decimal Total, decimal AmountDue, decimal AmountRefunded, string Currency,
+    DateOnly IssueDate, DateOnly DueDate, DateOnly? PeriodStart, DateOnly? PeriodEnd, string? PaymentUrl, bool PaysOffline, string? Notes);
+
+/// <summary>One invoice with its lines and payments, for its organization (the printable invoice and receipt).</summary>
+public sealed record OrganizationInvoiceDetails(OrganizationInvoice Invoice, IReadOnlyList<InvoiceLine> Lines, IReadOnlyList<Payment> Payments, string TenantName);
+
 /// <summary>A payment with its refunds and organization (the refund page).</summary>
 public sealed record PaymentDetails(Payment Payment, string TenantName, Invoice? Invoice, IReadOnlyList<PaymentRefund> Refunds)
 {
@@ -89,6 +100,38 @@ public sealed class InvoiceService
         var invoice = payment.InvoiceId == null ? null : await _store.FindAsync(payment.InvoiceId.Value, ct).ConfigureAwait(false);
         return new PaymentDetails(payment, await _store.TenantNameAsync(payment.TenantId, ct).ConfigureAwait(false) ?? $"#{payment.TenantId}", invoice,
             await _store.RefundsForPaymentsAsync(new[] { payment.Id }, ct).ConfigureAwait(false));
+    }
+
+    /// <summary>The organization's invoices, newest first, drafts left out (its own only).</summary>
+    public async Task<IReadOnlyList<OrganizationInvoice>> ForOrganizationAsync(int tenantId, CancellationToken ct = default)
+    {
+        var today = DateOnly.FromDateTime(_clock.UtcNow);
+        return (await _store.ListForTenantAsync(tenantId, 200, ct).ConfigureAwait(false))
+            .Where(i => i.Status != InvoiceStatus.Draft).Select(i => View(i, today)).ToList();
+    }
+
+    /// <summary>One of the organization's own invoices (null for another organization's, or a draft).</summary>
+    public async Task<OrganizationInvoiceDetails?> ForOrganizationAsync(int tenantId, Guid invoiceId, CancellationToken ct = default)
+    {
+        var invoice = await _store.FindAsync(invoiceId, ct).ConfigureAwait(false);
+        if (invoice == null || invoice.TenantId != tenantId || invoice.Status == InvoiceStatus.Draft) return null;
+        var payments = await _store.PaymentsForInvoiceAsync(invoiceId, ct).ConfigureAwait(false);
+        return new OrganizationInvoiceDetails(View(invoice, DateOnly.FromDateTime(_clock.UtcNow)), invoice.Lines, payments,
+            await _store.TenantNameAsync(tenantId, ct).ConfigureAwait(false) ?? "");
+    }
+
+    private static OrganizationInvoice View(Invoice i, DateOnly today)
+    {
+        var due = i.Outstanding;
+        var status = i.Status switch
+        {
+            InvoiceStatus.Sent or InvoiceStatus.PartiallyPaid when i.DueDate < today => "Overdue",
+            InvoiceStatus.PartiallyRefunded => "Paid", // paid, with part given back (AmountRefunded)
+            _ => i.Status.ToString(),
+        };
+        var payable = due > 0 && i.Status is InvoiceStatus.Sent or InvoiceStatus.PartiallyPaid;
+        return new OrganizationInvoice(i.Id, i.Number, status, i.Total, due, i.RefundedAmount, i.Currency, i.IssueDate, i.DueDate, i.PeriodStart, i.PeriodEnd,
+            payable && i.Source != InvoiceSource.Manual ? i.PaymentUrl : null, payable && i.Source == InvoiceSource.Manual, i.Notes);
     }
 
     /// <summary>Checks a new invoice without saving anything (the Review step): the error, or null.</summary>

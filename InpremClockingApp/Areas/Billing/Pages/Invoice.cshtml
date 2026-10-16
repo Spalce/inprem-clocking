@@ -1,0 +1,78 @@
+@page "/Billing/Invoices/{id:guid}"
+@model InpremClockingApp.Areas.Billing.Pages.InvoiceModel
+@using Inprem.Platform.Application.Billing
+@using Inprem.Platform.Domain.Billing
+@{
+    var d = Model.Details;
+    var i = d.Invoice;
+    ViewData["Title"] = i.Number;
+    var card = "tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:p-6 tw:shadow-sm tw:mb-6";
+    var button = "tw:inline-flex tw:cursor-pointer tw:items-center tw:rounded-md tw:border-0 tw:bg-blue-700 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-800";
+}
+
+<div class="tw:mx-auto tw:max-w-3xl tw:p-6">
+  <p class="tw:mb-4 tw:text-sm"><a href="/Billing" class="tw:text-blue-700 tw:hover:underline">&larr; Billing</a></p>
+
+  <div class="@card" data-testid="invoice">
+    <div class="tw:mb-4 tw:flex tw:flex-wrap tw:items-start tw:justify-between tw:gap-4">
+      <div>
+        <h1 class="tw:text-2xl tw:font-semibold tw:text-slate-900">@(i.Status is "Paid" or "Refunded" ? "Receipt" : "Invoice") @i.Number</h1>
+        <p class="tw:text-sm tw:text-slate-600">From Inprem to @d.TenantName</p>
+      </div>
+      <div class="tw:text-right tw:text-sm">
+        <p>Issued @i.IssueDate.ToString("d MMMM yyyy")</p>
+        <p>Due @i.DueDate.ToString("d MMMM yyyy")</p>
+        <p class="tw:font-semibold" data-testid="status">@i.Status</p>
+      </div>
+    </div>
+
+    <table class="tw:mb-4 tw:w-full tw:text-left tw:text-sm" data-testid="lines">
+      <thead><tr class="tw:text-slate-500"><th class="tw:py-1">Item</th><th class="tw:text-right">Quantity</th><th class="tw:text-right">Price</th><th class="tw:text-right">Amount</th></tr></thead>
+      <tbody>
+      @foreach (var l in d.Lines)
+      {
+          <tr class="tw:border-t tw:border-slate-100"><td class="tw:py-1">@l.Description</td><td class="tw:text-right">@l.Quantity.ToString("0.##")</td>
+              <td class="tw:text-right">@InvoiceService.Money(l.UnitAmount, i.Currency)</td><td class="tw:text-right">@InvoiceService.Money(l.Amount, i.Currency)</td></tr>
+      }
+      <tr class="tw:border-t tw:border-slate-300 tw:font-semibold"><td class="tw:py-1" colspan="3">Total</td><td class="tw:text-right" data-testid="total">@InvoiceService.Money(i.Total, i.Currency)</td></tr>
+      @if (i.AmountRefunded > 0)
+      {
+          <tr><td class="tw:py-1" colspan="3">Refunded</td><td class="tw:text-right">@InvoiceService.Money(i.AmountRefunded, i.Currency)</td></tr>
+      }
+      <tr><td class="tw:py-1" colspan="3">Still to pay</td><td class="tw:text-right" data-testid="due">@InvoiceService.Money(i.AmountDue, i.Currency)</td></tr>
+      </tbody>
+    </table>
+
+    @if (i.Notes != null)
+    {
+        <p class="tw:mb-4 tw:text-sm tw:text-slate-700">@i.Notes</p>
+    }
+
+    @if (i.PaymentUrl != null)
+    {
+        <p><a href="@i.PaymentUrl" class="@button" target="_blank" rel="noopener" data-testid="pay">Pay at PayPal</a></p>
+    }
+    else if (i.PaysOffline)
+    {
+        <p class="tw:text-sm tw:text-slate-700" data-testid="pay-offline">Please pay by bank transfer or mobile money and quote <strong>@i.Number</strong> with your payment. Contact Inprem for the account details.</p>
+    }
+
+    @if (d.Payments.Count > 0)
+    {
+        <h2 class="tw:mt-6 tw:mb-2 tw:text-base tw:font-semibold tw:text-slate-900">Payments received</h2>
+        <table class="tw:w-full tw:text-left tw:text-sm" data-testid="payments">
+          <thead><tr class="tw:text-slate-500"><th class="tw:py-1">Date</th><th>How</th><th>Reference</th><th class="tw:text-right">Amount</th></tr></thead>
+          <tbody>
+          @foreach (var p in d.Payments)
+          {
+              <tr class="tw:border-t tw:border-slate-100"><td class="tw:py-1">@p.PaidUtc.ToString("d MMM yyyy")</td>
+                  <td>@(p.Source == PaymentSource.PayPal ? "PayPal" : p.Method == OfflinePaymentMethod.BankTransfer ? "Bank transfer" : p.Method == OfflinePaymentMethod.MobileMoney ? "Mobile money" : p.Method?.ToString() ?? "Offline")</td>
+                  <td>@p.ExternalId</td>
+                  <td class="tw:text-right">@InvoiceService.Money(p.Amount, p.Currency)@(p.Status == PaymentStatus.Reversed ? " (reversed)" : "")</td></tr>
+          }
+          </tbody>
+        </table>
+    }
+  </div>
+  <p class="tw:text-sm"><button type="button" onclick="window.print()" class="tw:cursor-pointer tw:border-0 tw:bg-transparent tw:text-blue-700 tw:hover:underline" data-testid="print">Print or save as PDF</button></p>
+</div>

@@ -227,7 +227,8 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
     public async Task Console_List_Pages_Have_No_Forms_Except_Sign_Out()
     {
         using var owner = await ProviderClientAsync(ProviderRole.Owner);
-        foreach (var page in ConsolePages.Keys)
+        // The menu's pages, and the lists below them (Phase 4: invoices, reconciliation).
+        foreach (var page in ConsolePages.Keys.Concat(new[] { "/Billing/Invoices/Index", "/Billing/Reconciliation" }))
         {
             var html = await (await owner.GetAsync(Url(page))).Content.ReadAsStringAsync();
             var forms = new HtmlParser().ParseDocument(html).Forms

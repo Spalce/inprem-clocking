@@ -92,6 +92,21 @@ sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/phase3-down.sql 
 - **Down** removes website API tokens, stored idempotent answers, signups and billing-access codes; organizations and the audit log stay.
 - **Rehearsal (2026-10-15, LocalDB):** without Phase 2 → refused (50050). After the Phase 0 to 2 bundles: up, up again, down, down again, up; each ended as expected. Verify after up: `M1h=1|2|1|0|0 M1i=1|1|1|0|0 M1j=1|1|1|0`. An unknown platform migration → refused (50052). Then the four down bundles back to the approved baseline. The local database ran it as a no-op (app data unchanged).
 
+## All of Phase 4 at once (the bundles)
+
+After the Phase 0 to 3 bundles, Phase 4 adds platform migrations M1k and M1l (rows 16 and 17):
+
+```
+sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/phase4-up.sql     # ends with "Phase 4 schema complete."
+sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/phase4-down.sql   # ends with "Phase 4 rolled back"
+```
+
+- **Generated:** `build-phase4-bundle.ps1`, same rules and guards as the earlier bundles. CI checks they are up to date.
+- **Guards:** refuses a database without the complete Phase 0 to 3 schema (50060), with app migrations it does not know (50061), or with platform migrations it does not know (50062).
+- **Down** removes invoices, invoice lines, refund rows, the invoice number sequence and the payments' invoice and method columns; payments with their refunded totals and the audit log stay.
+- **Rehearsal (2026-10-16, LocalDB):** without Phase 3 → refused (50060). After the Phase 0 to 3 bundles: up, up again, down, down again, up; each ended as expected. Verify after up: `M1k=1|2|1|4|2|0 M1l=1|1|2|0|0`. An unknown platform migration → refused (50062). Then the five down bundles back to the approved baseline.
+- **Local database (2026-10-16):** backup `DB_A65635_inpremdb_before_phase4_bundle_20261016.bak` verified first; then `phase4-up.sql` applied M1l (M1k was already there); verify as above; app data unchanged (fingerprint).
+
 ## Running
 
 ```powershell

@@ -13,19 +13,28 @@ public class IndexModel : OwnerPageModel
 {
     private readonly BillingAccountService _account;
     private readonly CheckoutService _checkout;
+    private readonly InvoiceService _invoices;
 
-    public IndexModel(ITenantContext tenant, BillingAccountService account, CheckoutService checkout) : base(tenant)
+    public IndexModel(ITenantContext tenant, BillingAccountService account, CheckoutService checkout, InvoiceService invoices) : base(tenant)
     {
+        _invoices = invoices;
         _account = account;
         _checkout = checkout;
     }
 
     public BillingOverview Overview { get; private set; } = null!;
 
+    /// <summary>The organization's invoices (Phase 4), drafts left out.</summary>
+    public IReadOnlyList<OrganizationInvoice> Invoices { get; private set; } = Array.Empty<OrganizationInvoice>();
+
     /// <summary>Taken once per page view, so a double click starts one checkout.</summary>
     public string IdempotencyKey { get; private set; } = Guid.NewGuid().ToString("N");
 
-    public async Task OnGetAsync() => Overview = await _account.GetAsync(TenantId, HttpContext.RequestAborted);
+    public async Task OnGetAsync()
+    {
+        Overview = await _account.GetAsync(TenantId, HttpContext.RequestAborted);
+        Invoices = await _invoices.ForOrganizationAsync(TenantId, HttpContext.RequestAborted);
+    }
 
     public async Task<IActionResult> OnPostSubscribeAsync(Guid priceId, string key)
     {

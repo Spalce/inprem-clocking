@@ -148,11 +148,11 @@ public static class PublicApiEndpoints
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
-        api.MapGet("/account/invoices", () => Results.Ok(Array.Empty<object>())) // invoices arrive in Phase 4
+        api.MapGet("/account/invoices", GetAccountInvoicesAsync)
             .RequireAuthorization(PublicApiHosting.BillingPolicy)
             .WithName("listAccountInvoices")
             .WithTags("Account")
-            .Produces<IReadOnlyList<object>>()
+            .Produces<IReadOnlyList<InvoiceResponse>>()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
@@ -396,6 +396,12 @@ public static class PublicApiEndpoints
     private static async Task<IResult> GetAccountSubscriptionAsync(HttpContext http, BillingAccountService billing) =>
         Results.Ok(AccountSubscription(await billing.GetAsync(PublicApiClaims.TenantOf(http.User)!.Value, http.RequestAborted)));
 
+    /// <summary>The organization's invoices, newest first (Phase 4 step 4.4); drafts are never shown.</summary>
+    private static async Task<IResult> GetAccountInvoicesAsync(HttpContext http, InvoiceService invoices) =>
+        Results.Ok((await invoices.ForOrganizationAsync(PublicApiClaims.TenantOf(http.User)!.Value, http.RequestAborted)).Select(i => new InvoiceResponse(
+            i.Id, i.Number, i.Status, Money(i.Total, i.Currency), Money(i.AmountDue, i.Currency), i.AmountRefunded > 0 ? Money(i.AmountRefunded, i.Currency) : null,
+            DateTime.SpecifyKind(i.IssueDate.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc), i.DueDate, i.PeriodStart, i.PeriodEnd, i.PaymentUrl)).ToList());
+
     private static AccountSubscriptionResponse AccountSubscription(BillingOverview o)
     {
         var s = o.Subscription;
@@ -447,6 +453,9 @@ public static class PublicApiEndpoints
     public sealed record HealthResponse(string Status);
 
     public sealed record MoneyResponse(string Amount, string Currency);
+
+    public sealed record InvoiceResponse(Guid InvoiceId, string Number, string Status, MoneyResponse Total, MoneyResponse AmountDue, MoneyResponse? AmountRefunded,
+        DateTime IssuedAt, DateOnly? DueDate, DateOnly? PeriodStart, DateOnly? PeriodEnd, string? PaymentUrl);
 
     /// <summary>
     /// Plan limits. <c>maxPeople</c> (staff and volunteers together) is what plans have today; the draft's
