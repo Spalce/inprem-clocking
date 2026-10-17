@@ -124,6 +124,16 @@ _(date — what was tested — result)_
 
 ## Log
 
+- **2026-10-17 — Fix from the developer's manual testing: console Sign out answered "HTTP ERROR 400".**
+  - **Found:** the console checks a form token on every console page (step 0.7), Logout included. The token belongs to the sign-in the page was shown with. After the session timed out (30 idle minutes), or after signing in to the app in another tab of the same browser (one sign-in on a combined site), it no longer matched, and the sign-out was refused with 400 instead of reaching the sign-in page. The original app's own Logout solved the same case the same way (`Areas/Identity/.../Logout.cshtml.cs`).
+  - **Fix:** the console's Logout page is `[IgnoreAntiforgeryToken]`, and the console's convention no longer adds its token check to a page that opts out explicitly (`ProviderHosting`). A forged sign-out can only sign someone out. Every other console form still needs its token.
+  - **Tests:** Integration +4 (`ConsoleSignOutTests`): a normal sign-out, after the session timed out, and after signing in to the app in another tab all end on `/Provider/Login` (the last two failed before the fix with 400); a console form without a token is still refused (400).
+
+- **2026-10-17 — Read-only guard on the back-office pages (developer's request: no filling in forms when the account is suspended).**
+  - **What:** in a read-only organization (suspended by Inprem, or a lapsed subscription), a click on a button that would start a change (Add New, Add, Create, Edit (also the icon-only pencil, by its title), Save, Delete, Move To …, Clock In / Clock Out / Break Start / Break End, Register) shows a notice at once and opens nothing: "Your organization's account is suspended. You cannot add new staff." (the object follows the page: staff, volunteers, staff or volunteer clockings, admins). Forms that sit on the page (Create Admin Account, Manual Clocking) are greyed out with the same sentence above them. Search, filters, reports and exports are untouched; the server still refuses every change (unchanged).
+  - **How:** a small script in `Pages/Shared/_PlatformBanner.cshtml` (our C3-2 partial, already in both back-office layouts), rendered only when the organization is read-only. It listens to clicks before the page's own handlers, so no frozen (C1) page was changed.
+  - **Test:** UI +1 (`ReadOnlyGuardBrowserTests`, real browser: Add New and Edit show the notice and no editor; Search still works; the Create Admin Account form is greyed out with the note; the manual Clock In is stopped; after reactivating, Add New opens the editor again).
+
 - **2026-10-17 — Suspension notices and the audit log's paging (developer's requests).**
   - **Suspending a paying customer** (the developer asked whether it is good practice: yes, for misuse, fraud, payment disputes, security or legal reasons, with safeguards; two were missing):
     - **Owners are emailed** on suspension (read-only, data safe, reports and exports still work, contact Inprem) and on reactivation. The reason goes into the email only when the provider ticks **Include the reason in the email to the owners** (off by default, e.g. for a fraud investigation); the audit entry notes when it was shared. An email that cannot be sent is audited (`notification.failed`) and shown as a warning; the change stands.

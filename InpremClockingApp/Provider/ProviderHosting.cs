@@ -66,7 +66,9 @@ public static class ProviderHosting
             options.Conventions.AddAreaFolderApplicationModelConvention(SiteMap.ProviderArea, "/", model =>
             {
                 model.Filters.Add(new ServiceFilterAttribute(typeof(ProviderAccessFilter)));
-                model.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
+                // A page that opts out explicitly (only Logout: a stale form must still sign out) keeps its choice.
+                if (!model.HandlerType.IsDefined(typeof(IgnoreAntiforgeryTokenAttribute), inherit: true))
+                    model.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
             });
         });
 
