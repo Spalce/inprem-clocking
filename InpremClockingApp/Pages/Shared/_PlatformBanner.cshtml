@@ -13,9 +13,86 @@
 }
 @if (access != null && !access.FullAccess)
 {
+    var state = access.OrganizationSuspended ? "suspended" : "read-only";
     <div data-testid="billing-banner" data-kind="read-only" style="background:#b45309;color:#fff;padding:8px 16px;font-size:14px">
       <strong>Read-only:</strong> @access.ReadOnlyReason Reports and exports still work; changes cannot be saved and the kiosk is paused.
     </div>
+    @* Read-only guard (developer's request, 2026-10-17): people are told at once instead of filling in a
+       form the server would refuse. A click on Add New, Edit, Save, Move To..., Clock In/Out, Break or
+       Create shows a notice and opens nothing; forms that sit on the page are greyed out with the same
+       notice. Search, filters, reports and exports are untouched. The server still refuses every change. *@
+    <div id="readonly-notice" data-testid="readonly-notice" role="alertdialog" aria-modal="true" aria-labelledby="readonly-notice-title" hidden
+         style="position:fixed;inset:0;z-index:10000;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:16px">
+      <div style="background:#fff;color:#0f172a;border-radius:8px;max-width:440px;width:100%;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.2);font-size:14px">
+        <h2 id="readonly-notice-title" style="font-size:17px;font-weight:600;margin:0 0 8px">This account is @state</h2>
+        <p data-testid="readonly-notice-text" style="margin:0 0 8px"></p>
+        <p style="margin:0 0 16px;color:#475569">@access.ReadOnlyReason Reports and exports still work.</p>
+        <div style="text-align:right"><button type="button" data-testid="readonly-notice-ok" style="background:#1d4ed8;color:#fff;border:0;border-radius:6px;padding:6px 16px;cursor:pointer">OK</button></div>
+      </div>
+    </div>
+    <script>
+    (() => {
+      const state = @Json.Serialize(state);
+      const notice = document.getElementById("readonly-notice");
+      const text = notice.querySelector("[data-testid=readonly-notice-text]");
+      notice.style.display = "none";
+      const close = () => { notice.hidden = true; notice.style.display = "none"; };
+      notice.querySelector("[data-testid=readonly-notice-ok]").addEventListener("click", close);
+      document.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
+
+      // What the page is about, from its address.
+      const nouns = { "/staff": "staff", "/staffdetails": "staff", "/volunteer": "volunteers", "/volunteerdetails": "volunteers",
+        "/staffclocking": "staff clockings", "/volunteerclocking": "volunteer clockings", "/user": "admins" };
+      const noun = nouns[location.pathname.toLowerCase()] || "records";
+      // The buttons that would start a change, and how to say it.
+      const verb = label => {
+        const l = label.trim().toLowerCase();
+        if (l === "add new" || l === "add" || l === "create") return "add new " + noun;
+        if (l === "edit") return "edit " + noun;
+        if (l === "save") return "save changes";
+        if (l === "delete" || l === "remove") return "delete " + noun;
+        if (l.startsWith("move to ")) return l;
+        if (l === "clock in" || l === "clock out" || l === "break start" || l === "break end") return l;
+        if (l === "register" || l === "import" || l === "upload") return l;
+        return null;
+      };
+      const show = what => {
+        text.textContent = "Your organization's account is " + state + ". You cannot " + what + ".";
+        notice.hidden = false;
+        notice.style.display = "flex";
+        notice.querySelector("[data-testid=readonly-notice-ok]").focus();
+      };
+      const action = el => {
+        const button = el.closest("button, a, input[type=submit]");
+        if (!button || notice.contains(button) || button.closest("[data-testid=billing-banner], [data-testid=support-banner], nav, aside, header")) return null;
+        // An icon-only button (e.g. the pencil on the clocking pages) is named by its title.
+        return verb(button.tagName === "INPUT" ? (button.value || "") : ((button.textContent || "").trim() || button.getAttribute("title") || ""));
+      };
+      // Capture phase: runs before the page's own handlers, which never see the click.
+      document.addEventListener("click", e => {
+        const what = action(e.target);
+        if (!what) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        show(what);
+      }, true);
+
+      // Forms on the page whose button starts a change: greyed out, with the notice above them.
+      document.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll("form").forEach(form => {
+          const submit = [...form.querySelectorAll("button[type=submit], input[type=submit], button:not([type])")].find(b => verb(b.value || b.textContent || ""));
+          if (!submit) return;
+          form.querySelectorAll("input:not([type=hidden]), select, textarea").forEach(field => { field.disabled = true; });
+          form.style.opacity = "0.6";
+          const note = document.createElement("p");
+          note.setAttribute("data-testid", "readonly-form-note");
+          note.style.cssText = "background:#fef3c7;color:#92400e;border-radius:6px;padding:8px 12px;margin:0 0 8px;font-size:14px";
+          note.textContent = "Your organization's account is " + state + ". You cannot " + verb(submit.value || submit.textContent) + ".";
+          form.parentNode.insertBefore(note, form);
+        });
+      });
+    })();
+    </script>
 }
 else if (access is { PaymentProblem: true })
 {
