@@ -103,4 +103,10 @@ public interface IOrganizationMail
 
     /// <summary>True when an App link base is known (configured, or given by the request).</summary>
     bool CanBuildLinks(string? appLinkBase);
+
+    /// <summary>
+    /// Tells an owner their organization was suspended (read-only) or reactivated by Inprem.
+    /// <paramref name="reason"/> is included only when the provider chose to share it.
+    /// </summary>
+    Task SendStatusChangedAsync(string email, string organizationName, bool suspended, string? reason, CancellationToken ct = default);
 }

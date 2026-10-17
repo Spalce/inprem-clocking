@@ -38,7 +38,7 @@ public class ReactivateModel : PageModel
             return Page();
         }
 
-        TempData["Success"] = "Organization reactivated.";
+        TempData["Success"] = result.Warning == null ? "Organization reactivated; its owners were emailed." : $"Organization reactivated. {result.Warning}";
         return RedirectToPage("Details", new { id });
     }
 }

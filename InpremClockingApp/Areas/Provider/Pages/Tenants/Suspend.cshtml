@@ -7,7 +7,12 @@
 
 <p><a asp-page="Details" asp-route-id="@RouteData.Values["id"]">&larr; Back to the organization</a></p>
 <h1 class="pc-title">Suspend @Model.Name?</h1>
-<p class="pc-subtitle">The organization is marked suspended, with your reason, and its owners see the reason in the audit trail. From Phase 2, a suspended organization becomes read-only: it can still sign in, report and export, but not save.</p>
+<p class="pc-subtitle">A suspended organization becomes read-only: its people can still sign in, open every page, report and export, but nothing can be saved and the kiosk is paused. Its owners are emailed. Reactivate to restore everything.</p>
+
+@if (Model.PaysByPayPal)
+{
+    <div class="pc-error" data-testid="paypal-warning"><strong>This organization has an active PayPal subscription.</strong> PayPal keeps charging it while it is suspended. If it should stop paying, cancel the subscription on its Subscription tab; refunds for the suspended time are a separate decision.</div>
+}
 
 @if (Model.Error != null)
 {
@@ -18,6 +23,10 @@
   <div class="pc-field">
     <label for="Reason">Reason <span class="pc-muted">(required; recorded in the audit log)</span></label>
     <textarea id="Reason" name="Reason" rows="3" maxlength="500" required>@Model.Reason</textarea>
+  </div>
+  <div class="pc-field">
+    <label class="pc-check"><input type="checkbox" name="ShareReason" value="true" @(Model.ShareReason ? "checked" : "") data-testid="share-reason" /> Include the reason in the email to the owners</label>
+    <p class="pc-muted">Leave unticked for reasons that should not be shared (for example a fraud investigation): the email then only says to contact Inprem.</p>
   </div>
   <div class="pc-actions">
     <button type="submit" class="pc-btn pc-btn-danger" data-testid="confirm">Suspend</button>

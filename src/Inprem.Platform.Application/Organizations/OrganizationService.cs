@@ -201,11 +201,51 @@ public sealed class OrganizationService
         return OrganizationResult.Ok(tenantId);
     }
 
-    public Task<OrganizationResult> SuspendAsync(int tenantId, string reason, string actor, CancellationToken ct = default) =>
-        ChangeProfileAsync(tenantId, actor, "organization.suspended", p => { p.Suspend(reason, _clock.UtcNow); return $"Reason: {reason.Trim()}"; }, ct);
+    /// <summary>
+    /// Suspends the organization (read-only, C3-3) and emails its active owners. The reason is
+    /// always in the audit log; it goes into the email only when <paramref name="shareReason"/>.
+    /// </summary>
+    public async Task<OrganizationResult> SuspendAsync(int tenantId, string reason, string actor, CancellationToken ct = default, bool shareReason = false)
+    {
+        var result = await ChangeProfileAsync(tenantId, actor, "organization.suspended",
+            p => { p.Suspend(reason, _clock.UtcNow); return $"Reason: {reason.Trim()}{(shareReason ? " (shared with the owners)" : "")}"; }, ct).ConfigureAwait(false);
+        return result.Succeeded ? await TellOwnersAsync(tenantId, suspended: true, shareReason ? reason.Trim() : null, ct).ConfigureAwait(false) : result;
+    }
 
-    public Task<OrganizationResult> ReactivateAsync(int tenantId, string reason, string actor, CancellationToken ct = default) =>
-        ChangeProfileAsync(tenantId, actor, "organization.reactivated", p => { p.Reactivate(reason, _clock.UtcNow); return $"Reason: {reason.Trim()}"; }, ct);
+    /// <summary>Reactivates the organization (full access again) and emails its active owners.</summary>
+    public async Task<OrganizationResult> ReactivateAsync(int tenantId, string reason, string actor, CancellationToken ct = default)
+    {
+        var result = await ChangeProfileAsync(tenantId, actor, "organization.reactivated", p => { p.Reactivate(reason, _clock.UtcNow); return $"Reason: {reason.Trim()}"; }, ct).ConfigureAwait(false);
+        return result.Succeeded ? await TellOwnersAsync(tenantId, suspended: false, null, ct).ConfigureAwait(false) : result;
+    }
+
+    /// <summary>Emails the active owners; a failure is audited and reported as a warning (the change stands).</summary>
+    private async Task<OrganizationResult> TellOwnersAsync(int tenantId, bool suspended, string? reason, CancellationToken ct)
+    {
+        var detail = await _store.GetAsync(tenantId, ct).ConfigureAwait(false);
+        if (detail == null) return OrganizationResult.Ok(tenantId);
+        var owners = detail.Admins.Where(a => a.Role == MembershipRole.Owner && a.Status == MembershipStatus.Active && !string.IsNullOrWhiteSpace(a.Email)).ToList();
+        var failed = new List<string>();
+        foreach (var owner in owners)
+        {
+            try
+            {
+                await _mail.SendStatusChangedAsync(owner.Email, detail.Summary.Name, suspended, reason, ct).ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                failed.Add(owner.Email);
+            }
+        }
+        if (failed.Count > 0)
+        {
+            await AuditAsync("system", "notification.failed", tenantId, $"Organization {(suspended ? "suspended" : "reactivated")} email not delivered to: {string.Join(", ", failed)}", ct).ConfigureAwait(false);
+            await _store.SaveChangesAsync(ct).ConfigureAwait(false);
+        }
+        return owners.Count == 0 ? OrganizationResult.Ok(tenantId, "The organization has no active owner to email.")
+            : failed.Count > 0 ? OrganizationResult.Ok(tenantId, "Done, but the email to the owners could not be sent.")
+            : OrganizationResult.Ok(tenantId);
+    }
 
     public async Task<OrganizationResult> AddNoteAsync(int tenantId, string text, string actor, CancellationToken ct = default)
     {

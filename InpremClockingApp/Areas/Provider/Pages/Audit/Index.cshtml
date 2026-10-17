@@ -29,7 +29,7 @@
         <option value="@id" selected="@(Model.TenantId == id)">@name</option>
     }
   </select>
-  <input name="Action" value="@Model.Action" list="actions" placeholder="Action (e.g. organization.)" aria-label="Action" />
+  <input name="act" value="@Model.Action" list="actions" placeholder="Action (e.g. organization.)" aria-label="Action" />
   <datalist id="actions">
     @foreach (var action in Model.Actions)
     {
@@ -38,6 +38,14 @@
   </datalist>
   <label class="pc-muted">From <input type="date" name="From" value="@Model.From?.ToString("yyyy-MM-dd")" /></label>
   <label class="pc-muted">to <input type="date" name="To" value="@Model.To?.ToString("yyyy-MM-dd")" /></label>
+  <label class="pc-muted">Per page
+    <select name="size" aria-label="Entries per page" data-testid="page-size" onchange="this.form.submit()">
+      @foreach (var size in InpremClockingApp.Areas.Provider.Pages.Audit.IndexModel.PageSizes)
+      {
+          <option value="@size" selected="@(Model.PageSize == size)">@size</option>
+      }
+    </select>
+  </label>
   <button type="submit" class="pc-btn">Filter</button>
 </form>
 
@@ -65,10 +73,25 @@
   <span class="pc-muted">@r.Total entr@(r.Total == 1 ? "y" : "ies") &middot; page @r.Page of @r.Pages</span>
   @if (r.Page > 1)
   {
-      <a asp-page="Index" asp-all-route-data="Model.Route(r.Page - 1)" class="pc-btn pc-btn-small">Previous</a>
+      <a asp-page="Index" asp-all-route-data="Model.Route(r.Page - 1)" class="pc-btn pc-btn-small" data-testid="previous">Previous</a>
+  }
+  @foreach (var link in InpremClockingApp.Areas.Provider.Pages.Audit.IndexModel.PageLinks(r.Page, r.Pages))
+  {
+      if (link is not int number)
+      {
+          <span class="pc-muted">&hellip;</span>
+      }
+      else if (number == r.Page)
+      {
+          <span class="pc-btn pc-btn-small pc-btn-primary" aria-current="page" data-testid="current-page">@number</span>
+      }
+      else
+      {
+          <a asp-page="Index" asp-all-route-data="Model.Route(number)" class="pc-btn pc-btn-small" data-page="@number">@number</a>
+      }
   }
   @if (r.Page < r.Pages)
   {
-      <a asp-page="Index" asp-all-route-data="Model.Route(r.Page + 1)" class="pc-btn pc-btn-small">Next</a>
+      <a asp-page="Index" asp-all-route-data="Model.Route(r.Page + 1)" class="pc-btn pc-btn-small" data-testid="next">Next</a>
   }
 </div>

@@ -24,6 +24,41 @@ public class AuditAndDashboardTests : IClassFixture<ProviderFixture>
     }
 
     [Fact]
+    public async Task Audit_Log_Has_Numbered_Pages_And_A_Choice_Of_Entries_Per_Page()
+    {
+        // Developer's request (2026-10-17): page numbers to click and how many entries per page.
+        var action = $"paging.test-{Guid.NewGuid():N}"[..24];
+        await using (var db = _app.CreatePlatformDbContext())
+        {
+            for (var i = 0; i < 60; i++) db.AuditEntries.Add(Inprem.Platform.Domain.Audit.AuditEntry.Record("provider:test", action, null, $"entry {i}", DateTime.UtcNow.AddSeconds(-i), null));
+            await db.SaveChangesAsync();
+        }
+        var (owner, _) = await OwnerAsync();
+
+        var first = await GetDocumentAsync(owner, $"/Provider/Audit?act={action}&size=25");
+        Assert.Equal(25, first.QuerySelectorAll("[data-testid=audit] tbody tr").Length);
+        Assert.Equal("1", first.QuerySelector("[data-testid=current-page]")!.TextContent.Trim());
+        var links = first.QuerySelectorAll("[data-testid=pager] a[data-page]").ToList();
+        Assert.Equal(new[] { "2", "3" }, links.Select(l => l.GetAttribute("data-page")));
+        var third = links.Last().GetAttribute("href")!;
+        Assert.Contains($"act={Uri.EscapeDataString(action)}", third); // the filter and the size travel with the page
+        Assert.Contains("size=25", third);
+        Assert.Equal("25", first.QuerySelector("[data-testid=page-size] option[selected]")!.GetAttribute("value"));
+
+        var last = await GetDocumentAsync(owner, System.Net.WebUtility.HtmlDecode(third));
+        Assert.Equal(10, last.QuerySelectorAll("[data-testid=audit] tbody tr").Length);
+        Assert.Null(last.QuerySelector("[data-testid=next]"));
+        Assert.NotNull(last.QuerySelector("[data-testid=previous]"));
+
+        // Only the offered sizes: anything else shows 50.
+        Assert.Equal(50, (await GetDocumentAsync(owner, $"/Provider/Audit?act={action}&size=100000")).QuerySelectorAll("[data-testid=audit] tbody tr").Length);
+
+        // Many pages: the first, the last, two around the current one, gaps between.
+        Assert.Equal(new int?[] { 1, null, 5, 6, 7, 8, 9, null, 20 }, InpremClockingApp.Areas.Provider.Pages.Audit.IndexModel.PageLinks(7, 20));
+        Assert.Equal(new int?[] { 1, 2, 3 }, InpremClockingApp.Areas.Provider.Pages.Audit.IndexModel.PageLinks(1, 3));
+    }
+
+    [Fact]
     public async Task Audit_Log_Filters_Pages_And_Exports_Safely()
     {
         var (owner, ownerId) = await OwnerAsync();

@@ -54,6 +54,18 @@ public sealed class OrganizationMail : IOrganizationMail
             "If you did not ask for this, you can ignore this email."), ct);
     }
 
+    public Task SendStatusChangedAsync(string email, string organizationName, bool suspended, string? reason, CancellationToken ct = default) =>
+        suspended
+            ? _email.SendAsync(email, $"{organizationName} has been suspended on Inprem Clock-in", Html(new[]
+                {
+                    $"Inprem has suspended the account of {organizationName} on the Inprem Clock-in app.",
+                    "Your data is safe: you can still sign in, open every page, run reports and download exports. Until the account is reactivated, nothing can be added or changed and the kiosk is paused.",
+                }.Concat(reason == null ? Array.Empty<string>() : new[] { $"Reason: {reason}" })
+                 .Append("Please contact Inprem to resolve this.").ToArray()), ct)
+            : _email.SendAsync(email, $"{organizationName} is active again on Inprem Clock-in", Html(
+                $"Inprem has reactivated the account of {organizationName} on the Inprem Clock-in app.",
+                "Everything works as before: you can add and change records again, and the kiosk is back on."), ct);
+
     private async Task<(AppUser User, string Link)> ResetLinkAsync(string userId, string? appLinkBase)
     {
         var user = await _users.FindByIdAsync(userId) ?? throw new InvalidOperationException("The account does not exist.");

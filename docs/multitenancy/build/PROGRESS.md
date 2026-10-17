@@ -124,6 +124,20 @@ _(date — what was tested — result)_
 
 ## Log
 
+- **2026-10-17 — Suspension notices and the audit log's paging (developer's requests).**
+  - **Suspending a paying customer** (the developer asked whether it is good practice: yes, for misuse, fraud, payment disputes, security or legal reasons, with safeguards; two were missing):
+    - **Owners are emailed** on suspension (read-only, data safe, reports and exports still work, contact Inprem) and on reactivation. The reason goes into the email only when the provider ticks **Include the reason in the email to the owners** (off by default, e.g. for a fraud investigation); the audit entry notes when it was shared. An email that cannot be sent is audited (`notification.failed`) and shown as a warning; the change stands.
+    - **The console warns** on the Suspend page when the organization pays through PayPal (Active or PastDue): PayPal keeps charging while it is suspended; cancel on the Subscription tab if it should stop; refunds are a separate decision.
+    - **Project-owner document:** decisions 8 (billing during a suspension: pause, refund or credit, or cancel?) and 9 (when Inprem may suspend, in the terms of service), and item 13 (PayPal sandbox keys from Inprem's account: the developer cannot open a PayPal account from Ghana).
+    - **Tests:** Integration +2 (`SuspensionNoticeTests`).
+  - **Audit log paging:**
+    - **Found while testing:** the Previous / Next links (and the CSV link with an action filter) had an empty address whenever the action filter was set: its address name `Action` is a route value MVC keeps for itself. The filter is now `act` in the address.
+    - **Added:** numbered pages (the first, the last and two on each side of the current page, with gaps) and **Per page** 25 / 50 / 100 / 200 (any other value shows 50); the filters and the size travel with every page link.
+    - **Tests:** Integration +1 (`AuditAndDashboardTests`: 60 entries in pages of 25, links keep the filter and size, last page, a bad size, the page-number pattern).
+  - **On hold (developer, 2026-10-17):** the pretend-PayPal mode for local manual testing.
+  - **The flaky demo-site browser test, found:** the sign-up and "Manage my subscription" pages attached their submit handler only after loading time zones (and the CAPTCHA widget). A click before that (the first test on a freshly started app) did a plain form submit: the page reloaded, nothing was sent, and the test waited. A quick real user could hit it too. **Fix:** the Register and Send-me-a-link buttons stay disabled until the page is ready. Three full UI runs passed, one of them on a busy machine.
+  - **Results:** Unit 174, Architecture 11, Baseline 312, Integration 235, UI 11 (×3).
+
 - **2026-10-17 — Fixes from the developer's manual testing of Phase 2 (test guide T2-3 and the Billing page).**
   - **A suspended organization was not read-only (T2-3).**
     - **Found:** suspending in the console (organization status Suspended) changed nothing: no banner, saving and the kiosk still worked. Step 2.7 based access on the subscription only, although `OrganizationStatus.Suspended` said "enforced as read-only from Phase 2 (C3-3)".
