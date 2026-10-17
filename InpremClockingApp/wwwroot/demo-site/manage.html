@@ -15,7 +15,7 @@
   <p>Enter the owner's email. We send a link that works once, for 15 minutes.</p>
   <label for="email">Email</label><input type="email" id="email" required>
   <div id="captcha"></div>
-  <button type="submit" data-testid="send-link">Send me a link</button>
+  <button type="submit" data-testid="send-link" disabled>Send me a link</button>
   <p id="answer" data-testid="answer"></p>
 </form>
 <script>
@@ -26,6 +26,8 @@
     const r = await demo.call("POST", "/billing-access/requests", { body: { email: document.getElementById("email").value, captchaToken: await demo.captcha() } });
     document.getElementById("answer").textContent = r.status === 202 ? r.body.message : demo.problem(r);
   });
+  // Ready only now: a click before the handler above was attached would just reload the page.
+  document.querySelector("[data-testid=send-link]").disabled = false;
 })();
 </script>
 </main>

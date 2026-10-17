@@ -24,7 +24,7 @@
   <label class="check"><input type="checkbox" id="privacy"> I accept the privacy policy</label>
   <label class="check"><input type="checkbox" id="mode-subscribe"> Subscribe now with PayPal (instead of the free trial)</label>
   <div id="captcha"></div>
-  <button type="submit" data-testid="register">Register</button>
+  <button type="submit" data-testid="register" disabled>Register</button>
   <p id="error" class="error" data-testid="error"></p>
 </form>
 <div id="done" class="card" hidden data-testid="check-email"><h2>Check your email</h2><p>We sent you a link to confirm your email and choose your password.</p></div>
@@ -60,6 +60,8 @@
     demo.save("checkout", checkout.body.checkoutSessionId);
     location.href = checkout.body.approvalUrl; // to PayPal
   });
+  // Ready only now: a click before the handler above was attached would just reload the page.
+  document.querySelector("[data-testid=register]").disabled = false;
 })();
 </script>
 </main>
