@@ -19,4 +19,7 @@ public sealed class EntitlementStore : IEntitlementStore
                          select new { Subscription = s, MaxPeople = p == null ? null : p.MaxPeople }).FirstOrDefaultAsync(ct).ConfigureAwait(false);
         return row == null ? null : (row.Subscription, row.MaxPeople);
     }
+
+    public Task<bool> IsSuspendedAsync(int tenantId, CancellationToken ct = default) =>
+        _db.TenantProfiles.AsNoTracking().AnyAsync(p => p.TenantId == tenantId && p.Status == Inprem.Platform.Domain.Organizations.OrganizationStatus.Suspended, ct);
 }

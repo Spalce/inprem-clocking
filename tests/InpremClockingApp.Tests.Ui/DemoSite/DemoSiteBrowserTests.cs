@@ -114,6 +114,15 @@ public class DemoSiteBrowserTests : IClassFixture<DemoSiteFixture>, IAsyncLifeti
         await page.ClickAsync("[data-testid=register]");
     }
 
+    /// <summary>"Check your email" after a trial sign-up; otherwise fails with what the page said (not only "hidden").</summary>
+    private static async Task ExpectCheckEmailAsync(IPage page)
+    {
+        var done = page.Locator("[data-testid=check-email]");
+        var error = page.Locator("[data-testid=error]");
+        await page.WaitForFunctionAsync("() => !document.getElementById('done').hidden || document.getElementById('error').textContent.trim().length > 0", null, new() { Timeout = 30_000 });
+        Assert.True(await done.IsVisibleAsync(), $"Sign-up did not finish; the page says: {await error.TextContentAsync()}");
+    }
+
     private string LinkSentTo(string email, string marker)
     {
         var body = _app.Emails.To(email).Last(e => e.HtmlBody.Contains(marker, StringComparison.Ordinal)).HtmlBody;
@@ -129,7 +138,7 @@ public class DemoSiteBrowserTests : IClassFixture<DemoSiteFixture>, IAsyncLifeti
         var email = Email("j1");
         var page = await PageAsync();
         await FillSignupAsync(page, email, subscribe: false);
-        await Assertions.Expect(page.Locator("[data-testid=check-email]")).ToBeVisibleAsync();
+        await ExpectCheckEmailAsync(page);
 
         await page.GotoAsync(LinkSentTo(email, "/Account/VerifyEmail"));
         await page.FillAsync("#Password", Password);
@@ -162,7 +171,7 @@ public class DemoSiteBrowserTests : IClassFixture<DemoSiteFixture>, IAsyncLifeti
         var email = Email("j3");
         var signup = await PageAsync();
         await FillSignupAsync(signup, email, subscribe: false);
-        await Assertions.Expect(signup.Locator("[data-testid=check-email]")).ToBeVisibleAsync();
+        await ExpectCheckEmailAsync(signup);
 
         // J3: ask for a link (the same answer for anyone), open it from the email.
         var page = await PageAsync(approve: true);

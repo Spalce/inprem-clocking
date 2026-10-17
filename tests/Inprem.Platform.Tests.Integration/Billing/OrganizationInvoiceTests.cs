@@ -56,6 +56,9 @@ public class OrganizationInvoiceTests : IClassFixture<ProviderFixture>
 
         using var owner = await SignedInAsync(_app.Data.Alpha.Owner!.Email);
         var page = await GetDocumentAsync(owner, "/Billing");
+        // The back-office menu, not the kiosk's (found in manual testing, 2026-10-16).
+        Assert.Contains(page.QuerySelectorAll("a"), a => a.TextContent.Trim() == "Manage Staff");
+        Assert.Contains(page.QuerySelectorAll("a"), a => a.TextContent.Trim() == "Dashboard");
         var rows = page.QuerySelectorAll("[data-testid=invoices] tr[data-number]").ToDictionary(r => r.GetAttribute("data-number")!);
         Assert.Contains(payable.Number, rows.Keys);
         Assert.DoesNotContain(draft.Number, rows.Keys);

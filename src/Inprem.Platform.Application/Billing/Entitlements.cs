@@ -3,7 +3,10 @@ using Inprem.Platform.Domain.Billing;
 
 namespace Inprem.Platform.Application.Billing;
 
-/// <summary>What an organization may do right now, from its subscription (Phase 2 step 2.7).</summary>
+/// <summary>
+/// What an organization may do right now, from its subscription (Phase 2 step 2.7) and whether
+/// Inprem has suspended it from the Provider Console (C3-3; found missing in manual testing, T2-3).
+/// </summary>
 public sealed record AccessStatus(
     int TenantId,
     SubscriptionStatus? Status,
@@ -14,7 +17,8 @@ public sealed record AccessStatus(
     DateTime? AccessUntilUtc,
     decimal OutstandingBalance,
     int? MaxPeople,
-    bool HasPayPalSubscription = false)
+    bool HasPayPalSubscription = false,
+    bool OrganizationSuspended = false)
 {
     /// <summary>Save anything (C3-3). Reports and exports work either way.</summary>
     public bool CanWrite => FullAccess;
@@ -32,7 +36,7 @@ public sealed record AccessStatus(
     public bool PaymentProblem => Status == SubscriptionStatus.PastDue;
 
     /// <summary>Why the organization is read-only, in words for its people (null when it is not).</summary>
-    public string? ReadOnlyReason => FullAccess ? null : Status switch
+    public string? ReadOnlyReason => FullAccess ? null : OrganizationSuspended ? "Inprem has suspended this organization's account. Please contact Inprem." : Status switch
     {
         SubscriptionStatus.Trialing => $"The free trial ended on {TrialEndsUtc:d MMMM yyyy}.",
         SubscriptionStatus.Expired when !HasPayPalSubscription && TrialEndsUtc != null => $"The free trial ended on {TrialEndsUtc:d MMMM yyyy}.",
@@ -51,6 +55,9 @@ public interface IEntitlementStore
 {
     /// <summary>The organization's subscription and its plan's people limit (read-only).</summary>
     Task<(Subscription Subscription, int? PlanMaxPeople)?> FindAsync(int tenantId, CancellationToken ct = default);
+
+    /// <summary>True when Inprem has suspended the organization from the Provider Console.</summary>
+    Task<bool> IsSuspendedAsync(int tenantId, CancellationToken ct = default);
 }
 
 public interface IEntitlementService
@@ -80,10 +87,13 @@ public sealed class EntitlementService : IEntitlementService
         if (_cache.TryGetValue(tenantId, out var cached)) return cached;
         var found = await _store.FindAsync(tenantId, ct).ConfigureAwait(false);
         var now = _clock.UtcNow;
+        var suspended = await _store.IsSuspendedAsync(tenantId, ct).ConfigureAwait(false);
         var status = found is not var (s, planMax)
             ? AccessStatus.Unrestricted(tenantId)
             : new AccessStatus(tenantId, s.Status, s.Mode, s.HasFullAccess(now), s.TrialDaysLeft(now), s.TrialEndsUtc,
                 s.Status == SubscriptionStatus.Canceled ? s.CurrentPeriodEndUtc : null, s.OutstandingBalance, s.MaxPeopleOverride ?? planMax, s.ExternalSubscriptionId != null);
+        // Suspended by Inprem: read-only whatever the subscription says (reports and exports still work).
+        if (suspended) status = status with { FullAccess = false, OrganizationSuspended = true };
         _cache[tenantId] = status;
         return status;
     }

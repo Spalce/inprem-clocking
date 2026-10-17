@@ -118,6 +118,42 @@ public class EnforcementTests : IClassFixture<ProviderFixture>
         Assert.DoesNotContain("/Account/ReadOnly", signOut.Headers.Location?.ToString() ?? "");
     }
 
+    [Fact]
+    public async Task An_Organization_Suspended_By_Inprem_Is_Read_Only_Until_Reactivated()
+    {
+        // Manual test T2-3 (2026-10-16): suspending in the console changed nothing, because access
+        // followed the subscription only. A paid, active subscription must not override it.
+        await SubscriptionAsync((s, price, now) => s.Activate($"I-{Guid.NewGuid():N}"[..14], price, now.AddDays(-5), now.AddDays(25), now.AddDays(-5)));
+        using var scope = _app.Services.CreateScope();
+        var organizations = scope.ServiceProvider.GetRequiredService<Inprem.Platform.Application.Organizations.OrganizationService>();
+        Assert.True((await organizations.SuspendAsync(Tenant, "Test: suspended by Inprem", "provider:test")).Succeeded);
+        try
+        {
+            using var admin = await AdminAsync();
+            Assert.Equal("read-only", await BannerAsync(admin));
+
+            var save = await admin.PostAsync("/Staff?handler=Create", new FormUrlEncodedContent(new Dictionary<string, string> { ["FirstName"] = "Blocked" }));
+            Assert.Equal("/Account/ReadOnly?kiosk=false", save.Headers.Location!.ToString());
+            var explained = new HtmlParser().ParseDocument(await (await admin.GetAsync(save.Headers.Location)).Content.ReadAsStringAsync());
+            Assert.Equal("Inprem has suspended this organization's account. Please contact Inprem.", explained.QuerySelector("[data-testid=reason]")!.TextContent.Trim());
+            Assert.Null(explained.QuerySelector("[data-testid=billing]")); // paying would not help: no Billing hint
+
+            Assert.Equal("/Account/ReadOnly?kiosk=true", (await admin.GetAsync("/StaffAttendance")).Headers.Location!.ToString());
+            var before = await ClockingsTodayAsync();
+            Assert.Equal(HttpStatusCode.Forbidden, (await admin.GetAsync($"/api/controls/staff-clockin/{StaffId}")).StatusCode);
+            Assert.Equal(before, await ClockingsTodayAsync());
+            Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync("/StaffReport")).StatusCode); // reading still works
+        }
+        finally
+        {
+            Assert.True((await organizations.ReactivateAsync(Tenant, "Test: reactivated", "provider:test")).Succeeded);
+        }
+
+        using var again = await AdminAsync();
+        Assert.Null(await BannerAsync(again));
+        Assert.Equal(HttpStatusCode.OK, (await again.GetAsync("/StaffAttendance")).StatusCode);
+    }
+
     [Theory]
     [InlineData("trial-over")]
     [InlineData("expired")]
