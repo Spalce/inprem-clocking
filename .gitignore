@@ -357,3 +357,6 @@ MigrationBackup/
 # Tailwind standalone CLI binary (downloaded per UI-modification.md, not committed - large
 # platform-specific executable; re-download with the command documented there)
 /tools/
+
+# Build output and deployment packages (docs: deploying a test site)
+out/
