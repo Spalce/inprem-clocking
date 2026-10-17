@@ -69,7 +69,12 @@ public class VolunteerClocking : PageModel
 
         var clocking = await _service.CheckToday(ClockingVolunteerProp).ConfigureAwait(true);
         if (clocking)
-            return RedirectToPage("./VolunteerClocking");
+        {
+            // Said in the page's pop-up, like the kiosk does, instead of a silent reload
+            // (developer's request, 2026-10-17; a C1 file, changed with the developer's approval).
+            ViewData["Error"] = $"{volunteer.FirstName} {volunteer.LastName} has already clocked in today. To change today's times, use Edit on their row.";
+            return await RenderWithDataAsync().ConfigureAwait(true);
+        }
 
         ClockingVolunteerProp.FullName = volunteer.FirstName + " " + volunteer.LastName;
 

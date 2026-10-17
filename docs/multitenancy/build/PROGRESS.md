@@ -124,6 +124,14 @@ _(date — what was tested — result)_
 
 ## Log
 
+- **2026-10-17 — Back office: a second manual clock-in on the same day is explained (developer's request).**
+  - **Before:** on Staff Clockings and Volunteer Clockings, "Manual Clocking Here" for someone already clocked in today reloaded the page silently: nothing saved, nothing said. The kiosk says "You have already clocked in today."
+  - **Now:** the page's existing pop-up ("Clocking not saved", the one used for "Clock Out must be after Clock In") says: "<name> has already clocked in today. To change today's times, use Edit on their row." Nothing is saved, as before.
+  - **C1 files changed with the developer's approval** (as with `EmailService` and `BackOffice.cshtml.cs` earlier): `Pages/StaffClocking.cshtml.cs` and `Pages/VolunteerClocking.cshtml.cs`, a few lines each in the same-day check; the pages themselves are unchanged.
+  - **Tests:** Baseline +2 (`ClockingCrudTests.Clocking_A_Second_Manual_Clock_In_The_Same_Day_Is_Explained_And_Not_Saved`, staff and volunteer; tagged `ChangedBy` as a deliberate change).
+    - `Clocking_Manual_Entry_Rules` recorded the old silent reload for the second entry; it now expects the explanation (tagged `ChangedBy`).
+  - **Results:** Unit 174, Architecture 11, Baseline 314, Integration 239, UI 12.
+
 - **2026-10-17 — Fix from the developer's manual testing: console Sign out answered "HTTP ERROR 400".**
   - **Found:** the console checks a form token on every console page (step 0.7), Logout included. The token belongs to the sign-in the page was shown with. After the session timed out (30 idle minutes), or after signing in to the app in another tab of the same browser (one sign-in on a combined site), it no longer matched, and the sign-out was refused with 400 instead of reaching the sign-in page. The original app's own Logout solved the same case the same way (`Areas/Identity/.../Logout.cshtml.cs`).
   - **Fix:** the console's Logout page is `[IgnoreAntiforgeryToken]`, and the console's convention no longer adds its token check to a page that opts out explicitly (`ProviderHosting`). A forged sign-out can only sign someone out. Every other console form still needs its token.

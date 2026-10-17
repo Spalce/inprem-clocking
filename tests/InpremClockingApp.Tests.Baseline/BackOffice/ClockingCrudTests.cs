@@ -66,6 +66,7 @@ public class ClockingCrudTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    [Trait(Traits.ChangedBy, "Developer's request 2026-10-17: the second same-day entry is explained in the pop-up (it reloaded silently)")]
     public async Task Clocking_Manual_Entry_Rules()
     {
         var id = await _app.AddStaffAsync(_app.Data.Alpha, "Manual", "Rules");
@@ -86,11 +87,12 @@ public class ClockingCrudTests : IClassFixture<AppFixture>
         using var unknown = await client.PostFormAsync("/StaffClocking", new Dictionary<string, string> { ["ClockingStaff.StafId"] = "999999" });
         Assert.Equal(HttpStatusCode.Redirect, unknown.StatusCode);
 
-        // No clock-in time: now. A second entry on the same day is ignored.
+        // No clock-in time: now. A second entry on the same day is not saved, and the pop-up says why.
         using var first = await client.PostFormAsync("/StaffClocking", new Dictionary<string, string> { ["ClockingStaff.StafId"] = id.ToString() });
         using var second = await client.PostFormAsync("/StaffClocking", new Dictionary<string, string> { ["ClockingStaff.StafId"] = id.ToString() });
         Assert.Equal(HttpStatusCode.OK, first.StatusCode);
-        Assert.Equal(HttpStatusCode.Redirect, second.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+        Assert.Contains("Manual Rules has already clocked in today.", await second.Content.ReadAsStringAsync());
 
         await using var db = _app.CreateDbContext();
         var row = await db.ClockingsStaff.IgnoreQueryFilters().SingleAsync(c => c.StafId == id);
@@ -118,6 +120,39 @@ public class ClockingCrudTests : IClassFixture<AppFixture>
         var row = await db.Clockings.IgnoreQueryFilters().SingleAsync(c => c.VoluntId == id);
         Assert.Equal(TimeSpan.FromHours(2), row.WorkingHours);
         Assert.Equal(today, row.ClockDate);
+    }
+
+    [Theory]
+    [InlineData("staff")]
+    [InlineData("volunteer")]
+    [Trait(Traits.ChangedBy, "Developer's request 2026-10-17: a second manual clock-in the same day is explained in the pop-up (it reloaded silently)")]
+    public async Task Clocking_A_Second_Manual_Clock_In_The_Same_Day_Is_Explained_And_Not_Saved(string kind)
+    {
+        var staff = kind == "staff";
+        var id = staff ? await _app.AddStaffAsync(_app.Data.Alpha, "Twice", "Today") : await _app.AddVolunteerAsync(_app.Data.Alpha, "Twice", "Today");
+        var today = Arrange.TodayIn(_app.Data.Alpha);
+        using var client = await _app.AdminOfAsync(_app.Data.Alpha);
+        var page = staff ? "/StaffClocking" : "/VolunteerClocking";
+        var prefix = staff ? "ClockingStaff" : "ClockingVolunteerProp";
+        var form = new Dictionary<string, string>
+        {
+            [$"{prefix}.{(staff ? "StafId" : "VoluntId")}"] = id.ToString(),
+            [$"{prefix}.ClockInTime"] = Local(today.AddHours(9)),
+        };
+        using (var first = await client.PostFormAsync(page, form)) Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+
+        using var second = await client.PostFormAsync(page, form);
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode); // the page again, not a silent reload
+        var html = await second.Content.ReadAsStringAsync();
+        Assert.Contains("Clocking not saved", html);
+        var shown = html[html.IndexOf("Clocking not saved", StringComparison.Ordinal)..];
+        Assert.True(shown.Contains("Twice Today has already clocked in today.", StringComparison.Ordinal), shown[..Math.Min(300, shown.Length)]);
+
+        await using var db = _app.CreateDbContext();
+        var rows = staff
+            ? await db.ClockingsStaff.IgnoreQueryFilters().CountAsync(c => c.StafId == id)
+            : await db.Clockings.IgnoreQueryFilters().CountAsync(c => c.VoluntId == id);
+        Assert.Equal(1, rows);
     }
 
     [Theory]

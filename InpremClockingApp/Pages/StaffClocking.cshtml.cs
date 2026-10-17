@@ -69,7 +69,12 @@ public class StaffClocking : PageModel
 
         var clocking = await _service.CheckToday(ClockingStaff).ConfigureAwait(true);
         if (clocking)
-            return RedirectToPage("./StaffClocking");
+        {
+            // Said in the page's pop-up, like the kiosk does, instead of a silent reload
+            // (developer's request, 2026-10-17; a C1 file, changed with the developer's approval).
+            ViewData["Error"] = $"{staff.FirstName} {staff.LastName} has already clocked in today. To change today's times, use Edit on their row.";
+            return await RenderWithDataAsync().ConfigureAwait(true);
+        }
 
         ClockingStaff.FullName = staff.FirstName + " " + staff.LastName;
 
