@@ -163,6 +163,9 @@ public class SupportSessionTests : IClassFixture<ProviderFixture>
         var table = history.QuerySelector("[data-testid=support-sessions]")!.TextContent;
         Assert.Contains(email, table);
         Assert.Contains("Checking the kiosk setup", table);
+        // The back-office menu, not the kiosk's (found in manual testing, 2026-10-18).
+        Assert.Contains(history.QuerySelectorAll("a"), a => a.TextContent.Trim() == "Manage Staff");
+        Assert.Contains(history.QuerySelectorAll("a"), a => a.TextContent.Trim() == "Dashboard");
 
         // Another organization does not see it.
         using var betaAdmin = _app.CreateClient();

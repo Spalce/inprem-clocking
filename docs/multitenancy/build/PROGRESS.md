@@ -124,6 +124,12 @@ _(date — what was tested — result)_
 
 ## Log
 
+- **2026-10-18 — Fixes from the developer's live test on the SmarterASP test site.**
+  - **Support sessions** (`/Account/SupportSessions`) showed the kiosk menu; it now uses the back-office layout, like Billing (fixed 2026-10-16).
+  - **Invitations** (`/Account/Invitations`): **Continue** went to the kiosk (Volunteer Attendance); it now goes to the back office. Where **Accept** leads is unchanged (Choose organization with more than one organization), by the developer's choice.
+  - **Tests:** Integration `SupportSessionTests` (the back-office menu) and `AccountRulesTests` (the Continue link) extended.
+  - **Results:** Integration 239 passed; Baseline `AdminAccountTests` 4 passed.
+
 - **2026-10-17 — Back office: a second manual clock-in on the same day is explained (developer's request).**
   - **Before:** on Staff Clockings and Volunteer Clockings, "Manual Clocking Here" for someone already clocked in today reloaded the page silently: nothing saved, nothing said. The kiosk says "You have already clocked in today."
   - **Now:** the page's existing pop-up ("Clocking not saved", the one used for "Clock Out must be after Clock In") says: "<name> has already clocked in today. To change today's times, use Edit on their row." Nothing is saved, as before.

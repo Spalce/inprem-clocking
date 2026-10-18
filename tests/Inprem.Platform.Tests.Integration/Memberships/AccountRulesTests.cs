@@ -95,6 +95,8 @@ public class AccountRulesTests : IClassFixture<AppFixture>
         var page = await (await client.GetAsync("/Account/Invitations")).Content.ReadAsStringAsync();
         Assert.Contains("You declined the invitation from Beta.", page);
         Assert.Contains("You have no pending invitations.", page);
+        // Continue goes to the back office, not the kiosk (found in manual testing, 2026-10-18).
+        Assert.Contains("<a href=\"/BackOffice\" data-testid=\"invitations-continue\"", page);
         await using var db = _app.CreatePlatformDbContext();
         Assert.Equal(MembershipStatus.Revoked, (await db.TenantMemberships.SingleAsync(m => m.Id == invitationId)).Status);
         // Still works in Alpha.
