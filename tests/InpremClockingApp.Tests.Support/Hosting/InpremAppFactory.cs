@@ -23,6 +23,7 @@ namespace InpremClockingApp.Tests.Support.Hosting;
 /// <item>no job server runs (<c>Jobs:RunServer</c> is false in appsettings.json) unless a test sets it;</item>
 /// <item>the platform's email sender is replaced by <see cref="CapturingEmailSender"/> (<see cref="Emails"/>);</item>
 /// <item>PayPal is replaced by <see cref="FakePaymentProvider"/> (<see cref="PayPal"/>): nothing reaches PayPal;</item>
+/// <item>texts are captured by <see cref="CapturingSmsSender"/> (<see cref="Sms"/>): nothing reaches Twilio;</item>
 /// <item>optional extra settings (e.g. <c>Site:SiteMode</c>) override appsettings.json.</item>
 /// </list>
 /// </summary>
@@ -47,6 +48,9 @@ internal class InpremAppFactory : WebApplicationFactory<Program>
 
     /// <summary>The pretend PayPal Invoicing every test host uses (Phase 4).</summary>
     public FakeInvoiceProvider Invoicing { get; } = new();
+
+    /// <summary>Every text the app sent (Phase 5).</summary>
+    public CapturingSmsSender Sms { get; } = new();
 
     public InpremAppFactory(
         string connectionString,
@@ -104,6 +108,8 @@ internal class InpremAppFactory : WebApplicationFactory<Program>
             services.AddSingleton<Inprem.Platform.Application.Billing.IPaymentProvider>(PayPal);
             services.RemoveAll<Inprem.Platform.Application.Billing.IInvoiceProvider>();
             services.AddSingleton<Inprem.Platform.Application.Billing.IInvoiceProvider>(Invoicing);
+            services.RemoveAll<Inprem.Platform.Application.Notifications.ISmsSender>();
+            services.AddSingleton<Inprem.Platform.Application.Notifications.ISmsSender>(Sms);
 
             _configureServices?.Invoke(services);
         });

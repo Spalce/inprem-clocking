@@ -4,6 +4,7 @@ using System.Text.Json;
 using AngleSharp.Html.Parser;
 using Inprem.Platform.Application.Billing;
 using Inprem.Platform.Domain.Billing;
+using Inprem.Platform.Domain.Notifications;
 using Inprem.Platform.Domain.Memberships;
 using Inprem.Platform.Domain.Organizations;
 using Inprem.Platform.Domain.PublicApi;
@@ -70,6 +71,31 @@ public class SignupTests : IClassFixture<PublicApiFixture>
     {
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
         return (await PublicApiFixture.JsonAsync(response)).GetProperty("code").GetString()!;
+    }
+
+    [Fact]
+    public async Task The_Text_Box_The_Owner_Ticked_Is_Recorded_With_Its_Wording()
+    {
+        // Phase 5 step 5.1: texts only to owners who agreed; the consent keeps who, when, how and the wording.
+        var price = await PriceAsync();
+        using var website = _app.CreateClient();
+        var ticked = await website.SendAsync(Post("/signups", Body(price.Id)));
+        var notTicked = await website.SendAsync(Post("/signups", new
+        {
+            organizationName = "Website Centre", slug = $"web-{Guid.NewGuid():N}"[..14], timeZone = "America/New_York",
+            owner = new { firstName = "Kojo", lastName = "Mensah", email = $"owner-{Guid.NewGuid():N}"[..16] + "@signup.test", mobile = "+15557654321" },
+            consent = new { acceptTerms = true, acceptPrivacyPolicy = true, smsOptIn = false },
+            planPriceId = price.Id, mode = "trial", captchaToken = FakeCaptchaVerifier.Pass,
+        }));
+        Assert.Equal((HttpStatusCode.Created, HttpStatusCode.Created), (ticked.StatusCode, notTicked.StatusCode));
+        var signupId = (await PublicApiFixture.JsonAsync(ticked)).GetProperty("signupId").GetGuid();
+
+        await using var db = _app.CreatePlatformDbContext();
+        var signup = await db.Signups.AsNoTracking().SingleAsync(s => s.Id == signupId);
+        var consent = await db.ConsentRecords.AsNoTracking().SingleAsync(c => c.Phone == "+15551234567" && c.TenantId == signup.TenantId);
+        Assert.Equal((ConsentAction.Grant, ConsentSources.WebsiteSignup, signup.OwnerUserId, $"signup:{signupId}"), (consent.Action, consent.Source, consent.PersonRef, consent.RecordedBy));
+        Assert.Equal(Inprem.Platform.Application.Notifications.ConsentWording.OwnerAlerts, consent.Wording);
+        Assert.False(await db.ConsentRecords.AnyAsync(c => c.Phone == "+15557654321"));
     }
 
     [Fact]

@@ -29,6 +29,9 @@ public class AppFixture : IAsyncLifetime
 
     public FakeInvoiceProvider Invoicing => Factory.Invoicing;
 
+    /// <summary>Texts the app sent (nothing reaches Twilio in tests).</summary>
+    public CapturingSmsSender Sms => Factory.Sms;
+
     /// <summary>Runs the billing-link emails the app queued (as the job server would).</summary>
     public Task RunBillingAccessJobsAsync() =>
         ((InlineBillingAccessQueue)Services.GetRequiredService<Inprem.Platform.Application.PublicApi.IBillingAccessQueue>()).RunAllAsync();

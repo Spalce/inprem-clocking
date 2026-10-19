@@ -88,10 +88,12 @@ public sealed class SignupService
     private readonly ICaptchaVerifier _captcha;
     private readonly PublicApiTokens _tokens;
     private readonly IClock _clock;
+    private readonly Notifications.NotificationService _notifications;
 
     public SignupService(IOrganizationStore organizations, IAccountGateway accounts, ICheckoutStore billing, ISignupStore store, ISignupMail mail,
-        ICaptchaVerifier captcha, PublicApiTokens tokens, IClock clock)
+        ICaptchaVerifier captcha, PublicApiTokens tokens, IClock clock, Notifications.NotificationService notifications)
     {
+        _notifications = notifications;
         _organizations = organizations;
         _accounts = accounts;
         _billing = billing;
@@ -145,6 +147,19 @@ public sealed class SignupService
         }
 
         var signup = (await _store.FindAsync(signupId, ct).ConfigureAwait(false))!;
+        if (input.SmsOptIn && organization.OwnerMobile != null)
+        {
+            // Phase 5: the box the owner ticked, with its exact wording. If the number is not a full
+            // international one, or recording fails, the owner simply gets no texts (the safe side).
+            try
+            {
+                await _notifications.RecordConsentAsync(organization.OwnerMobile, created.TenantId, created.OwnerUserId,
+                    Inprem.Platform.Domain.Notifications.ConsentSources.WebsiteSignup, Notifications.ConsentWording.OwnerAlerts, $"signup:{signupId}", ct).ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+            }
+        }
         var (token, value) = await _tokens.IssueSignupAsync(signupId, created.TenantId, ct).ConfigureAwait(false);
         await SendVerificationAsync(signup, organization.Name, appLinkBase, ct).ConfigureAwait(false);
         return new SignupResult(signup, value, token.ExpiresUtc, null);

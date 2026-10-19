@@ -147,7 +147,9 @@ public sealed class JobServerHost : IHostedService, IDisposable
         }, _services.GetRequiredService<JobStorage>());
 
         // Recurring jobs live in the job storage; registering them where jobs run keeps them current.
-        InpremClockingApp.Billing.BillingReconciliationJob.Register(new RecurringJobManager(_services.GetRequiredService<JobStorage>()));
+        var recurring = new RecurringJobManager(_services.GetRequiredService<JobStorage>());
+        InpremClockingApp.Billing.BillingReconciliationJob.Register(recurring);
+        InpremClockingApp.Notifications.NotificationSendJob.Register(recurring);
         _logger.LogInformation("Hangfire job server started.");
         return Task.CompletedTask;
     }

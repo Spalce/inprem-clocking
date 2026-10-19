@@ -1,6 +1,7 @@
 using Inprem.Platform.Domain.Audit;
 using Inprem.Platform.Domain.Billing;
 using Inprem.Platform.Domain.Memberships;
+using Inprem.Platform.Domain.Notifications;
 using Inprem.Platform.Domain.Organizations;
 using Inprem.Platform.Domain.Provider;
 using Inprem.Platform.Domain.Support;
@@ -63,6 +64,11 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<Inprem.Platform.Domain.PublicApi.Signup> Signups { get; set; } = null!;
     public DbSet<Inprem.Platform.Domain.PublicApi.BillingAccessCode> BillingAccessCodes { get; set; } = null!;
     public DbSet<SupportSession> SupportSessions { get; set; } = null!;
+
+    public DbSet<Notification> Notifications { get; set; } = null!;
+    public DbSet<ConsentRecord> ConsentRecords { get; set; } = null!;
+    public DbSet<NotificationTemplate> NotificationTemplates { get; set; } = null!;
+    public DbSet<TenantMessagingSettings> TenantMessagingSettings { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -412,6 +418,68 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
             session.HasIndex(s => new { s.TenantId, s.StartedUtc });
         });
 
+        modelBuilder.Entity<Notification>(notification =>
+        {
+            notification.ToTable("Notifications");
+            notification.HasKey(n => n.Id);
+            notification.Property(n => n.Id).ValueGeneratedNever();
+            notification.Property(n => n.RecipientType).HasConversion<string>().HasMaxLength(30);
+            notification.Property(n => n.RecipientRef).HasMaxLength(450);
+            notification.Property(n => n.Channel).HasConversion<string>().HasMaxLength(10);
+            notification.Property(n => n.Destination).HasMaxLength(256);
+            notification.Property(n => n.TemplateKey).HasMaxLength(100).IsUnicode(false);
+            notification.Property(n => n.Subject).HasMaxLength(200);
+            notification.Property(n => n.Body).HasMaxLength(Notification.MaxBodyLength);
+            notification.Property(n => n.Urgency).HasConversion<string>().HasMaxLength(10);
+            notification.Property(n => n.EventKey).HasMaxLength(200);
+            notification.Property(n => n.Status).HasConversion<string>().HasMaxLength(20);
+            notification.Property(n => n.SkipReason).HasMaxLength(50).IsUnicode(false);
+            notification.Property(n => n.ExternalId).HasMaxLength(64).IsUnicode(false);
+            notification.Property(n => n.Cost).HasPrecision(10, 5);
+            notification.Property(n => n.EstimatedCost).HasPrecision(10, 5);
+            notification.Property(n => n.Error).HasMaxLength(Notification.MaxErrorLength);
+            // The same event never reaches the same person twice on one channel.
+            notification.HasIndex(n => new { n.EventKey, n.RecipientRef, n.Channel }).IsUnique().HasFilter("[EventKey] IS NOT NULL");
+            notification.HasIndex(n => new { n.Status, n.NotBeforeUtc });
+            notification.HasIndex(n => n.ExternalId).IsUnique().HasFilter("[ExternalId] IS NOT NULL");
+            notification.HasIndex(n => new { n.TenantId, n.Channel, n.CreatedUtc });
+            notification.HasIndex(n => new { n.Channel, n.CreatedUtc });
+        });
+
+        modelBuilder.Entity<ConsentRecord>(consent =>
+        {
+            consent.ToTable("ConsentRecords");
+            consent.HasKey(c => c.Id);
+            consent.Property(c => c.Id).ValueGeneratedNever();
+            consent.Property(c => c.Phone).HasMaxLength(16).IsUnicode(false);
+            consent.Property(c => c.Action).HasConversion<string>().HasMaxLength(20);
+            consent.Property(c => c.PersonRef).HasMaxLength(450);
+            consent.Property(c => c.Source).HasMaxLength(50).IsUnicode(false);
+            consent.Property(c => c.Wording).HasMaxLength(ConsentRecord.MaxWordingLength);
+            consent.Property(c => c.RecordedBy).HasMaxLength(300);
+            consent.HasIndex(c => new { c.Phone, c.RecordedUtc });
+            consent.HasIndex(c => c.TenantId);
+        });
+
+        modelBuilder.Entity<NotificationTemplate>(template =>
+        {
+            template.ToTable("NotificationTemplates");
+            template.HasKey(t => new { t.Key, t.Channel });
+            template.Property(t => t.Key).HasMaxLength(100).IsUnicode(false);
+            template.Property(t => t.Channel).HasConversion<string>().HasMaxLength(10);
+            template.Property(t => t.Subject).HasMaxLength(NotificationTemplate.MaxSubjectLength);
+            template.Property(t => t.Body).HasMaxLength(NotificationTemplate.MaxBodyLength);
+            template.Property(t => t.UpdatedBy).HasMaxLength(300);
+        });
+
+        modelBuilder.Entity<TenantMessagingSettings>(settings =>
+        {
+            settings.ToTable("TenantMessagingSettings");
+            settings.HasKey(s => s.TenantId);
+            settings.Property(s => s.TenantId).ValueGeneratedNever();
+            settings.Property(s => s.UpdatedBy).HasMaxLength(300);
+        });
+
         modelBuilder.Entity<AccountRow>(account =>
         {
             account.ToTable("AspNetUsers", "dbo", t => t.ExcludeFromMigrations());
@@ -460,6 +528,10 @@ public sealed class AccountRow
     public string Id { get; set; } = "";
     public string? Email { get; set; }
     public bool TwoFactorEnabled { get; set; }
+
+    /// <summary>The mobile number as entered (texts need it in E.164; see PhoneNumber).</summary>
+    public string? PhoneNumber { get; set; }
+    public string? FirstName { get; set; }
 }
 
 /// <summary>A one-time code (bootstrap or break-glass) that has been used; only its hash is kept.</summary>
@@ -487,6 +559,7 @@ public sealed class TenantRow
 {
     public int Id { get; set; }
     public string Name { get; set; } = "";
+    public string? TimeZoneId { get; set; }
 }
 
 /// <summary>

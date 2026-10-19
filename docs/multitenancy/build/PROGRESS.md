@@ -4,9 +4,9 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 
 ## Current position
 
-- **Phase:** 4 Invoices (implementation and bundle done; the sandbox checks P4-1 and P4-3 wait for PayPal test keys; Phase 2 and 3 sandbox and staging checks still open)
-- **Next step:** merge `mt/phase4` into `mt/integration` (developer's decision), then Phase 5 / Step 5.1 (Twilio)
-- **Branch:** `mt/phase3` (from `mt/integration` `9ac52c3`)
+- **Phase:** 5 Twilio, step 5.1 done (the notification module, with the stand-in sender: no Twilio credentials yet, developer's choice 2026-10-19)
+- **Next step:** Phase 5 / Step 5.2 (login codes) after the developer's "go"
+- **Branch:** `mt/phase5` (from `mt/integration` `264b053`)
 
 ## Phase status
 
@@ -18,7 +18,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | 2 PayPal core | Implementation complete (2.1–2.9), Phase 2 bundle rehearsed. Waiting: PayPal sandbox run (P2-1, P2-4) | P2-2, P2-3, P2-5, P2-6, P2-7 (automated); P2-1 and P2-4 with the pretend PayPal | 2026-10-15 (`9ac52c3`, developer's request, before the sandbox run) |
 | 3 Website API | Implementation complete (3.1–3.7), Phase 3 bundle rehearsed. Waiting: J1–J6 with the PayPal sandbox and the web team's site on staging (P3-1); load test on staging (P3-7) | P3-2, P3-3, P3-4, P3-5, P3-6, P3-8, P3-9 (automated); P3-1 with the demo site and the pretend PayPal | 2026-10-16 (`ceeb80c`, developer's request, before the staging checks) |
 | 4 Invoices | Implementation complete (4.1–4.4), Phase 4 bundle rehearsed and applied locally. Waiting: invoices and reconciliation in the PayPal sandbox (P4-1, P4-3) | P4-2 (automated); P4-1 and P4-3 with the pretend PayPal | — |
-| 5 Twilio | Not started | — | — |
+| 5 Twilio | In progress: 5.1 done with the stand-in sender. Waiting for Twilio test credentials: real texts, P5-1 (Verify), P5-4 on staging | P5-2, P5-3 (automated); P5-4 with simulated reports | — |
 | 6 Staff alerts | Not started | — | — |
 | Cutover | Not started | — | — |
 | 7 Hardening | Not started | — | — |
@@ -123,6 +123,19 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-19 — Phase 5 / Step 5.1: the notification module (developer's "go"), built with the stand-in sender.**
+  - **Entry deviation (developer's choice):** Phase 5 starts without Twilio test credentials. Everything Twilio-facing is built and tested against a pretend Twilio; the stand-in sender (`Twilio:Mode = StandIn`, the default) sends nothing. Real texts, P5-1 (Verify, step 5.2) and P5-4 on staging wait for the credentials from the project owner.
+  - **Domain** (`Inprem.Platform.Domain/Notifications`): `Notification` (the outbox: Queued / Sent / Delivered / Failed / Skipped with a reason, attempts, Twilio's id and price, `NotBeforeUtc` for quiet hours, `EventKey` so an event never reaches a person twice), `ConsentRecord` (append-only: grants with their exact wording per organization; STOP stops every text to the number; START resumes only what was agreed), `NotificationTemplate` (console overrides of a wording, or switched off), `TenantMessagingSettings` (texts on or off, monthly limit), `PhoneNumber` (E.164 only; a number without its country code is refused, not guessed; masked in logs and the audit log).
+  - **Application** (`Notifications`): `NotificationService.RaiseAsync` picks the wording (defaults in `NotificationTemplates`, step 5.1 has the test message only) and the recipients (owners, owners and admins, console users by role, or given), then per text: number, consent, the organization's switch and monthly limit (its own calendar month), the platform's daily spend cap (Twilio's price, else an estimate), quiet hours in the organization's time zone (21:00–08:00; urgent messages go at once). Emails need no consent and ignore quiet hours. `NotificationSender` (the send job) checks consent again before each text, retries temporary failures (5 attempts), and records Twilio's "unsubscribed" answer (21610) as a STOP. `TwilioReports` applies delivery reports (late or out-of-order ones never reopen a message) and STOP / START / HELP replies.
+  - **Defaults agreed with the developer:** owners always get emails, texts only with consent; texts on for every organization, 50 a month each; US$5 a day for the platform (`Notifications:*`, checked at startup).
+  - **Infrastructure:** `NotificationStore`, `RecipientDirectory` (memberships, console users, `AspNetUsers` phone and first name read-only, the organization's time zone); `Twilio/`: options checked at startup, `StandInSmsSender` (saves each text to `Twilio:StandInFolder` when set), `TwilioSmsSender` (Messaging Service, status callback; no client retries, so a text is never sent twice), `TwilioSignature` (X-Twilio-Signature, checked against Twilio's documented example).
+  - **Web app (new files):** `Notifications/NotificationsHosting.cs` (registration; send job every minute, registered with the job server), `Notifications/TwilioWebhookController.cs` (`POST /webhooks/twilio/status` and `/inbound`, App site, signature required: 403 otherwise, bodies never logged). **C2-2:** one line in `Program.cs`. `Hosting/JobsHosting.cs` registers the send job.
+  - **Website signup:** an owner who ticks the texts box with a mobile number gets a consent record with `ConsentWording.OwnerAlerts` (`SignupService`). **Follow-up for the web team:** the integration guide must give this exact wording for the box (not changed yet: waiting for the developer's yes). The demo website still sends `smsOptIn: false`.
+  - **Migration M1m_Notifications** (row 18 in `scripts/migrations/README.md`): 4 new tables, additive. Rehearsed (up, up again, down, down again, up). Applied to the local database; app data unchanged. **The before-backup failed** (a path mistake in the command, the same as with M1k); a verified after-backup was taken.
+  - **Tests:** Unit +55 (`NotificationDomainTests`, `NotificationServiceTests`), Integration +21 (`TwilioClientTests`, `NotificationFlowTests`: STOP ends every text at once and START brings them back, forged and wrong-path signatures refused, delivery status and price recorded, monthly limit and switch, the same event never twice; `SignupTests`: the ticked box is recorded with its wording).
+  - **Exit checks so far:** P5-2 and P5-3 (automated). P5-4 with simulated reports; on staging when Twilio is set up.
+  - **Results:** Unit 229 and Architecture 11 passed; the new Integration tests (Notifications 20, the signup consent test) passed when run on their own. **The full Baseline, Integration and UI run was stopped (the computer ran low on memory): to run again with the app closed.**
 
 - **2026-10-18 — Fixes from the developer's live test on the SmarterASP test site.**
   - **Support sessions** (`/Account/SupportSessions`) showed the kiosk menu; it now uses the back-office layout, like Billing (fixed 2026-10-16).

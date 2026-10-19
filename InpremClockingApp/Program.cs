@@ -65,6 +65,10 @@ builder.Services.AddScoped<InpremClockingApp.Billing.BillingReconciliationJob>()
 builder.Services.AddPublicApi(builder.Configuration);
 builder.Services.AddDemoSite(builder.Configuration);
 
+// Messages (multi-tenancy Phase 5): the outbox, texts (the stand-in until Twilio:Mode = Twilio), the
+// send job and Twilio's reports. See InpremClockingApp/Notifications.
+InpremClockingApp.Notifications.NotificationsHosting.AddNotifications(builder);
+
 builder.Services.AddDefaultIdentity<AppUser>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddRoles<AppRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
