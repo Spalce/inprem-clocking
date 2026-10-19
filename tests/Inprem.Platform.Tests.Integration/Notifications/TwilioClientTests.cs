@@ -20,6 +20,7 @@ public class TwilioClientTests
 {
     private const string AccountSid = "AC00000000000000000000000000000001";
     private const string ServiceSid = "MG00000000000000000000000000000001";
+    private const string VerifySid = "VA00000000000000000000000000000001";
     private const string Token = "test-auth-token-not-real";
     private const string Phone = "+12025550123";
 
@@ -60,12 +61,12 @@ public class TwilioClientTests
         }
     }
 
-    private static (ServiceProvider Services, FakeTwilio Fake, CapturedLogs Logs) Create(Dictionary<string, string?>? settings = null)
+    private static (ServiceProvider Services, FakeTwilio Fake, CapturedLogs Logs) Create(Dictionary<string, string?>? settings = null, Provider.TestClock? clock = null)
     {
         var values = new Dictionary<string, string?>
         {
             ["Twilio:Mode"] = "Twilio", ["Twilio:AccountSid"] = AccountSid, ["Twilio:AuthToken"] = Token,
-            ["Twilio:MessagingServiceSid"] = ServiceSid, ["Twilio:WebhookBaseUrl"] = "https://app.inprem.test",
+            ["Twilio:MessagingServiceSid"] = ServiceSid, ["Twilio:VerifyServiceSid"] = VerifySid, ["Twilio:WebhookBaseUrl"] = "https://app.inprem.test",
         };
         foreach (var (k, v) in settings ?? new()) values[k] = v;
         var fake = new FakeTwilio();
@@ -74,6 +75,8 @@ public class TwilioClientTests
             .AddLogging(l => l.ClearProviders().AddProvider(logs).SetMinimumLevel(LogLevel.Trace))
             .AddTwilio(new ConfigurationBuilder().AddInMemoryCollection(values).Build());
         services.AddHttpClient(TwilioSmsSender.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => fake);
+        services.AddHttpClient(TwilioVerifyOtpService.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => fake);
+        services.AddMemoryCache().AddSingleton<Inprem.Platform.Application.Memberships.IClock>(clock ?? new Provider.TestClock());
         return (services.BuildServiceProvider(), fake, logs);
     }
 
@@ -154,6 +157,7 @@ public class TwilioClientTests
     [InlineData("Twilio:AccountSid", "not-a-sid", "Twilio:AccountSid")]
     [InlineData("Twilio:AuthToken", "", "Twilio:AuthToken")]
     [InlineData("Twilio:MessagingServiceSid", "PN000", "Twilio:MessagingServiceSid")]
+    [InlineData("Twilio:VerifyServiceSid", "", "Twilio:VerifyServiceSid")]
     [InlineData("Twilio:WebhookBaseUrl", "http://app.inprem.test", "Twilio:WebhookBaseUrl")]
     [InlineData("Twilio:WebhookBaseUrl", "https://app.inprem.test/sub", "Twilio:WebhookBaseUrl")]
     public void Wrong_Settings_Stop_The_App_At_Startup(string key, string value, string named)
@@ -179,5 +183,92 @@ public class TwilioClientTests
         Assert.False(TwilioSignature.IsValid("54321", url, form, "0/KCTR6DLpKmkAf8muzZqo1nDgQ="));
         Assert.False(TwilioSignature.IsValid("12345", url, new Dictionary<string, string>(form) { ["Digits"] = "9999" }, "0/KCTR6DLpKmkAf8muzZqo1nDgQ="));
         Assert.False(TwilioSignature.IsValid(null, url, form, "0/KCTR6DLpKmkAf8muzZqo1nDgQ="));
+    }
+
+    // ------------------------------------------------------------ login codes (step 5.2)
+
+    [Fact]
+    public async Task Verify_Sends_The_Code_By_Text_And_Reads_The_Answers()
+    {
+        var (sp, fake, logs) = Create();
+        using var _ = sp;
+        var otp = sp.GetRequiredService<IOtpService>();
+        Assert.False(otp.IsStandIn);
+
+        fake.Answers.Enqueue((HttpStatusCode.Created, """{"sid":"VE1","status":"pending","to":"+12025550123","channel":"sms"}"""));
+        Assert.True((await otp.SendAsync(Phone)).Sent);
+        var send = Assert.Single(fake.Requests);
+        Assert.Equal($"/v2/Services/{VerifySid}/Verifications", send.Path);
+        Assert.Equal((Phone, "sms"), (send.Form["To"], send.Form["Channel"]));
+
+        fake.Answers.Enqueue((HttpStatusCode.OK, """{"sid":"VE1","status":"pending"}"""));
+        Assert.Equal(OtpCheck.Wrong, await otp.CheckAsync(Phone, "111111"));
+        fake.Answers.Enqueue((HttpStatusCode.OK, """{"sid":"VE1","status":"approved"}"""));
+        Assert.Equal(OtpCheck.Approved, await otp.CheckAsync(Phone, "123456"));
+        Assert.Equal(("123456", $"/v2/Services/{VerifySid}/VerificationCheck"), (fake.Requests.Last().Form["Code"], fake.Requests.Last().Path));
+
+        // Used or expired: Verify no longer has it.
+        fake.Answers.Enqueue((HttpStatusCode.NotFound, """{"code":20404,"message":"The requested resource was not found"}"""));
+        Assert.Equal(OtpCheck.ExpiredOrUsed, await otp.CheckAsync(Phone, "123456"));
+        fake.Answers.Enqueue((HttpStatusCode.TooManyRequests, """{"code":60202,"message":"Max check attempts reached"}"""));
+        Assert.Equal(OtpCheck.TooManyAttempts, await otp.CheckAsync(Phone, "123456"));
+
+        Assert.DoesNotContain(logs.Lines, l => l.Contains("123456") || l.Contains("5550123") || l.Contains(Token));
+    }
+
+    [Fact]
+    public async Task Verify_Out_Of_Reach_Is_Neither_Sent_Nor_Wrong()
+    {
+        var (sp, fake, _) = Create();
+        using var __ = sp;
+        fake.Unreachable = true;
+        var otp = sp.GetRequiredService<IOtpService>();
+        Assert.Equal((false, true), ((await otp.SendAsync(Phone)).Sent, (await otp.SendAsync(Phone)).Temporary));
+        Assert.Equal(OtpCheck.Unavailable, await otp.CheckAsync(Phone, "123456"));
+    }
+
+    [Fact]
+    public async Task The_Stand_In_Follows_Verifys_Rules_Once_Ten_Minutes_Five_Tries()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "inprem-otp-" + Guid.NewGuid().ToString("N"));
+        var clock = new Provider.TestClock();
+        var (sp, fake, logs) = Create(new() { ["Twilio:Mode"] = null, ["Twilio:StandInFolder"] = folder }, clock);
+        using var __ = sp;
+        try
+        {
+            var otp = sp.GetRequiredService<IOtpService>();
+            Assert.True(otp.IsStandIn);
+
+            await otp.SendAsync(Phone);
+            var code = ReadCode(folder);
+            Assert.Equal(OtpCheck.Wrong, await otp.CheckAsync(Phone, code == "000000" ? "111111" : "000000"));
+            Assert.Equal(OtpCheck.Approved, await otp.CheckAsync(Phone, code));
+            Assert.Equal(OtpCheck.ExpiredOrUsed, await otp.CheckAsync(Phone, code)); // P5-1: reuse rejected
+
+            await otp.SendAsync(Phone);
+            code = ReadCode(folder);
+            clock.Advance(TimeSpan.FromMinutes(11));
+            Assert.Equal(OtpCheck.ExpiredOrUsed, await otp.CheckAsync(Phone, code)); // P5-1: expiry rejected
+
+            await otp.SendAsync("+12025550199");
+            code = ReadCode(folder);
+            var wrong = code == "000000" ? "111111" : "000000";
+            for (var i = 0; i < 5; i++) Assert.Equal(OtpCheck.Wrong, await otp.CheckAsync("+12025550199", wrong));
+            Assert.Equal(OtpCheck.TooManyAttempts, await otp.CheckAsync("+12025550199", code));
+
+            Assert.Empty(fake.Requests); // nothing reached Twilio
+            Assert.DoesNotContain(logs.Lines, l => l.Contains(code));
+        }
+        finally
+        {
+            if (Directory.Exists(folder)) Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    /// <summary>The code in the newest stand-in file ("Your Inprem Clock-in code is 123456.").</summary>
+    private static string ReadCode(string folder)
+    {
+        var text = File.ReadAllText(Directory.GetFiles(folder, "*-code-*").OrderBy(f => f).Last());
+        return System.Text.RegularExpressions.Regex.Match(text, @"code is (\d{6})").Groups[1].Value;
     }
 }

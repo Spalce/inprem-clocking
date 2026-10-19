@@ -19,6 +19,12 @@
         <button type="submit" class="@ProviderUi.Button">Sign in</button>
     </form>
 
+    @if (Model.CanUseText)
+    {
+        <p class="tw:mt-6 tw:text-center tw:text-sm">
+            <a asp-page="/LoginWithSmsCode" asp-area="Provider" class="@ProviderUi.Link" data-testid="use-text">Text me a code instead</a>
+        </p>
+    }
     <p class="tw:mt-6 tw:text-center tw:text-sm">
         Lost your authenticator? <a asp-page="/LoginWithRecoveryCode" asp-area="Provider" class="@ProviderUi.Link">Use a recovery code</a>
     </p>

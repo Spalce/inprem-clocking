@@ -1,0 +1,57 @@
+@page
+@model InpremClockingApp.Areas.Provider.Pages.MyPhoneModel
+@{
+    ViewData["Title"] = "My phone for codes";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<h1 class="pc-title">My phone for codes</h1>
+<p class="pc-subtitle">With a confirmed mobile number you can sign in with a texted code when your authenticator app is not at hand. The authenticator app stays the main way.</p>
+
+@if (Model.Error != null)
+{
+    <div class="pc-error" data-testid="error">@Model.Error</div>
+}
+@if (Model.Message != null)
+{
+    <div class="pc-success" data-testid="message">@Model.Message</div>
+}
+@if (Model.IsStandIn)
+{
+    <p class="pc-note" data-testid="stand-in">Texts are not set up yet (stand-in): codes are saved on the server instead of being texted.</p>
+}
+
+@if (Model.Confirmed != null)
+{
+    <div class="pc-card" data-testid="confirmed">
+        <p>Confirmed phone: <strong>@Model.Confirmed</strong></p>
+        <form method="post" asp-page-handler="Remove" class="pc-actions">
+            <button type="submit" class="pc-btn" data-testid="remove">Remove this phone</button>
+        </form>
+    </div>
+}
+
+@if (Model.AwaitingCode)
+{
+    <form method="post" asp-page-handler="Confirm" class="pc-card pc-form" autocomplete="off">
+        <input type="hidden" name="Phone" value="@Model.Phone" />
+        <div class="pc-field"><label for="Code">Code from the text</label><input id="Code" name="Code" inputmode="numeric" autocomplete="one-time-code" required /></div>
+        <div class="pc-actions">
+            <button type="submit" class="pc-btn pc-btn-primary" data-testid="confirm">Confirm this phone</button>
+            <a asp-page="/MyPhone" class="pc-btn">Cancel</a>
+        </div>
+    </form>
+}
+else
+{
+    <form method="post" asp-page-handler="Send" class="pc-card pc-form">
+        <div class="pc-field">
+            <label for="Phone">@(Model.Confirmed == null ? "Mobile number" : "Change to another number")</label>
+            <input id="Phone" name="Phone" type="tel" value="@Model.Phone" placeholder="+1 202 555 0123" required />
+            <p class="pc-subtitle">With the country code. We text a code to it, to make sure it is yours.</p>
+        </div>
+        <div class="pc-actions">
+            <button type="submit" class="pc-btn pc-btn-primary" data-testid="send">Text me a code</button>
+        </div>
+    </form>
+}

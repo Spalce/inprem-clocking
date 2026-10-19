@@ -357,7 +357,7 @@ public class NotificationServiceTests
 
     // ------------------------------------------------------------------ fakes
 
-    private sealed class MovableClock : IClock
+    internal sealed class MovableClock : IClock
     {
         public MovableClock(DateTime now) => UtcNow = now;
         public DateTime UtcNow { get; private set; }
@@ -379,7 +379,7 @@ public class NotificationServiceTests
             Task.FromResult<IReadOnlyList<NotificationRecipient>>(Provider.Where(p => roles.Count == 0 || roles.Contains(p.Role)).Select(p => p.Recipient).ToList());
     }
 
-    private sealed class MemoryStore : INotificationStore
+    internal sealed class MemoryStore : INotificationStore
     {
         public List<Notification> Messages { get; } = new();
         public List<ConsentRecord> Consents { get; } = new();
@@ -405,6 +405,11 @@ public class NotificationServiceTests
         public Task<TenantMessagingSettings?> FindSettingsAsync(int tenantId, CancellationToken ct = default) => Task.FromResult(Settings.GetValueOrDefault(tenantId));
         public Task AddAuditAsync(AuditEntry entry, CancellationToken ct = default) { Audit.Add(entry); return Task.CompletedTask; }
         public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
+
+        public List<(string Kind, string Account, bool Succeeded, DateTime At)> Attempts { get; } = new();
+        public Task AddAttemptAsync(string kind, string accountId, bool succeeded, DateTime nowUtc, CancellationToken ct = default) { Attempts.Add((kind, accountId, succeeded, nowUtc)); return Task.CompletedTask; }
+        public Task<int> CountAttemptsAsync(string kind, string accountId, DateTime sinceUtc, bool succeededOnly = false, bool failedOnly = false, CancellationToken ct = default) =>
+            Task.FromResult(Attempts.Count(a => a.Kind == kind && a.Account == accountId && a.At > sinceUtc && (!succeededOnly || a.Succeeded) && (!failedOnly || !a.Succeeded)));
     }
 
     private sealed class FakeSms : ISmsSender

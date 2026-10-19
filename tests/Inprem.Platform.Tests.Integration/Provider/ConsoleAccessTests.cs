@@ -39,7 +39,7 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
         .ToDictionary(i => i.Page!, i => i.Policy);
 
     /// <summary>Signed-in pages that are not in the menu and not GET-checked (they redirect by design).</summary>
-    private static readonly string[] OtherSignedInPages = { "/EnrolTwoFactor", "/Reauthenticate" };
+    private static readonly string[] OtherSignedInPages = { "/EnrolTwoFactor", "/Reauthenticate", "/MyPhone" };
 
     /// <summary>
     /// Pages below the menu: who may open them (written out independently), and their address for

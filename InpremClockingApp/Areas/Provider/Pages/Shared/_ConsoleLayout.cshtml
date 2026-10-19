@@ -41,6 +41,7 @@
   <div class="pc-main">
     <header class="pc-top">
       <span class="pc-user">Signed in as <strong>@User.Identity?.Name</strong></span>
+      <a asp-area="Provider" asp-page="/MyPhone" class="pc-btn" data-testid="my-phone"><i class="fas fa-mobile-screen"></i> My phone for codes</a>
       <form method="post" asp-area="Provider" asp-page="/Logout" class="pc-inline" data-role="sign-out">
         <button type="submit" class="pc-btn"><i class="fas fa-right-from-bracket"></i> Sign out</button>
       </form>

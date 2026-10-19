@@ -33,6 +33,7 @@ public static class DependencyInjection
         services.AddScoped<Notifications.NotificationService>();
         services.AddScoped<Notifications.NotificationSender>();
         services.AddScoped<Notifications.TwilioReports>();
+        services.AddScoped<Notifications.LoginCodeService>();
         return services;
     }
 }

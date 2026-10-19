@@ -1,0 +1,41 @@
+@page
+@model LoginWithSmsCodeModel
+@{
+    ViewData["Title"] = "Sign in with a texted code";
+}
+
+<div class="@ProviderUi.Card">
+    <h1 class="@ProviderUi.Title">Sign in with a texted code</h1>
+    <p class="@ProviderUi.Lead">We text a 6-digit code to your phone @Model.MaskedPhone. It works once, for 10 minutes.</p>
+
+    @if (Model.Error != null)
+    {
+        <div class="@ProviderUi.Error" data-testid="error">@Model.Error</div>
+    }
+    @if (Model.Message != null)
+    {
+        <div class="@ProviderUi.Success" data-testid="message">@Model.Message</div>
+    }
+
+    @if (Model.CodeSent)
+    {
+        <form method="post" autocomplete="off">
+            <label asp-for="Code" class="@ProviderUi.Label">Code from the text</label>
+            <input asp-for="Code" inputmode="numeric" autocomplete="one-time-code" class="@ProviderUi.Input" required />
+            <button type="submit" class="@ProviderUi.Button" data-testid="sign-in">Sign in</button>
+        </form>
+        <form method="post" asp-page-handler="Send" class="tw:mt-3">
+            <button type="submit" class="@ProviderUi.Link tw:cursor-pointer tw:border-0 tw:bg-transparent tw:p-0 tw:text-sm" data-testid="send-again">Send a new code</button>
+        </form>
+    }
+    else
+    {
+        <form method="post" asp-page-handler="Send">
+            <button type="submit" class="@ProviderUi.Button" data-testid="send">Text me a code</button>
+        </form>
+    }
+
+    <p class="tw:mt-6 tw:text-center tw:text-sm">
+        <a asp-page="/LoginWith2fa" asp-area="Provider" class="@ProviderUi.Link">Use the authenticator app instead</a>
+    </p>
+</div>

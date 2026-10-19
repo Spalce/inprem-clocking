@@ -18,6 +18,11 @@ public class ConsoleAuditCoverageTests
         ["Login.OnPostAsync"] = ("none (sign-in)", "SetupJourneyTests"),
         ["LoginWith2fa.OnPostAsync"] = ("none (sign-in)", "SetupJourneyTests"),
         ["LoginWithRecoveryCode.OnPostAsync"] = ("provider.recovery.level1", "SetupJourneyTests"),
+        ["LoginWithSmsCode.OnPostSendAsync"] = ("security.sms-code-sent / -refused / -failed", "SmsCodeSignInTests"),
+        ["LoginWithSmsCode.OnPostAsync"] = ("security.sms-code-approved / -rejected", "SmsCodeSignInTests"),
+        ["MyPhone.OnPostSendAsync"] = ("security.sms-code-sent / -refused / -failed", "SmsCodeSignInTests"),
+        ["MyPhone.OnPostConfirmAsync"] = ("security.phone-confirmed (after security.sms-code-approved)", "SmsCodeSignInTests"),
+        ["MyPhone.OnPostRemoveAsync"] = ("security.phone-removed", "SmsCodeSignInTests"),
         ["Logout.OnPostAsync"] = ("none (sign-out)", "ConsoleAccessTests"),
         ["Reauthenticate.OnPostAsync"] = ("none (fresh two-factor code)", "ConsoleAccessTests"),
 

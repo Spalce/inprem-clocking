@@ -47,6 +47,16 @@ public sealed class NotificationStore : INotificationStore
     public Task<TenantMessagingSettings?> FindSettingsAsync(int tenantId, CancellationToken ct = default) =>
         _db.TenantMessagingSettings.AsNoTracking().FirstOrDefaultAsync(s => s.TenantId == tenantId, ct);
 
+    public async Task AddAttemptAsync(string kind, string accountId, bool succeeded, DateTime nowUtc, CancellationToken ct = default) =>
+        await _db.SecurityAttempts.AddAsync(new SecurityAttempt { Kind = kind, Succeeded = succeeded, Source = $"user:{accountId}", OccurredUtc = nowUtc }, ct).ConfigureAwait(false);
+
+    public Task<int> CountAttemptsAsync(string kind, string accountId, DateTime sinceUtc, bool succeededOnly = false, bool failedOnly = false, CancellationToken ct = default)
+    {
+        var source = $"user:{accountId}";
+        return _db.SecurityAttempts.CountAsync(a => a.Kind == kind && a.Source == source && a.OccurredUtc > sinceUtc
+            && (!succeededOnly || a.Succeeded) && (!failedOnly || !a.Succeeded), ct);
+    }
+
     public async Task AddAuditAsync(AuditEntry entry, CancellationToken ct = default) => await _db.AuditEntries.AddAsync(entry, ct).ConfigureAwait(false);
 
     public Task SaveChangesAsync(CancellationToken ct = default) => _db.SaveChangesAsync(ct);

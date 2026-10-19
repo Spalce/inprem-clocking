@@ -52,6 +52,9 @@ internal class InpremAppFactory : WebApplicationFactory<Program>
     /// <summary>Every text the app sent (Phase 5).</summary>
     public CapturingSmsSender Sms { get; } = new();
 
+    /// <summary>Every login code the app sent (Phase 5 step 5.2).</summary>
+    public CapturingOtpService Codes { get; } = new();
+
     public InpremAppFactory(
         string connectionString,
         IReadOnlyDictionary<string, string?>? settings = null,
@@ -110,6 +113,8 @@ internal class InpremAppFactory : WebApplicationFactory<Program>
             services.AddSingleton<Inprem.Platform.Application.Billing.IInvoiceProvider>(Invoicing);
             services.RemoveAll<Inprem.Platform.Application.Notifications.ISmsSender>();
             services.AddSingleton<Inprem.Platform.Application.Notifications.ISmsSender>(Sms);
+            services.RemoveAll<Inprem.Platform.Application.Notifications.IOtpService>();
+            services.AddSingleton<Inprem.Platform.Application.Notifications.IOtpService>(Codes);
 
             _configureServices?.Invoke(services);
         });

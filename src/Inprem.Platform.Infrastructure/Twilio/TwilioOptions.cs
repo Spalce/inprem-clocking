@@ -31,6 +31,11 @@ public sealed class TwilioOptions
 
     public Uri ApiBaseAddress { get; set; } = new("https://api.twilio.com/");
 
+    /// <summary>The Verify service that sends login codes (starts with VA; step 5.2).</summary>
+    public string? VerifyServiceSid { get; set; }
+
+    public Uri VerifyBaseAddress { get; set; } = new("https://verify.twilio.com/");
+
     /// <summary>
     /// The site's public address as Twilio reaches it (e.g. https://app.inpremclockin.org): the status
     /// callback is sent there, and Twilio's signatures are checked against it.
@@ -56,6 +61,8 @@ public sealed class TwilioOptionsValidator : IValidateOptions<TwilioOptions>
             if (options.AccountSid is not { Length: 34 } sid || !sid.StartsWith("AC", StringComparison.Ordinal)) errors.Add("Twilio:AccountSid must be the account's SID (AC…, 34 characters).");
             if (string.IsNullOrWhiteSpace(options.AuthToken)) errors.Add("Twilio:AuthToken is required with Twilio:Mode = Twilio.");
             if (options.MessagingServiceSid is not { Length: 34 } service || !service.StartsWith("MG", StringComparison.Ordinal)) errors.Add("Twilio:MessagingServiceSid must be the Messaging Service's SID (MG…, 34 characters).");
+            if (options.VerifyServiceSid is not { Length: 34 } verify || !verify.StartsWith("VA", StringComparison.Ordinal)) errors.Add("Twilio:VerifyServiceSid must be the Verify service's SID (VA…, 34 characters).");
+            if (!options.VerifyBaseAddress.IsAbsoluteUri || options.VerifyBaseAddress.Scheme != Uri.UriSchemeHttps) errors.Add("Twilio:VerifyBaseAddress must be an https address.");
             if (options.WebhookBaseUrl == null) errors.Add("Twilio:WebhookBaseUrl is required with Twilio:Mode = Twilio (delivery reports and STOP replies come there).");
             if (!options.ApiBaseAddress.IsAbsoluteUri || options.ApiBaseAddress.Scheme != Uri.UriSchemeHttps) errors.Add("Twilio:ApiBaseAddress must be an https address.");
         }

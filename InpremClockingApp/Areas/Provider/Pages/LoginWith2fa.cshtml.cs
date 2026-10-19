@@ -24,8 +24,16 @@ public class LoginWith2faModel : PageModel
 
     public string? Error { get; private set; }
 
-    public async Task<IActionResult> OnGetAsync() =>
-        await _signIn.GetTwoFactorAuthenticationUserAsync() == null ? RedirectToPage("/Login", new { area = "Provider" }) : Page();
+    /// <summary>The user confirmed a phone for codes (Phase 5): a texted code is offered too.</summary>
+    public bool CanUseText { get; private set; }
+
+    public async Task<IActionResult> OnGetAsync()
+    {
+        var user = await _signIn.GetTwoFactorAuthenticationUserAsync();
+        if (user == null) return RedirectToPage("/Login", new { area = "Provider" });
+        CanUseText = user.PhoneNumberConfirmed;
+        return Page();
+    }
 
     public async Task<IActionResult> OnPostAsync()
     {
@@ -40,6 +48,7 @@ public class LoginWith2faModel : PageModel
         }
 
         Error = result.IsLockedOut ? "This account is locked after too many failed attempts. Try again in 15 minutes." : "The code is not valid.";
+        CanUseText = user.PhoneNumberConfirmed;
         return Page();
     }
 }

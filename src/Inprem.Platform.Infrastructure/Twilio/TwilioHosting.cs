@@ -59,11 +59,29 @@ public static class TwilioHosting
                 pipeline.AddTimeout(TimeSpan.FromSeconds(options.TimeoutSeconds));
             });
 
+        services.AddHttpClient(TwilioVerifyOtpService.HttpClientName, (sp, client) =>
+            {
+                var options = sp.GetRequiredService<IOptions<TwilioOptions>>().Value;
+                client.BaseAddress = options.VerifyBaseAddress;
+                client.Timeout = Timeout.InfiniteTimeSpan;
+            })
+            .RemoveAllLoggers()
+            .AddResilienceHandler("twilio-verify", (pipeline, context) =>
+            {
+                var options = context.ServiceProvider.GetRequiredService<IOptions<TwilioOptions>>().Value;
+                pipeline.AddTimeout(TimeSpan.FromSeconds(options.TimeoutSeconds));
+            });
+
         services.AddSingleton<StandInSmsSender>();
         services.AddSingleton<TwilioSmsSender>();
         services.AddSingleton<ISmsSender>(sp => sp.GetRequiredService<IOptions<TwilioOptions>>().Value.Mode == SmsMode.Twilio
             ? sp.GetRequiredService<TwilioSmsSender>()
             : sp.GetRequiredService<StandInSmsSender>());
+        services.AddSingleton<StandInOtpService>();
+        services.AddSingleton<TwilioVerifyOtpService>();
+        services.AddSingleton<IOtpService>(sp => sp.GetRequiredService<IOptions<TwilioOptions>>().Value.Mode == SmsMode.Twilio
+            ? sp.GetRequiredService<TwilioVerifyOtpService>()
+            : sp.GetRequiredService<StandInOtpService>());
         return services;
     }
 }
