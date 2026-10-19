@@ -41,7 +41,9 @@ public class ReadOnlyGuardBrowserTests : IClassFixture<KestrelAppFixture>, IAsyn
         await page.FillAsync("input[name='Input.Password']", _app.Data.Password);
         await page.ClickAsync("button[type='submit']");
         // The kiosk page when active; the "kiosk is paused" page when suspended.
-        await page.WaitForURLAsync(url => !url.Contains("/Identity/Account/Login", StringComparison.OrdinalIgnoreCase));
+        // Wait for the address only: the page's full load also waits for Google Fonts, which made this
+        // flaky on a slow connection (found 2026-10-20; the page itself was there and complete).
+        await page.WaitForURLAsync(url => !url.Contains("/Identity/Account/Login", StringComparison.OrdinalIgnoreCase), new() { WaitUntil = WaitUntilState.Commit });
         return page;
     }
 

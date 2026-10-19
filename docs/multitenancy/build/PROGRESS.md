@@ -134,7 +134,7 @@ _(date — what was tested — result)_
   - **Locally:** `Twilio:StandInFolder` set in user-secrets to `Desktop\inprem-sms`: stand-in texts and codes are saved there.
   - **Tests:** Unit +9 (`LoginCodeServiceTests`, the settings switch); Integration +20 (`TwilioClientTests` Verify and stand-in rules, `SmsCodeSignInTests` 7, `AdminSmsSignInTests` 3); console coverage and role matrix updated.
   - **Exit checks:** P5-1 with the stand-in and the pretend Verify (reuse and expiry rejected); with real Verify when the credentials come.
-  - **Results:** RESULTS52_PLACEHOLDER
+  - **Results (full run on commit d533628, one suite at a time):** Unit 238, Architecture 11, Baseline 314, Integration 274, UI 12. One UI test (`ReadOnlyGuardBrowserTests`, from Phase 4) failed 3 times in 7: the page was there and complete, but the wait also waited for Google Fonts on a slow connection. It now waits for the address only (`WaitUntil = Commit`); 5 runs of 5 and the UI suite (12) pass.
 
 - **2026-10-19 — Phase 5 / Step 5.1: the notification module (developer's "go"), built with the stand-in sender.**
   - **Entry deviation (developer's choice):** Phase 5 starts without Twilio test credentials. Everything Twilio-facing is built and tested against a pretend Twilio; the stand-in sender (`Twilio:Mode = StandIn`, the default) sends nothing. Real texts, P5-1 (Verify, step 5.2) and P5-4 on staging wait for the credentials from the project owner.
