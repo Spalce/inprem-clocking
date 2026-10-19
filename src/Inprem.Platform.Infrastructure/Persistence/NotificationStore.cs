@@ -47,6 +47,11 @@ public sealed class NotificationStore : INotificationStore
     public Task<TenantMessagingSettings?> FindSettingsAsync(int tenantId, CancellationToken ct = default) =>
         _db.TenantMessagingSettings.AsNoTracking().FirstOrDefaultAsync(s => s.TenantId == tenantId, ct);
 
+    public Task<TenantMessagingSettings?> FindSettingsForUpdateAsync(int tenantId, CancellationToken ct = default) =>
+        _db.TenantMessagingSettings.FirstOrDefaultAsync(s => s.TenantId == tenantId, ct);
+
+    public async Task AddSettingsAsync(TenantMessagingSettings settings, CancellationToken ct = default) => await _db.TenantMessagingSettings.AddAsync(settings, ct).ConfigureAwait(false);
+
     public async Task AddAttemptAsync(string kind, string accountId, bool succeeded, DateTime nowUtc, CancellationToken ct = default) =>
         await _db.SecurityAttempts.AddAsync(new SecurityAttempt { Kind = kind, Succeeded = succeeded, Source = $"user:{accountId}", OccurredUtc = nowUtc }, ct).ConfigureAwait(false);
 

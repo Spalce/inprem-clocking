@@ -56,6 +56,7 @@ public class ConsoleAuditCoverageTests
         ["Tenants.AddNoteModel.OnPostAsync"] = ("organization.note-added", "OrganizationPagesTests"),
         ["Tenants.TransferOwnershipModel.OnPostAsync"] = ("organization.ownership-transferred", "OrganizationPagesTests"),
         ["Tenants.DetailsModel.OnPostResendAsync"] = ("organization.invitation-resent", "OrganizationPagesTests"),
+        ["Tenants.SignInCodesModel.OnPostAsync"] = ("organization.sms-sign-in-on / -off", "AdminSmsSignInTests"),
         ["Tenants.DetailsModel.OnPostResetAsync"] = ("organization.password-reset-sent", "OrganizationPagesTests"),
         ["Tenants.DetailsModel.OnPostEndSupportAsync"] = ("support.ended", "SupportSessionTests"),
         ["Tenants.StartSupportModel.OnPostAsync"] = ("support.started", "SupportSessionTests"),

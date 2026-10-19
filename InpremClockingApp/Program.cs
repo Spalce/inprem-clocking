@@ -183,6 +183,8 @@ app.UseMiddleware<AdminAllowList>();
 
 app.UseAuthentication();
 app.UseTenantContext();
+// Texted sign-in code for organizations that switch it on (multi-tenancy Phase 5; off by default).
+app.UseSmsSignInGate();
 // Read-only mode for organizations whose subscription is not active (multi-tenancy Phase 2, C3-3/C3-4).
 app.UseBillingEnforcement();
 app.UseAuthorization();

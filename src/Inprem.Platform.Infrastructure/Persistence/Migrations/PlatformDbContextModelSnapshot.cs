@@ -875,6 +875,9 @@ namespace Inprem.Platform.Infrastructure.Persistence.Migrations
                     b.Property<bool>("SmsEnabled")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("SmsSignInRequired")
+                        .HasColumnType("bit");
+
                     b.Property<string>("UpdatedBy")
                         .IsRequired()
                         .HasMaxLength(300)

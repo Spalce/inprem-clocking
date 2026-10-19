@@ -4,8 +4,8 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 
 ## Current position
 
-- **Phase:** 5 Twilio, step 5.1 done (the notification module, with the stand-in sender: no Twilio credentials yet, developer's choice 2026-10-19)
-- **Next step:** Phase 5 / Step 5.2 (login codes) after the developer's "go"
+- **Phase:** 5 Twilio, steps 5.1 and 5.2 done with the stand-in (no Twilio credentials yet, developer's choice 2026-10-19)
+- **Next step:** Phase 5 / Step 5.3 (billing and provider alerts, console Notifications pages) after the developer's "go"
 - **Branch:** `mt/phase5` (from `mt/integration` `264b053`)
 
 ## Phase status
@@ -18,7 +18,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | 2 PayPal core | Implementation complete (2.1–2.9), Phase 2 bundle rehearsed. Waiting: PayPal sandbox run (P2-1, P2-4) | P2-2, P2-3, P2-5, P2-6, P2-7 (automated); P2-1 and P2-4 with the pretend PayPal | 2026-10-15 (`9ac52c3`, developer's request, before the sandbox run) |
 | 3 Website API | Implementation complete (3.1–3.7), Phase 3 bundle rehearsed. Waiting: J1–J6 with the PayPal sandbox and the web team's site on staging (P3-1); load test on staging (P3-7) | P3-2, P3-3, P3-4, P3-5, P3-6, P3-8, P3-9 (automated); P3-1 with the demo site and the pretend PayPal | 2026-10-16 (`ceeb80c`, developer's request, before the staging checks) |
 | 4 Invoices | Implementation complete (4.1–4.4), Phase 4 bundle rehearsed and applied locally. Waiting: invoices and reconciliation in the PayPal sandbox (P4-1, P4-3) | P4-2 (automated); P4-1 and P4-3 with the pretend PayPal | — |
-| 5 Twilio | In progress: 5.1 done with the stand-in sender. Waiting for Twilio test credentials: real texts, P5-1 (Verify), P5-4 on staging | P5-2, P5-3 (automated); P5-4 with simulated reports | — |
+| 5 Twilio | In progress: 5.1 and 5.2 done with the stand-in. Waiting for Twilio test credentials: real texts, P5-1 (Verify), P5-4 on staging | P5-2, P5-3 (automated); P5-4 with simulated reports | — |
 | 6 Staff alerts | Not started | — | — |
 | Cutover | Not started | — | — |
 | 7 Hardening | Not started | — | — |
@@ -124,6 +124,18 @@ _(date — what was tested — result)_
 
 ## Log
 
+- **2026-10-20 — Phase 5 / Step 5.2: login codes by text (developer: "continue with step 5.2"), with the stand-in.**
+  - **Core (Application `LoginCodes.cs`):** `IOtpService` (Twilio Verify, or the stand-in until Twilio is set up) and `LoginCodeService`: at most 3 codes in 10 minutes and 10 a day per account (failed sends do not count), 5 wrong codes stop tries for 15 minutes (on top of Verify's own limits); every send and result in the audit log with the number masked, never the code.
+  - **Infrastructure (`Twilio/OtpServices.cs`):** `TwilioVerifyOtpService` (Verifications and VerificationCheck; a used or expired code is gone at Verify: 404) and `StandInOtpService` (the same rules in memory: a 6-digit code works once, for 10 minutes, for 5 tries; saved to `Twilio:StandInFolder`, never logged). `Twilio:VerifyServiceSid` is required with `Twilio:Mode = Twilio`.
+  - **Console (D14):** "My phone for codes" (header link; any role; add a number and prove it with a texted code; recent two-factor needed; remove) and "Text me a code instead" on the two-factor step, offered only with a confirmed phone. The authenticator app stays the main way.
+  - **Organization admins (optional, off by default):** console → organization → **Sign-in codes** (Owners, recent two-factor). When on, `SmsSignInGate` (after the tenant middleware) sends the organization's admins to `/Account/SmsSignIn` until a code is approved; other requests are refused (403). Someone without a confirmed number adds one with the same code and is emailed about it. Support sessions are not asked. The proof is a claim tied to the membership, kept on cookie refresh. With the setting off nothing changes (baseline suite).
+  - **Files:** new pages `Areas/Provider/Pages/LoginWithSmsCode`, `MyPhone`, `Tenants/SignInCodes`, `Areas/Account/Pages/SmsSignIn`; `Hosting/SmsSignInGate.cs`; `Application/Notifications/MessagingSettingsService.cs`. Changed: `LoginWith2fa` (the link), `_ConsoleLayout` (header link), `Tenants/Details` (button), `Hosting/TenancyHosting.cs` (claim kept), **C2-2** `Program.cs` (one line: the gate).
+  - **Migration M1n_SmsSignIn** (row 19): one column, additive, off everywhere. Rehearsed; local database backed up (verified) **before** applying; app data unchanged.
+  - **Locally:** `Twilio:StandInFolder` set in user-secrets to `Desktop\inprem-sms`: stand-in texts and codes are saved there.
+  - **Tests:** Unit +9 (`LoginCodeServiceTests`, the settings switch); Integration +20 (`TwilioClientTests` Verify and stand-in rules, `SmsCodeSignInTests` 7, `AdminSmsSignInTests` 3); console coverage and role matrix updated.
+  - **Exit checks:** P5-1 with the stand-in and the pretend Verify (reuse and expiry rejected); with real Verify when the credentials come.
+  - **Results:** RESULTS52_PLACEHOLDER
+
 - **2026-10-19 — Phase 5 / Step 5.1: the notification module (developer's "go"), built with the stand-in sender.**
   - **Entry deviation (developer's choice):** Phase 5 starts without Twilio test credentials. Everything Twilio-facing is built and tested against a pretend Twilio; the stand-in sender (`Twilio:Mode = StandIn`, the default) sends nothing. Real texts, P5-1 (Verify, step 5.2) and P5-4 on staging wait for the credentials from the project owner.
   - **Domain** (`Inprem.Platform.Domain/Notifications`): `Notification` (the outbox: Queued / Sent / Delivered / Failed / Skipped with a reason, attempts, Twilio's id and price, `NotBeforeUtc` for quiet hours, `EventKey` so an event never reaches a person twice), `ConsentRecord` (append-only: grants with their exact wording per organization; STOP stops every text to the number; START resumes only what was agreed), `NotificationTemplate` (console overrides of a wording, or switched off), `TenantMessagingSettings` (texts on or off, monthly limit), `PhoneNumber` (E.164 only; a number without its country code is refused, not guessed; masked in logs and the audit log).
@@ -135,7 +147,7 @@ _(date — what was tested — result)_
   - **Migration M1m_Notifications** (row 18 in `scripts/migrations/README.md`): 4 new tables, additive. Rehearsed (up, up again, down, down again, up). Applied to the local database; app data unchanged. **The before-backup failed** (a path mistake in the command, the same as with M1k); a verified after-backup was taken.
   - **Tests:** Unit +55 (`NotificationDomainTests`, `NotificationServiceTests`), Integration +21 (`TwilioClientTests`, `NotificationFlowTests`: STOP ends every text at once and START brings them back, forged and wrong-path signatures refused, delivery status and price recorded, monthly limit and switch, the same event never twice; `SignupTests`: the ticked box is recorded with its wording).
   - **Exit checks so far:** P5-2 and P5-3 (automated). P5-4 with simulated reports; on staging when Twilio is set up.
-  - **Results:** Unit 229 and Architecture 11 passed; the new Integration tests (Notifications 20, the signup consent test) passed when run on their own. **The full Baseline, Integration and UI run was stopped (the computer ran low on memory): to run again with the app closed.**
+  - **Results (full run on commit e4285de, 2026-10-20, one suite at a time):** Unit 229, Architecture 11, Baseline 314, Integration 260, UI 12 — all passed.
 
 - **2026-10-18 — Fixes from the developer's live test on the SmarterASP test site.**
   - **Support sessions** (`/Account/SupportSessions`) showed the kiosk menu; it now uses the back-office layout, like Billing (fixed 2026-10-16).

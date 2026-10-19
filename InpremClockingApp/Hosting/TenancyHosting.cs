@@ -51,6 +51,10 @@ public static class TenancyHosting
                             newIdentity.AddClaim(new System.Security.Claims.Claim(type, claim.Value));
                     }
                 }
+                // Texted sign-in code (Phase 5 step 5.2): keep the proof, so a refresh does not ask for a new code.
+                if (newIdentity != null && newIdentity.FindFirst(SmsSignInGate.ClaimType) == null
+                    && context.CurrentPrincipal?.FindFirst(SmsSignInGate.ClaimType) is { } smsClaim)
+                    newIdentity.AddClaim(new System.Security.Claims.Claim(smsClaim.Type, smsClaim.Value));
                 return Task.CompletedTask;
             };
         });

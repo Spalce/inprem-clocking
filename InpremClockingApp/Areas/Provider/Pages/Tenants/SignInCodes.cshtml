@@ -1,0 +1,21 @@
+@page "{id:int}"
+@model InpremClockingApp.Areas.Provider.Pages.Tenants.SignInCodesModel
+@{
+    ViewData["Title"] = "Sign-in codes";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<p><a asp-page="Details" asp-route-id="@RouteData.Values["id"]">&larr; Back to the organization</a></p>
+<h1 class="pc-title">Sign-in codes for @Model.Name</h1>
+<p class="pc-subtitle">When this is on, the organization's admins and owners enter a code we text them after their password. Someone without a confirmed mobile number adds one at their next sign-in and is emailed about it. Support sessions are not asked.</p>
+
+<form method="post" class="pc-card pc-form">
+  <div class="pc-field">
+    <label class="pc-check"><input type="checkbox" name="Required" value="true" @(Model.IsOn ? "checked" : "") data-testid="required" /> Ask for a texted code after the password</label>
+    <p class="pc-muted">Now: <strong data-testid="state">@(Model.IsOn ? "on" : "off")</strong>. People already signed in are asked at their next page.</p>
+  </div>
+  <div class="pc-actions">
+    <button type="submit" class="pc-btn pc-btn-primary" data-testid="confirm">Save</button>
+    <a asp-page="Details" asp-route-id="@RouteData.Values["id"]" class="pc-btn">Cancel</a>
+  </div>
+</form>

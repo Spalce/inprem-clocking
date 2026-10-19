@@ -53,8 +53,9 @@ public sealed class NotificationTemplate
 }
 
 /// <summary>
-/// Texts for one organization (Phase 5): on or off, and how many a month at most. An organization
-/// without a row uses the defaults (on, Notifications:DefaultMonthlySmsLimit).
+/// Texts for one organization (Phase 5): on or off, and how many a month at most; and whether its
+/// admins must also enter a texted code when they sign in (step 5.2, off by default). An organization
+/// without a row uses the defaults (on, Notifications:DefaultMonthlySmsLimit, no sign-in codes).
 /// </summary>
 public sealed class TenantMessagingSettings
 {
@@ -66,6 +67,9 @@ public sealed class TenantMessagingSettings
     public int TenantId { get; private set; }
     public bool SmsEnabled { get; private set; }
     public int MonthlySmsLimit { get; private set; }
+
+    /// <summary>Admins enter a texted code after their password (step 5.2).</summary>
+    public bool SmsSignInRequired { get; private set; }
     public DateTime UpdatedUtc { get; private set; }
     public string UpdatedBy { get; private set; }
 
@@ -84,5 +88,16 @@ public sealed class TenantMessagingSettings
         MonthlySmsLimit = monthlySmsLimit;
         UpdatedUtc = nowUtc;
         UpdatedBy = updatedBy.Length > 300 ? updatedBy[..300] : updatedBy;
+    }
+
+    /// <summary>Switches the texted sign-in code for the organization's admins on or off. Returns false when nothing changed.</summary>
+    public bool RequireSmsSignIn(bool required, DateTime nowUtc, string updatedBy)
+    {
+        if (SmsSignInRequired == required) return false;
+        if (nowUtc.Kind != DateTimeKind.Utc) throw new ArgumentException("Times are stored in UTC.", nameof(nowUtc));
+        SmsSignInRequired = required;
+        UpdatedUtc = nowUtc;
+        UpdatedBy = updatedBy.Length > 300 ? updatedBy[..300] : updatedBy;
+        return true;
     }
 }

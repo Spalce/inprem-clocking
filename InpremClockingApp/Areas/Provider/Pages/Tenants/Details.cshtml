@@ -23,6 +23,7 @@
   {
       <div class="pc-actions">
         <a asp-page="Edit" asp-route-id="@s.TenantId" class="pc-btn" data-testid="edit"><i class="fas fa-pen"></i> Edit</a>
+        <a asp-page="SignInCodes" asp-route-id="@s.TenantId" class="pc-btn" data-testid="sign-in-codes"><i class="fas fa-mobile-screen"></i> Sign-in codes</a>
         @if (s.Status == OrganizationStatus.Active)
         {
             <a asp-page="Suspend" asp-route-id="@s.TenantId" class="pc-btn pc-btn-danger" data-testid="suspend">Suspend</a>

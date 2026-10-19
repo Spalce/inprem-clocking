@@ -110,6 +110,10 @@ public interface INotificationStore
     Task<NotificationTemplate?> FindTemplateAsync(string key, NotificationChannel channel, CancellationToken ct = default);
     Task<TenantMessagingSettings?> FindSettingsAsync(int tenantId, CancellationToken ct = default);
 
+    /// <summary>The settings row, tracked for a change (null when the organization has none yet).</summary>
+    Task<TenantMessagingSettings?> FindSettingsForUpdateAsync(int tenantId, CancellationToken ct = default);
+    Task AddSettingsAsync(TenantMessagingSettings settings, CancellationToken ct = default);
+
     /// <summary>A login-code send or check (platform.SecurityAttempts), for the rate limits.</summary>
     Task AddAttemptAsync(string kind, string accountId, bool succeeded, DateTime nowUtc, CancellationToken ct = default);
     Task<int> CountAttemptsAsync(string kind, string accountId, DateTime sinceUtc, bool succeededOnly = false, bool failedOnly = false, CancellationToken ct = default);

@@ -245,6 +245,19 @@ public class NotificationServiceTests
         Assert.DoesNotContain("5550123", _store.Audit[0].Target); // masked
     }
 
+    [Fact]
+    public async Task The_Sign_In_Code_Switch_Is_Off_Until_Switched_On_And_Audited()
+    {
+        var cache = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
+        var settings = new MessagingSettingsService(_store, cache, _options, _clock);
+        Assert.False(await settings.SmsSignInRequiredAsync(Tenant));
+        Assert.True(await settings.SetSmsSignInAsync(Tenant, true, "provider:p1"));
+        Assert.False(await settings.SetSmsSignInAsync(Tenant, true, "provider:p1")); // already on: nothing new
+        Assert.True(await settings.SmsSignInRequiredAsync(Tenant)); // the cache was cleared
+        Assert.Equal((true, 50), (_store.Settings[Tenant].SmsEnabled, _store.Settings[Tenant].MonthlySmsLimit)); // texts keep their defaults
+        Assert.Equal("organization.sms-sign-in-on", Assert.Single(_store.Audit).Action);
+    }
+
     // ------------------------------------------------------------------ send
 
     private readonly FakeSms _sms = new();
@@ -403,6 +416,8 @@ public class NotificationServiceTests
         public Task<NotificationTemplate?> FindTemplateAsync(string key, NotificationChannel channel, CancellationToken ct = default) =>
             Task.FromResult(Templates.FirstOrDefault(t => t.Key == key && t.Channel == channel));
         public Task<TenantMessagingSettings?> FindSettingsAsync(int tenantId, CancellationToken ct = default) => Task.FromResult(Settings.GetValueOrDefault(tenantId));
+        public Task<TenantMessagingSettings?> FindSettingsForUpdateAsync(int tenantId, CancellationToken ct = default) => Task.FromResult(Settings.GetValueOrDefault(tenantId));
+        public Task AddSettingsAsync(TenantMessagingSettings settings, CancellationToken ct = default) { Settings[settings.TenantId] = settings; return Task.CompletedTask; }
         public Task AddAuditAsync(AuditEntry entry, CancellationToken ct = default) { Audit.Add(entry); return Task.CompletedTask; }
         public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
 

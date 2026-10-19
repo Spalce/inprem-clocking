@@ -63,6 +63,7 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
         ["/Tenants/New"] = (OwnerOnly, _ => "/Provider/Tenants/New"),
         ["/Tenants/Edit"] = (OwnerOnly, x => $"/Provider/Tenants/Edit/{x.TenantId}"),
         ["/Tenants/Suspend"] = (OwnerOnly, x => $"/Provider/Tenants/Suspend/{x.TenantId}"),
+        ["/Tenants/SignInCodes"] = (OwnerOnly, x => $"/Provider/Tenants/SignInCodes/{x.TenantId}"),
         ["/Tenants/Reactivate"] = (OwnerOnly, x => $"/Provider/Tenants/Reactivate/{x.TenantId}"),
         ["/Tenants/TransferOwnership"] = (OwnerOnly, x => $"/Provider/Tenants/TransferOwnership/{x.TenantId}?userId={x.AdminUserId}"),
         ["/Tenants/StartSupport"] = (SupportAndOwner, x => $"/Provider/Tenants/StartSupport/{x.TenantId}"),
