@@ -39,6 +39,7 @@ public static class DependencyInjection
         services.AddScoped<Notifications.BillingAlerts>();
         services.AddScoped<Notifications.ProviderAlertSettings>();
         services.AddScoped<Notifications.NotificationConsole>();
+        services.AddScoped<Notifications.StaffAlertSettings>();
         return services;
     }
 }

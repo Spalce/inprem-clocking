@@ -894,6 +894,15 @@ namespace Inprem.Platform.Infrastructure.Persistence.Migrations
                     b.Property<int>("TenantId")
                         .HasColumnType("int");
 
+                    b.Property<bool>("AdminSummaryEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("LongBreakMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<TimeOnly>("MissedClockOutTime")
+                        .HasColumnType("time");
+
                     b.Property<int>("MonthlySmsLimit")
                         .HasColumnType("int");
 
@@ -901,6 +910,9 @@ namespace Inprem.Platform.Infrastructure.Persistence.Migrations
                         .HasColumnType("bit");
 
                     b.Property<bool>("SmsSignInRequired")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("StaffAlertsEnabled")
                         .HasColumnType("bit");
 
                     b.Property<string>("UpdatedBy")

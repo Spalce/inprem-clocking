@@ -70,6 +70,23 @@ public sealed class TenantMessagingSettings
 
     /// <summary>Admins enter a texted code after their password (step 5.2).</summary>
     public bool SmsSignInRequired { get; private set; }
+
+    /// <summary>Phase 6 (C3-8, off by default): texts to staff and volunteers who agreed, and the consent fields on their forms.</summary>
+    public bool StaffAlertsEnabled { get; private set; }
+
+    /// <summary>Who is still clocked in at this local time gets a "you are still clocked in" text (D32: 21:00).</summary>
+    public TimeOnly MissedClockOutTime { get; private set; } = DefaultMissedClockOut;
+
+    /// <summary>A break longer than this many minutes gets a reminder (D32: 60).</summary>
+    public int LongBreakMinutes { get; private set; } = DefaultLongBreakMinutes;
+
+    /// <summary>At the missed clock-out time, one message to the admins: who is still clocked in.</summary>
+    public bool AdminSummaryEnabled { get; private set; }
+
+    public static readonly TimeOnly DefaultMissedClockOut = new(21, 0);
+    public const int DefaultLongBreakMinutes = 60;
+    public const int MinLongBreakMinutes = 10;
+    public const int MaxLongBreakMinutes = 720;
     public DateTime UpdatedUtc { get; private set; }
     public string UpdatedBy { get; private set; }
 
@@ -86,6 +103,20 @@ public sealed class TenantMessagingSettings
         if (nowUtc.Kind != DateTimeKind.Utc) throw new ArgumentException("Times are stored in UTC.", nameof(nowUtc));
         SmsEnabled = smsEnabled;
         MonthlySmsLimit = monthlySmsLimit;
+        UpdatedUtc = nowUtc;
+        UpdatedBy = updatedBy.Length > 300 ? updatedBy[..300] : updatedBy;
+    }
+
+    /// <summary>The staff and volunteer alerts (Phase 6 step 6.1).</summary>
+    public void SetStaffAlerts(bool enabled, TimeOnly missedClockOut, int longBreakMinutes, bool adminSummary, DateTime nowUtc, string updatedBy)
+    {
+        if (longBreakMinutes is < MinLongBreakMinutes or > MaxLongBreakMinutes)
+            throw new ArgumentOutOfRangeException(nameof(longBreakMinutes), $"A long break is {MinLongBreakMinutes} to {MaxLongBreakMinutes} minutes.");
+        if (nowUtc.Kind != DateTimeKind.Utc) throw new ArgumentException("Times are stored in UTC.", nameof(nowUtc));
+        StaffAlertsEnabled = enabled;
+        MissedClockOutTime = new TimeOnly(missedClockOut.Hour, missedClockOut.Minute);
+        LongBreakMinutes = longBreakMinutes;
+        AdminSummaryEnabled = adminSummary;
         UpdatedUtc = nowUtc;
         UpdatedBy = updatedBy.Length > 300 ? updatedBy[..300] : updatedBy;
     }

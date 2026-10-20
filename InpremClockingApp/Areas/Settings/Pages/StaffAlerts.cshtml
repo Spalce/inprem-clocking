@@ -1,0 +1,45 @@
+@page "/Settings/StaffAlerts"
+@model StaffAlertsModel
+@{
+    ViewData["Title"] = "Staff alerts";
+    var card = "tw:rounded-lg tw:border tw:border-slate-200 tw:bg-white tw:p-6 tw:shadow-sm tw:mb-6";
+    var label = "tw:mb-1 tw:block tw:text-sm tw:font-medium tw:text-slate-700";
+    var input = "tw:mb-1 tw:block tw:w-40 tw:rounded-md tw:border tw:border-slate-300 tw:px-3 tw:py-2 tw:text-sm";
+    var hint = "tw:mb-4 tw:text-xs tw:text-slate-500";
+    var button = "tw:inline-flex tw:cursor-pointer tw:items-center tw:rounded-md tw:border-0 tw:bg-blue-700 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-white tw:hover:bg-blue-800";
+}
+
+<div class="tw:mx-auto tw:max-w-3xl tw:p-6">
+  <h1 class="tw:mb-1 tw:text-2xl tw:font-semibold tw:text-slate-900">Staff alerts</h1>
+  <p class="tw:mb-6 tw:text-sm tw:text-slate-600">Texts to your staff and volunteers who agreed to get them: a reminder when they are still clocked in late, or on a long break. Off until you switch it on.</p>
+
+  @if (TempData["Message"] is string message)
+  {
+      <div class="tw:mb-4 tw:rounded-md tw:bg-green-50 tw:p-3 tw:text-sm tw:text-green-800" data-testid="message">@message</div>
+  }
+  @if (Model.Error != null)
+  {
+      <div class="tw:mb-4 tw:rounded-md tw:bg-red-50 tw:p-3 tw:text-sm tw:text-red-800" data-testid="error">@Model.Error</div>
+  }
+
+  <form method="post" asp-area="Settings" asp-page="/StaffAlerts" class="@card" data-testid="staff-alerts-form">
+    <label class="tw:mb-2 tw:flex tw:items-center tw:gap-2 tw:text-sm tw:font-medium tw:text-slate-800">
+      <input type="checkbox" name="Enabled" value="true" @(Model.Enabled ? "checked" : "") data-testid="enabled" /> Send staff alerts
+    </label>
+    <p class="@hint">When this is on, the staff and volunteer forms (kiosk registration and Manage Staff / Manage Volunteers) also show an optional mobile number and a box to agree to texts. Only people who tick it get texts; they can reply STOP at any time.</p>
+
+    <label for="MissedClockOut" class="@label">Still clocked in at (your organization's time)</label>
+    <input id="MissedClockOut" name="MissedClockOut" type="time" value="@Model.MissedClockOut" class="@input" required data-testid="missed-clock-out" />
+    <p class="@hint">Who is still clocked in at this time gets a reminder to clock out.</p>
+
+    <label for="LongBreakMinutes" class="@label">A break is long after (minutes)</label>
+    <input id="LongBreakMinutes" name="LongBreakMinutes" type="number" min="10" max="720" value="@Model.LongBreakMinutes" class="@input" required data-testid="long-break" />
+    <p class="@hint">Who has been on a break longer than this gets a reminder to end it.</p>
+
+    <label class="tw:mb-4 tw:flex tw:items-center tw:gap-2 tw:text-sm tw:text-slate-800">
+      <input type="checkbox" name="AdminSummary" value="true" @(Model.AdminSummary ? "checked" : "") data-testid="admin-summary" /> At that time, send the admins one message: who is still clocked in
+    </label>
+
+    <button type="submit" class="@button" data-testid="save">Save</button>
+  </form>
+</div>
