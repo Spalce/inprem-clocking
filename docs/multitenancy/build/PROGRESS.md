@@ -8,7 +8,8 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **Merged:** Phase 6 into `mt/integration` (fast-forward to `ddc391d`, local; not pushed), developer's request.
 - **Domain cutover:** C.1 to C.3 prepared (settings templates, the optional old-address redirect, runbooks). The DNS changes and deployments are the developer's, following `docs/multitenancy/runbooks/domain-cutover.md`, when deploying after all phases
 - **Merged:** the cutover preparation into `mt/integration` (fast-forward to `29aa38a`, local; not pushed), developer's request.
-- **Next step:** the developer decides: Phase 7 (its entry needs Phases 0–6 exit checks, several of which wait for PayPal, Twilio and staging)
+- **Testing first (developer, 2026-10-20):** "finish everything before hardening". Phase 7 waits until the developer has tested Phases 0 to 6 with the guides in `docs/multitenancy/testing/`. Step 7.1 (anti-forgery) also needs a decision first (see the log entry of 2026-10-20, "Test guides").
+- **Next step:** the developer tests with `docs/multitenancy/testing/`; then Phase 7 (its entry needs Phases 0–6 exit checks, several of which wait for PayPal, Twilio and staging)
 - **Branch:** `mt/domain-cutover` (from `mt/integration` after the Phase 6 merge)
 
 ## Phase status
@@ -128,6 +129,25 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-20 — Test guides for Phases 0 to 6 and the cutover; old guides removed (developer: "finish everything before hardening. Give me runbooks to test what has been implemented so far").**
+  - **Phase 7 paused before any code.** Step 7.1 was looked at first and stopped at a question, which stays open:
+    - The plan adds the anti-forgery token through a script line in `_MainLayout` and "the kiosk layout", for jQuery calls. In the code, the back-office pages use `_Layout` (C1, frozen) and send their changes with `fetch`, not jQuery (Move, clocking Edit and actions, the staff and volunteer editors).
+    - `Pages/StaffClocking.cshtml.cs` (C1) opts out of anti-forgery itself.
+    - The kiosk's clock actions are GET requests to `ControlsController`, which anti-forgery never checks.
+    - Options put to the developer: inject the script without editing frozen files; a design revision; or an Origin-header check instead of tokens. Decide before 7.1.
+  - **New:** `docs/multitenancy/testing/`:
+    - `README.md`: set-up of the local copy (what the user-secrets give, where emails and texts land), how to get around, known issues, not testable yet, results sheet;
+    - one guide per phase: `phase0-everyday-clocking.md` … `phase6-staff-alerts.md`, and `cutover-checks.md`.
+    - Every test has a use case, the exact clicks (labels read from the pages), what each click does, and the expected result.
+    - IDs T0-1 to T4-10 are kept from the earlier test guide (a Claude Doc, "test guide (Phases 0 to 4)", where the developer's results are). New: T0-9, T1-11, T5-1 to T5-10, T6-1 to T6-9, TC-1 to TC-4.
+  - **Known issues found while writing them (not fixed):**
+    - An organization's **Audit** tab in the console shows the raw actor id (`provider:…`), while the **Audit log** page shows emails (the developer's T1-6 note).
+    - **Extend trial** only shows for a trial without PayPal, so not for existing organizations, which are on Free (T2-2 note).
+    - The demo website always sends `smsOptIn: false`, so owner texts can't be tried by hand.
+  - **Removed (superseded by the new guides):** root `Test.md` (the rejected multi-tenancy branch's guide), root `TESTING.md` (the pre-multi-tenancy manual test guide), `docs/multitenancy/manual-test-phase0.md`.
+  - **Kept on purpose:** `ROLES.md`, `UI-modification.md` and `backoffice-review.md` are cited by comments in frozen (C1) code files; `kiosk-review.md` is `backoffice-review.md`'s companion; `DEMO-SCRIPT.md` is needed by step 7.7; the rehearsal, inspection and baseline-findings records are referenced by PROGRESS and the tests.
+  - **Flagged, not removed:** `scripts/reset-test-data.sql` and `scripts/seed-test-data.sql` (used only by the removed root `TESTING.md`) predate organizations. The reset deletes every organization's people and every account but one, Provider Console accounts included. Removing them is the developer's call.
 
 - **2026-10-20 — Domain cutover C.1 to C.3 (developer: "yes, prepare the cutover").**
   - **Branch** `mt/domain-cutover` from `mt/integration` (after the Phase 6 merge). Code, settings and runbooks only; no DNS change and no deployment (the developer's, after all phases).
