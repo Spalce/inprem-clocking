@@ -303,12 +303,14 @@ public sealed class SubscriptionSync
     private readonly ICheckoutStore _store;
     private readonly IPaymentProvider _paypal;
     private readonly IClock _clock;
+    private readonly Notifications.BillingAlerts? _alerts;
 
-    public SubscriptionSync(ICheckoutStore store, IPaymentProvider paypal, IClock clock)
+    public SubscriptionSync(ICheckoutStore store, IPaymentProvider paypal, IClock clock, Notifications.BillingAlerts? alerts = null)
     {
         _store = store;
         _paypal = paypal;
         _clock = clock;
+        _alerts = alerts;
     }
 
     /// <summary>Re-reads the PayPal subscription and applies it; returns what changed (null: nothing, or not ours).</summary>
@@ -319,7 +321,8 @@ public sealed class SubscriptionSync
         var paypal = await _paypal.GetSubscriptionAsync(subscriptionId, ct).ConfigureAwait(false);
         if (paypal == null) return null;
 
-        return await _store.WithLockAsync(BillingLocks.Tenant(tenant.Value), async () =>
+        var outstanding = 0m;
+        var action = await _store.WithLockAsync(BillingLocks.Tenant(tenant.Value), async () =>
         {
             _store.Reset();
             var subscription = await _store.FindSubscriptionAsync(tenant.Value, ct).ConfigureAwait(false);
@@ -330,8 +333,14 @@ public sealed class SubscriptionSync
                 await _store.AddAuditAsync(AuditEntry.Record(actor, change.Value.Action, subscription.Id.ToString(), change.Value.Details, _clock.UtcNow, subscription.TenantId), ct).ConfigureAwait(false);
             }
             await _store.SaveChangesAsync(ct).ConfigureAwait(false);
+            outstanding = subscription.OutstandingBalance;
             return change?.Action;
         }, ct).ConfigureAwait(false);
+
+        // Phase 5 step 5.3: after the change is saved, the owners and Inprem hear about it (an alert never undoes the change).
+        if (_alerts != null && action == "subscription.past-due") await _alerts.PaymentFailedAsync(tenant.Value, outstanding, _clock.UtcNow, ct).ConfigureAwait(false);
+        if (_alerts != null && action == "subscription.suspended") await _alerts.SuspendedAsync(tenant.Value, outstanding, _clock.UtcNow, ct).ConfigureAwait(false);
+        return action;
     }
 
     private async Task<(string Action, string Details)?> ApplyAsync(Subscription s, PayPalSubscription p, CancellationToken ct)

@@ -23,6 +23,7 @@ public class ConsoleAuditCoverageTests
         ["MyPhone.OnPostSendAsync"] = ("security.sms-code-sent / -refused / -failed", "SmsCodeSignInTests"),
         ["MyPhone.OnPostConfirmAsync"] = ("security.phone-confirmed (after security.sms-code-approved)", "SmsCodeSignInTests"),
         ["MyPhone.OnPostRemoveAsync"] = ("security.phone-removed", "SmsCodeSignInTests"),
+        ["MyAlerts.OnPostAsync"] = ("provider.alerts-changed", "BillingAlertsTests"),
         ["Logout.OnPostAsync"] = ("none (sign-out)", "ConsoleAccessTests"),
         ["Reauthenticate.OnPostAsync"] = ("none (fresh two-factor code)", "ConsoleAccessTests"),
 
@@ -57,6 +58,10 @@ public class ConsoleAuditCoverageTests
         ["Tenants.TransferOwnershipModel.OnPostAsync"] = ("organization.ownership-transferred", "OrganizationPagesTests"),
         ["Tenants.DetailsModel.OnPostResendAsync"] = ("organization.invitation-resent", "OrganizationPagesTests"),
         ["Tenants.SignInCodesModel.OnPostAsync"] = ("organization.sms-sign-in-on / -off", "AdminSmsSignInTests"),
+        ["Tenants.TextsModel.OnPostAsync"] = ("organization.texts-changed", "NotificationPagesTests"),
+        ["Notifications.SendTestModel.OnPostAsync"] = ("notification.test-sent", "NotificationPagesTests"),
+        ["Notifications.EditTemplateModel.OnPostAsync"] = ("notification.template-changed", "NotificationPagesTests"),
+        ["Notifications.EditTemplateModel.OnPostResetAsync"] = ("notification.template-reset", "NotificationPagesTests"),
         ["Tenants.DetailsModel.OnPostResetAsync"] = ("organization.password-reset-sent", "OrganizationPagesTests"),
         ["Tenants.DetailsModel.OnPostEndSupportAsync"] = ("support.ended", "SupportSessionTests"),
         ["Tenants.StartSupportModel.OnPostAsync"] = ("support.started", "SupportSessionTests"),

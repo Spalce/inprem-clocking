@@ -1,0 +1,31 @@
+@page
+@model InpremClockingApp.Areas.Provider.Pages.Notifications.TemplatesModel
+@using Inprem.Platform.Domain.Notifications
+@{
+    ViewData["Title"] = "Message wording";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<h1 class="pc-title">Notifications</h1>
+<p class="pc-subtitle">The wording of every message. Placeholders in braces, such as {organization}, are filled in when the message is sent.</p>
+<partial name="/Areas/Provider/Pages/Notifications/_Tabs.cshtml" model="@("templates")" />
+@if (TempData["Message"] is string message)
+{
+    <div class="pc-success" data-testid="message">@message</div>
+}
+
+<table class="pc-table" data-testid="templates">
+  <thead><tr><th>Message</th><th>Channel</th><th>Who gets it, when</th><th>Wording</th><th></th></tr></thead>
+  <tbody>
+  @foreach (var t in Model.Templates)
+  {
+      <tr data-key="@t.Default.Key" data-channel="@t.Channel">
+        <td><code>@t.Default.Key</code></td>
+        <td>@(t.Channel == NotificationChannel.Sms ? "Text" : "Email")</td>
+        <td>@t.Default.Description @(t.Default.Urgency == NotificationUrgency.Urgent ? "(urgent)" : "")</td>
+        <td>@(t.Edited ? (t.Enabled ? "Edited" : "Edited, switched off") : "Default")</td>
+        <td><a asp-page="EditTemplate" asp-route-key="@t.Default.Key" asp-route-channel="@t.Channel" class="pc-btn pc-btn-small" data-testid="edit">Edit</a></td>
+      </tr>
+  }
+  </tbody>
+</table>

@@ -1,0 +1,24 @@
+@page
+@model InpremClockingApp.Areas.Provider.Pages.Notifications.OptOutsModel
+@{
+    ViewData["Title"] = "Opt-outs";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<h1 class="pc-title">Notifications</h1>
+<p class="pc-subtitle">Numbers that replied STOP: they get no texts at all until they reply START. Shown masked. Emails are not affected.</p>
+<partial name="/Areas/Provider/Pages/Notifications/_Tabs.cshtml" model="@("optouts")" />
+
+<table class="pc-table" data-testid="optouts">
+  <thead><tr><th>Number</th><th>Replied STOP (UTC)</th></tr></thead>
+  <tbody>
+  @foreach (var o in Model.OptOuts)
+  {
+      <tr><td>@o.Phone</td><td>@o.RecordedUtc.ToString("yyyy-MM-dd HH:mm")</td></tr>
+  }
+  @if (Model.OptOuts.Count == 0)
+  {
+      <tr><td colspan="2" class="pc-muted">Nobody has opted out.</td></tr>
+  }
+  </tbody>
+</table>

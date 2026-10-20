@@ -35,6 +35,13 @@ public sealed class NotificationOptions
     /// <summary>Messages sent per run of the send job.</summary>
     public int BatchSize { get; set; } = 50;
 
+    /// <summary>Above this share of the daily spend cap, Inprem's Owners get a system-problem alert (once a day).</summary>
+    public decimal SpendWarningShare { get; set; } = 0.8m;
+
+    /// <summary>For links in messages: copied from Links:AppBaseUrl and Links:AdminBaseUrl at startup.</summary>
+    public string? AppBaseUrl { get; set; }
+    public string? AdminBaseUrl { get; set; }
+
     public TimeOnly QuietStart => TimeOnly.Parse(QuietHoursStart, System.Globalization.CultureInfo.InvariantCulture);
     public TimeOnly QuietEnd => TimeOnly.Parse(QuietHoursEnd, System.Globalization.CultureInfo.InvariantCulture);
 
@@ -117,6 +124,17 @@ public interface INotificationStore
     /// <summary>A login-code send or check (platform.SecurityAttempts), for the rate limits.</summary>
     Task AddAttemptAsync(string kind, string accountId, bool succeeded, DateTime nowUtc, CancellationToken ct = default);
     Task<int> CountAttemptsAsync(string kind, string accountId, DateTime sinceUtc, bool succeededOnly = false, bool failedOnly = false, CancellationToken ct = default);
+
+    /// <summary>Console users' alert choices (step 5.3); users without a row are not in the result.</summary>
+    Task<IReadOnlyDictionary<string, ProviderAlertPreferences>> PreferencesAsync(IReadOnlyCollection<string> userIds, CancellationToken ct = default);
+    Task<ProviderAlertPreferences?> FindPreferencesForUpdateAsync(string userId, CancellationToken ct = default);
+    Task AddPreferencesAsync(ProviderAlertPreferences preferences, CancellationToken ct = default);
+
+    /// <summary>Audit entries with one of the actions since a time (the provider's daily billing summary).</summary>
+    Task<IReadOnlyList<AuditEntry>> AuditSinceAsync(IReadOnlyCollection<string> actions, DateTime sinceUtc, CancellationToken ct = default);
+
+    /// <summary>Forgets messages and consents added but not saved (an alert that failed must not ride along with the next save).</summary>
+    void DiscardPending();
 
     Task AddAuditAsync(AuditEntry entry, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);

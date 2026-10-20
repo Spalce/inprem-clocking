@@ -89,11 +89,13 @@ public sealed class SignupService
     private readonly PublicApiTokens _tokens;
     private readonly IClock _clock;
     private readonly Notifications.NotificationService _notifications;
+    private readonly Notifications.BillingAlerts? _alerts;
 
     public SignupService(IOrganizationStore organizations, IAccountGateway accounts, ICheckoutStore billing, ISignupStore store, ISignupMail mail,
-        ICaptchaVerifier captcha, PublicApiTokens tokens, IClock clock, Notifications.NotificationService notifications)
+        ICaptchaVerifier captcha, PublicApiTokens tokens, IClock clock, Notifications.NotificationService notifications, Notifications.BillingAlerts? alerts = null)
     {
         _notifications = notifications;
+        _alerts = alerts;
         _organizations = organizations;
         _accounts = accounts;
         _billing = billing;
@@ -160,6 +162,8 @@ public sealed class SignupService
             {
             }
         }
+        // Phase 5 step 5.3: Inprem hears about the new organization (an alert never fails the signup).
+        if (_alerts != null) await _alerts.NewSignupAsync(created.TenantId, mode == SignupMode.Trial ? "free trial" : "subscribing now", plan.Name, ct).ConfigureAwait(false);
         var (token, value) = await _tokens.IssueSignupAsync(signupId, created.TenantId, ct).ConfigureAwait(false);
         await SendVerificationAsync(signup, organization.Name, appLinkBase, ct).ConfigureAwait(false);
         return new SignupResult(signup, value, token.ExpiresUtc, null);

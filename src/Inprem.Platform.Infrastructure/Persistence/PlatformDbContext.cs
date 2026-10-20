@@ -69,6 +69,7 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<ConsentRecord> ConsentRecords { get; set; } = null!;
     public DbSet<NotificationTemplate> NotificationTemplates { get; set; } = null!;
     public DbSet<TenantMessagingSettings> TenantMessagingSettings { get; set; } = null!;
+    public DbSet<ProviderAlertPreferences> ProviderAlertPreferences { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -478,6 +479,14 @@ public class PlatformDbContext : DbContext, IDataProtectionKeyContext
             settings.HasKey(s => s.TenantId);
             settings.Property(s => s.TenantId).ValueGeneratedNever();
             settings.Property(s => s.UpdatedBy).HasMaxLength(300);
+        });
+
+        modelBuilder.Entity<ProviderAlertPreferences>(preferences =>
+        {
+            preferences.ToTable("ProviderAlertPreferences");
+            preferences.HasKey(p => p.UserId);
+            preferences.Property(p => p.UserId).HasMaxLength(450);
+            preferences.Property(p => p.BillingProblems).HasConversion<string>().HasMaxLength(20);
         });
 
         modelBuilder.Entity<AccountRow>(account =>

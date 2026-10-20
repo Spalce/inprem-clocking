@@ -31,7 +31,7 @@ public sealed class PayPalWebhookController : ControllerBase
     [HttpPost]
     [RequestSizeLimit(MaxBodyBytes)]
     [Consumes("application/json")]
-    public async Task<IActionResult> ReceiveAsync()
+    public async Task<IActionResult> ReceiveAsync([FromServices] Inprem.Platform.Application.Notifications.BillingAlerts alerts, [FromServices] Inprem.Platform.Application.Memberships.IClock clock)
     {
         using var reader = new StreamReader(Request.Body);
         var body = await reader.ReadToEndAsync(HttpContext.RequestAborted);
@@ -44,6 +44,10 @@ public sealed class PayPalWebhookController : ControllerBase
             // Suspicious: never the body (payer details), only where it came from.
             _log.LogWarning("PayPal webhook rejected: not verified (transmission {TransmissionId}, from {RemoteIp}).",
                 headers.GetValueOrDefault("PAYPAL-TRANSMISSION-ID") ?? "(none)", HttpContext.Connection.RemoteIpAddress);
+            // Phase 5 step 5.3: Inprem's Owners hear about it (urgent; at most one alert an hour).
+            await alerts.SystemProblemAsync("webhook-rejected", "a PayPal webhook failed verification",
+                $"A request to /webhooks/paypal from {HttpContext.Connection.RemoteIpAddress} could not be verified with PayPal and was refused. One is harmless; many may mean someone is probing, or the PayPal webhook id setting is wrong.",
+                clock.UtcNow, HttpContext.RequestAborted);
             return BadRequest();
         }
         return Ok();

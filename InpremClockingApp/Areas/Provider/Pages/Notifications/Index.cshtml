@@ -1,10 +1,74 @@
 @page
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = InpremClockingApp.Provider.ProviderPolicies.Owner)]
+@model InpremClockingApp.Areas.Provider.Pages.Notifications.IndexModel
+@using Inprem.Platform.Domain.Notifications
 @{
     ViewData["Title"] = "Notifications";
     Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
 }
 
 <h1 class="pc-title">Notifications</h1>
-<p class="pc-subtitle">Messages the platform sends.</p>
-<partial name="/Areas/Provider/Pages/Shared/_ComingSoon.cshtml" model="@("Phase 5 (Twilio)")" />
+<p class="pc-subtitle">Messages the platform sends: emails, and texts to people who agreed to them.</p>
+<partial name="/Areas/Provider/Pages/Notifications/_Tabs.cshtml" model="@("log")" />
+
+@if (Model.IsStandIn)
+{
+    <div class="pc-note" data-testid="stand-in">Texts are not set up yet (Twilio:Mode = StandIn): texts are recorded here as sent, but nothing reaches a phone. Emails are sent as usual.</div>
+}
+@if (TempData["Message"] is string message)
+{
+    <div class="pc-success" data-testid="message">@message</div>
+}
+
+<p><a asp-page="SendTest" class="pc-btn" data-testid="send-test"><i class="fas fa-paper-plane"></i> Send me a test message</a></p>
+
+<form method="get" class="pc-filters">
+  <select name="Channel" aria-label="Channel">
+    <option value="">Email and text</option>
+    @foreach (var channel in Enum.GetValues<NotificationChannel>())
+    {
+        <option value="@channel" selected="@(Model.Channel == channel)">@(channel == NotificationChannel.Sms ? "Text" : "Email")</option>
+    }
+  </select>
+  <select name="Status" aria-label="Status">
+    <option value="">Any status</option>
+    @foreach (var status in Enum.GetValues<NotificationStatus>())
+    {
+        <option value="@status" selected="@(Model.Status == status)">@status</option>
+    }
+  </select>
+  <button type="submit" class="pc-btn">Filter</button>
+</form>
+
+<table class="pc-table" data-testid="log">
+  <thead><tr><th>When (UTC)</th><th>Message</th><th>To</th><th>Organization</th><th>Status</th><th>Why / error</th><th>Cost</th></tr></thead>
+  <tbody>
+  @foreach (var n in Model.Items)
+  {
+      <tr data-status="@n.Status">
+        <td>@n.CreatedUtc.ToString("yyyy-MM-dd HH:mm")</td>
+        <td><code>@n.TemplateKey</code> <span class="pc-muted">@(n.Channel == NotificationChannel.Sms ? "text" : "email")</span></td>
+        <td>@n.To</td>
+        <td>@(n.Organization ?? "Inprem")</td>
+        <td>@n.Status@(n.Attempts > 1 ? $" ({n.Attempts} tries)" : "")</td>
+        <td>@n.Reason</td>
+        <td>@(n.Cost is decimal c ? c.ToString("0.0000") + " USD" : "")</td>
+      </tr>
+  }
+  @if (Model.Items.Count == 0)
+  {
+      <tr><td colspan="7" class="pc-muted">No messages yet.</td></tr>
+  }
+  </tbody>
+</table>
+
+<div class="pc-pager" data-testid="pager">
+  <span class="pc-muted">@Model.Total message@(Model.Total == 1 ? "" : "s") &middot; page @Model.PageNumber of @Model.Pages</span>
+  @if (Model.PageNumber > 1)
+  {
+      <a asp-page="Index" asp-all-route-data="Model.Route(Model.PageNumber - 1)" class="pc-btn pc-btn-small">Previous</a>
+  }
+  @if (Model.PageNumber < Model.Pages)
+  {
+      <a asp-page="Index" asp-all-route-data="Model.Route(Model.PageNumber + 1)" class="pc-btn pc-btn-small">Next</a>
+  }
+</div>

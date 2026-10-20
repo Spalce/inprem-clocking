@@ -62,6 +62,23 @@ public sealed class NotificationStore : INotificationStore
             && (!succeededOnly || a.Succeeded) && (!failedOnly || !a.Succeeded), ct);
     }
 
+    public async Task<IReadOnlyDictionary<string, ProviderAlertPreferences>> PreferencesAsync(IReadOnlyCollection<string> userIds, CancellationToken ct = default) =>
+        await _db.ProviderAlertPreferences.AsNoTracking().Where(p => userIds.Contains(p.UserId)).ToDictionaryAsync(p => p.UserId, ct).ConfigureAwait(false);
+
+    public Task<ProviderAlertPreferences?> FindPreferencesForUpdateAsync(string userId, CancellationToken ct = default) =>
+        _db.ProviderAlertPreferences.FirstOrDefaultAsync(p => p.UserId == userId, ct);
+
+    public async Task AddPreferencesAsync(ProviderAlertPreferences preferences, CancellationToken ct = default) => await _db.ProviderAlertPreferences.AddAsync(preferences, ct).ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<AuditEntry>> AuditSinceAsync(IReadOnlyCollection<string> actions, DateTime sinceUtc, CancellationToken ct = default) =>
+        await _db.AuditEntries.AsNoTracking().Where(a => actions.Contains(a.Action) && a.OccurredUtc >= sinceUtc).OrderBy(a => a.OccurredUtc).ToListAsync(ct).ConfigureAwait(false);
+
+    public void DiscardPending()
+    {
+        foreach (var entry in _db.ChangeTracker.Entries().Where(e => e.State == EntityState.Added && e.Entity is Notification or ConsentRecord).ToList())
+            entry.State = EntityState.Detached;
+    }
+
     public async Task AddAuditAsync(AuditEntry entry, CancellationToken ct = default) => await _db.AuditEntries.AddAsync(entry, ct).ConfigureAwait(false);
 
     public Task SaveChangesAsync(CancellationToken ct = default) => _db.SaveChangesAsync(ct);

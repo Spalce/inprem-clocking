@@ -4,8 +4,8 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 
 ## Current position
 
-- **Phase:** 5 Twilio, steps 5.1 and 5.2 done with the stand-in (no Twilio credentials yet, developer's choice 2026-10-19)
-- **Next step:** Phase 5 / Step 5.3 (billing and provider alerts, console Notifications pages) after the developer's "go"
+- **Phase:** 5 Twilio, steps 5.1 to 5.3 done with the stand-in (no Twilio credentials yet, developer's choice 2026-10-19)
+- **Next step:** Phase 5 exit: the Phase 5 bundle (M1m to M1o) and the exit review; then Phase 6 after the developer's "go"
 - **Branch:** `mt/phase5` (from `mt/integration` `264b053`)
 
 ## Phase status
@@ -123,6 +123,17 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-20 — Phase 5 / Step 5.3: billing and provider alerts, console Notifications pages (developer: "push and go").**
+  - **Alerts (`Application/Notifications/BillingAlerts.cs`, design Appendix C), each with an event key so a repeat sends nothing twice, and never failing what raised it:**
+    - To the owners: trial ending (7 days and the day before; daily check), payment failed and suspended (`SubscriptionSync`, after the change is saved: webhooks and the daily check), invoice issued (**a text only**: the invoice email is the invoice's own, Inprem's or PayPal's), invoice overdue (daily check, once per invoice).
+    - To Inprem: new signup (website signup; all roles), billing problems (Owners and Billing; at once, or one daily summary per the user's choice), system problems (Owners; urgent, also at night; at most one per kind per hour): a PayPal webhook that fails verification, a background job that failed for good (a Hangfire filter on this app's job server only), texts at 80 % of the daily spend cap (once a day).
+  - **"My alerts" (console header, any role):** new signups, billing problems (each time / daily summary / off), system problems (Owners), and texts too, with a consent on the confirmed phone (`ConsentWording.ProviderAlerts`). Switching Inprem's texts off withdraws only Inprem's: **consent rule changed** so that only a STOP reply stops every text to a number (a unit test updated with the reason).
+  - **Console → Notifications (Owners):** Delivery log (filters, paging; numbers masked), Message wording (list, edit on a separate page, switch off, back to the default), Opt-outs (masked), Texts and spend (today against the cap; each organization this month). "Send me a test message" on its own page (list pages have no forms). Organization → **Texts** (on/off, monthly limit; Owners, recent two-factor). The organization's Messages tab links to its log.
+  - **Migration M1o_ProviderAlertPreferences** (row 20): one table, additive. Rehearsed; local database backed up (verified) **before** applying; app data unchanged.
+  - **Tests:** Unit +11 (`BillingAlertsTests`; consent rule). Integration +12 (`BillingAlertsFlowTests` 5, `NotificationPagesTests` 5, signup alert, console role matrix and audit coverage). A test that sent texts at night found them rightly held for quiet hours: the test now moves its clock past the waiting time.
+  - **Not covered by an automated test:** the failed-job alert end to end (the filter needs a running job server); it is a few lines that call the tested `SystemProblemAsync`.
+  - **Results:** RESULTS53_PLACEHOLDER
 
 - **2026-10-20 — Phase 5 / Step 5.2: login codes by text (developer: "continue with step 5.2"), with the stand-in.**
   - **Core (Application `LoginCodes.cs`):** `IOtpService` (Twilio Verify, or the stand-in until Twilio is set up) and `LoginCodeService`: at most 3 codes in 10 minutes and 10 a day per account (failed sends do not count), 5 wrong codes stop tries for 15 minutes (on top of Verify's own limits); every send and result in the audit log with the number masked, never the code.

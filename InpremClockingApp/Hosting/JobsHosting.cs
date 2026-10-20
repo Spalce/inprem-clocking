@@ -144,6 +144,10 @@ public sealed class JobServerHost : IHostedService, IDisposable
         {
             ServerName = $"{Environment.MachineName}:{Environment.ProcessId}:app",
             Activator = _services.GetService<JobActivator>() ?? new Hangfire.AspNetCore.AspNetCoreJobActivator(_services.GetRequiredService<IServiceScopeFactory>()),
+            // Phase 5 step 5.3: a job that failed for good alerts Inprem's Owners. On this server only
+            // (not Hangfire's process-wide filters, which every app in one process would share).
+            FilterProvider = new Hangfire.Common.JobFilterProviderCollection(Hangfire.Common.JobFilterProviders.Providers,
+                new Hangfire.Common.JobFilterCollection { new InpremClockingApp.Notifications.JobFailureAlertFilter(_services.GetRequiredService<IServiceScopeFactory>()) }),
         }, _services.GetRequiredService<JobStorage>());
 
         // Recurring jobs live in the job storage; registering them where jobs run keeps them current.

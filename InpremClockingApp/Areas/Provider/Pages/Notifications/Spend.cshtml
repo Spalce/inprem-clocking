@@ -1,0 +1,38 @@
+@page
+@model InpremClockingApp.Areas.Provider.Pages.Notifications.SpendModel
+@{
+    ViewData["Title"] = "Texts and spend";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<h1 class="pc-title">Notifications</h1>
+<p class="pc-subtitle">What texts cost: Twilio's price once it reports it, an estimate until then. Emails cost nothing here.</p>
+<partial name="/Areas/Provider/Pages/Notifications/_Tabs.cshtml" model="@("spend")" />
+
+<div class="pc-tiles">
+  <div class="pc-tile @(Model.Cap > 0 && Model.Today >= Model.Cap * 0.8m ? "pc-tile-warn" : "")" data-testid="today">
+    <div class="pc-tile-number">@Model.Today.ToString("0.00") USD</div>
+    <div>today (UTC), of the @Model.Cap.ToString("0.00") USD daily cap</div>
+  </div>
+</div>
+
+<table class="pc-table" data-testid="tenants">
+  <thead><tr><th>Organization</th><th>Texts this month (UTC)</th><th>Cost</th><th>Texts</th><th>Monthly limit</th><th></th></tr></thead>
+  <tbody>
+  @foreach (var t in Model.Tenants)
+  {
+      <tr data-tenant="@t.TenantId">
+        <td><a asp-page="/Tenants/Details" asp-route-id="@t.TenantId">@t.Organization</a></td>
+        <td>@t.Texts</td>
+        <td>@t.Cost.ToString("0.00") USD</td>
+        <td>@(t.SmsEnabled ? "on" : "off")</td>
+        <td>@t.MonthlyLimit</td>
+        <td><a asp-page="/Tenants/Texts" asp-route-id="@t.TenantId" class="pc-btn pc-btn-small">Change</a></td>
+      </tr>
+  }
+  @if (Model.Tenants.Count == 0)
+  {
+      <tr><td colspan="6" class="pc-muted">No texts this month.</td></tr>
+  }
+  </tbody>
+</table>

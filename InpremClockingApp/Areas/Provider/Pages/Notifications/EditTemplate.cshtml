@@ -1,0 +1,48 @@
+@page
+@model InpremClockingApp.Areas.Provider.Pages.Notifications.EditTemplateModel
+@using Inprem.Platform.Domain.Notifications
+@{
+    ViewData["Title"] = "Edit message wording";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+    var isText = Model.Channel == NotificationChannel.Sms;
+}
+
+<p><a asp-page="Templates">&larr; Message wording</a></p>
+<h1 class="pc-title"><code>@Model.Key</code> (@(isText ? "text" : "email"))</h1>
+<p class="pc-subtitle">@Model.View!.Default.Description</p>
+
+@if (Model.Error != null)
+{
+    <div class="pc-error" data-testid="error">@Model.Error</div>
+}
+
+<form method="post" class="pc-card pc-form">
+  <input type="hidden" name="Key" value="@Model.Key" />
+  <input type="hidden" name="Channel" value="@Model.Channel" />
+  @if (!isText)
+  {
+      <div class="pc-field"><label for="Subject">Subject</label><input id="Subject" name="Subject" value="@Model.Subject" maxlength="200" required /></div>
+  }
+  <div class="pc-field">
+    <label for="Body">@(isText ? "Text" : "Email")</label>
+    <textarea id="Body" name="Body" rows="@(isText ? 3 : 10)" maxlength="2000" required>@Model.Body</textarea>
+    <p class="pc-muted">@(isText ? "Keep texts short (about 160 characters is one text) and end with \"Reply STOP to opt out\"." : "A blank line starts a new paragraph.") Placeholders in braces are filled in when sending; one that is not known stays as it is.</p>
+  </div>
+  <div class="pc-field">
+    <label class="pc-check"><input type="checkbox" name="Enabled" value="true" @(Model.Enabled ? "checked" : "") data-testid="enabled" /> Send this message (unticked: nothing is sent, and the log says why)</label>
+  </div>
+  <div class="pc-actions">
+    <button type="submit" class="pc-btn pc-btn-primary" data-testid="save">Save</button>
+    <a asp-page="Templates" class="pc-btn">Cancel</a>
+  </div>
+</form>
+
+@if (Model.View.Edited)
+{
+    <form method="post" asp-page-handler="Reset" class="pc-inline">
+      <input type="hidden" name="Key" value="@Model.Key" />
+      <input type="hidden" name="Channel" value="@Model.Channel" />
+      <button type="submit" class="pc-btn" data-testid="reset">Back to the default wording</button>
+      <span class="pc-muted">Edited @Model.View.EditedUtc?.ToString("yyyy-MM-dd HH:mm") UTC by @Model.View.EditedBy.</span>
+    </form>
+}

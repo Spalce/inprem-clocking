@@ -1,0 +1,10 @@
+@model string
+@{
+    string Current(string tab) => Model == tab ? "pc-tab-current" : "";
+}
+<p class="pc-tabs" data-testid="notification-tabs">
+  <a asp-page="/Notifications/Index" class="@Current("log")">Delivery log</a>
+  <a asp-page="/Notifications/Templates" class="@Current("templates")" data-testid="templates-tab">Message wording</a>
+  <a asp-page="/Notifications/OptOuts" class="@Current("optouts")" data-testid="optouts-tab">Opt-outs</a>
+  <a asp-page="/Notifications/Spend" class="@Current("spend")" data-testid="spend-tab">Texts and spend</a>
+</p>

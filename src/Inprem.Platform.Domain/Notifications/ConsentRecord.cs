@@ -5,7 +5,7 @@ public enum ConsentAction
     /// <summary>The person agreed to texts (for one organization, or from Inprem when TenantId is null).</summary>
     Grant,
 
-    /// <summary>The person withdrew: a STOP reply (every organization), or a change for one organization.</summary>
+    /// <summary>The person withdrew: a STOP reply (every organization and Inprem), or a choice for one organization or for Inprem (TenantId null, not a STOP).</summary>
     Revoke,
 
     /// <summary>A START reply after STOP: the texts they had agreed to resume (it grants nothing new).</summary>
@@ -82,10 +82,11 @@ public sealed class ConsentRecord
         var history = historyOfOnePhone.ToList();
         var grant = history.Where(r => r.Action == ConsentAction.Grant && r.TenantId == tenantId).MaxBy(r => r.RecordedUtc);
         if (grant == null) return ConsentState.NotGiven;
-        var revoke = history.Where(r => r.Action == ConsentAction.Revoke && (r.TenantId == null || r.TenantId == tenantId)).MaxBy(r => r.RecordedUtc);
+        // A STOP reply withdraws everything; any other withdrawal only its own scope (an organization, or Inprem when null).
+        var revoke = history.Where(r => r.Action == ConsentAction.Revoke && (r.TenantId == tenantId || r.Source == ConsentSources.SmsStop)).MaxBy(r => r.RecordedUtc);
         if (revoke == null || revoke.RecordedUtc < grant.RecordedUtc) return ConsentState.Given;
         var resubscribe = history.Where(r => r.Action == ConsentAction.Resubscribe).MaxBy(r => r.RecordedUtc);
-        return revoke.TenantId == null && resubscribe != null && resubscribe.RecordedUtc > revoke.RecordedUtc ? ConsentState.Given : ConsentState.Withdrawn;
+        return revoke.Source == ConsentSources.SmsStop && resubscribe != null && resubscribe.RecordedUtc > revoke.RecordedUtc ? ConsentState.Given : ConsentState.Withdrawn;
     }
 }
 

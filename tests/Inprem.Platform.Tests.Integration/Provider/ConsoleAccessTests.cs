@@ -39,7 +39,7 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
         .ToDictionary(i => i.Page!, i => i.Policy);
 
     /// <summary>Signed-in pages that are not in the menu and not GET-checked (they redirect by design).</summary>
-    private static readonly string[] OtherSignedInPages = { "/EnrolTwoFactor", "/Reauthenticate", "/MyPhone" };
+    private static readonly string[] OtherSignedInPages = { "/EnrolTwoFactor", "/Reauthenticate", "/MyPhone", "/MyAlerts" };
 
     /// <summary>
     /// Pages below the menu: who may open them (written out independently), and their address for
@@ -64,6 +64,12 @@ public class ConsoleAccessTests : IClassFixture<ProviderFixture>
         ["/Tenants/Edit"] = (OwnerOnly, x => $"/Provider/Tenants/Edit/{x.TenantId}"),
         ["/Tenants/Suspend"] = (OwnerOnly, x => $"/Provider/Tenants/Suspend/{x.TenantId}"),
         ["/Tenants/SignInCodes"] = (OwnerOnly, x => $"/Provider/Tenants/SignInCodes/{x.TenantId}"),
+        ["/Tenants/Texts"] = (OwnerOnly, x => $"/Provider/Tenants/Texts/{x.TenantId}"),
+        ["/Notifications/Templates"] = (OwnerOnly, _ => "/Provider/Notifications/Templates"),
+        ["/Notifications/EditTemplate"] = (OwnerOnly, _ => "/Provider/Notifications/EditTemplate?key=platform.test&channel=Email"),
+        ["/Notifications/OptOuts"] = (OwnerOnly, _ => "/Provider/Notifications/OptOuts"),
+        ["/Notifications/Spend"] = (OwnerOnly, _ => "/Provider/Notifications/Spend"),
+        ["/Notifications/SendTest"] = (OwnerOnly, _ => "/Provider/Notifications/SendTest"),
         ["/Tenants/Reactivate"] = (OwnerOnly, x => $"/Provider/Tenants/Reactivate/{x.TenantId}"),
         ["/Tenants/TransferOwnership"] = (OwnerOnly, x => $"/Provider/Tenants/TransferOwnership/{x.TenantId}?userId={x.AdminUserId}"),
         ["/Tenants/StartSupport"] = (SupportAndOwner, x => $"/Provider/Tenants/StartSupport/{x.TenantId}"),

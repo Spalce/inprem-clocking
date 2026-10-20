@@ -17,6 +17,12 @@ public static class NotificationsHosting
         builder.Services.AddOptions<NotificationOptions>().Bind(builder.Configuration.GetSection(NotificationOptions.Section))
             .Validate(o => o.Problems().Count == 0, "The Notifications settings are not valid (see NotificationOptions.Problems).")
             .ValidateOnStart();
+        // Links in messages (step 5.3): the same addresses the app's emails use.
+        builder.Services.PostConfigure<NotificationOptions>(o =>
+        {
+            o.AppBaseUrl ??= builder.Configuration["Links:AppBaseUrl"];
+            o.AdminBaseUrl ??= builder.Configuration["Links:AdminBaseUrl"];
+        });
         builder.Services.AddSingleton(sp => sp.GetRequiredService<IOptions<NotificationOptions>>().Value);
         builder.Services.AddTwilio(builder.Configuration);
         builder.Services.AddScoped<NotificationSendJob>();

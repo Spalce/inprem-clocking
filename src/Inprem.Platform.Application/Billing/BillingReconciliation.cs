@@ -17,7 +17,15 @@ public interface IReconciliationStore
 
     /// <summary>Organizations whose trial has ended but are still Trialing.</summary>
     Task<IReadOnlyList<int>> EndedTrialsAsync(DateTime nowUtc, CancellationToken ct = default);
+
+    /// <summary>Trialing organizations whose trial ends after <paramref name="afterUtc"/> and at or before <paramref name="untilUtc"/> (step 5.3).</summary>
+    Task<IReadOnlyList<(int TenantId, DateTime TrialEndsUtc)>> TrialsEndingAsync(DateTime afterUtc, DateTime untilUtc, CancellationToken ct = default);
+
+    /// <summary>Invoices sent (or partly paid) whose due date has passed (step 5.3).</summary>
+    Task<IReadOnlyList<OverdueInvoice>> OverdueInvoicesAsync(DateOnly today, CancellationToken ct = default);
 }
+
+public sealed record OverdueInvoice(Guid Id, int TenantId, string Number, decimal Outstanding, string Currency, DateOnly DueDate);
 
 /// <summary>What one reconciliation run did.</summary>
 public sealed record ReconciliationReport(int Checked, int Corrected, int Failed, IReadOnlyList<string> Corrections);
@@ -47,8 +55,12 @@ public sealed class BillingReconciliation
     private readonly IClock _clock;
     private readonly InvoiceSync _invoices;
 
-    public BillingReconciliation(IReconciliationStore reconciliation, ICheckoutStore store, CheckoutService checkout, SubscriptionSync sync, IProviderStore provider, IEmailSender email, IClock clock, InvoiceSync invoices)
+    private readonly Notifications.BillingAlerts? _alerts;
+
+    public BillingReconciliation(IReconciliationStore reconciliation, ICheckoutStore store, CheckoutService checkout, SubscriptionSync sync, IProviderStore provider, IEmailSender email, IClock clock, InvoiceSync invoices,
+        Notifications.BillingAlerts? alerts = null)
     {
+        _alerts = alerts;
         _invoices = invoices;
         _reconciliation = reconciliation;
         _store = store;
@@ -124,6 +136,8 @@ public sealed class BillingReconciliation
             if (expired) corrections.Add($"Organization {tenant}: trial ended");
         }
 
+        if (_alerts != null) await RemindAsync(ct).ConfigureAwait(false);
+
         var drift = corrections.Where(c => c.StartsWith("PayPal ", StringComparison.Ordinal)).ToList();
         if (drift.Count > 0 || failed > 0)
         {
@@ -131,6 +145,24 @@ public sealed class BillingReconciliation
                 drift.Count == 0 ? new[] { "Nothing needed correcting." } : drift.ToArray(), failed, ct).ConfigureAwait(false);
         }
         return new ReconciliationReport(ids.Count + trials.Count, corrections.Count, failed, corrections);
+    }
+
+    /// <summary>
+    /// Phase 5 step 5.3, once a day: trials ending in 7 days and tomorrow (each organization once per
+    /// reminder: the alert's event key), invoices past their due date (once per invoice), and the
+    /// daily billing summary for the console users who chose it. Alerts never fail the check.
+    /// </summary>
+    private async Task RemindAsync(CancellationToken ct)
+    {
+        var now = _clock.UtcNow;
+        foreach (var (days, from, until) in new[] { (7, now.AddDays(6), now.AddDays(7)), (1, now, now.AddDays(1)) })
+            foreach (var (tenantId, trialEnds) in await _reconciliation.TrialsEndingAsync(from, until, ct).ConfigureAwait(false))
+                await _alerts!.TrialEndingAsync(tenantId, trialEnds, days, ct).ConfigureAwait(false);
+
+        foreach (var invoice in await _reconciliation.OverdueInvoicesAsync(DateOnly.FromDateTime(now), ct).ConfigureAwait(false))
+            await _alerts!.InvoiceOverdueAsync(invoice.Id, invoice.TenantId, invoice.Number, invoice.Outstanding, invoice.Currency, invoice.DueDate, ct).ConfigureAwait(false);
+
+        await _alerts!.DailySummaryAsync(now, ct).ConfigureAwait(false);
     }
 
     private async Task AlertProviderAsync(string subject, IReadOnlyList<string> lines, int failed, CancellationToken ct)

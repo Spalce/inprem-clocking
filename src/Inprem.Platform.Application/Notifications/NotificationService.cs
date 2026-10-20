@@ -59,12 +59,15 @@ public sealed class NotificationService
     private readonly NotificationOptions _options;
     private readonly IClock _clock;
 
-    public NotificationService(INotificationStore store, IRecipientDirectory directory, NotificationOptions options, IClock clock)
+    private readonly ProviderAlertRecipients? _providerAlerts;
+
+    public NotificationService(INotificationStore store, IRecipientDirectory directory, NotificationOptions options, IClock clock, ProviderAlertRecipients? providerAlerts = null)
     {
         _store = store;
         _directory = directory;
         _options = options;
         _clock = clock;
+        _providerAlerts = providerAlerts;
     }
 
     public async Task<NotificationRaiseResult> RaiseAsync(NotificationEvent notificationEvent, CancellationToken ct = default)
@@ -138,7 +141,30 @@ public sealed class NotificationService
         }
 
         await _store.SaveChangesAsync(ct).ConfigureAwait(false);
+        if (template.Key != NotificationTemplates.SystemProblem && (limits.Added > 0 || skipped.Any(s => s.Item3 == SkipReasons.DailySpendCap)))
+            await WarnAboutSpendAsync(now, ct).ConfigureAwait(false);
         return new NotificationRaiseResult(queued, skipped);
+    }
+
+    /// <summary>
+    /// Step 5.3: once today's texts reach <see cref="NotificationOptions.SpendWarningShare"/> of the daily
+    /// cap, Inprem's Owners get one urgent system-problem alert that day (before texts start being skipped).
+    /// </summary>
+    private async Task WarnAboutSpendAsync(DateTime now, CancellationToken ct)
+    {
+        if (_providerAlerts == null || _options.DailySpendCapUsd <= 0) return;
+        var spend = await _store.SmsSpendAsync(now.Date, ct).ConfigureAwait(false);
+        if (spend < _options.DailySpendCapUsd * _options.SpendWarningShare) return;
+        var recipients = await _providerAlerts.ForAsync(ProviderAlertKind.SystemProblem, ct: ct).ConfigureAwait(false);
+        var money = System.Globalization.CultureInfo.InvariantCulture;
+        await RaiseAsync(new NotificationEvent(NotificationTemplates.SystemProblem, null, Audience.Explicit,
+            new Dictionary<string, string>
+            {
+                ["problem"] = "texts are close to the daily spend cap",
+                ["details"] = $"Texts today (UTC) cost about {spend.ToString("0.00", money)} USD of the {_options.DailySpendCapUsd.ToString("0.00", money)} USD cap (Notifications:DailySpendCapUsd). At the cap, texts are skipped until midnight UTC; emails still go.",
+                ["consoleUrl"] = string.IsNullOrWhiteSpace(_options.AdminBaseUrl) ? "" : _options.AdminBaseUrl.TrimEnd('/') + "/Notifications",
+            },
+            EventKey: $"system:sms-spend:{now:yyyy-MM-dd}", Recipients: recipients), ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -199,6 +225,9 @@ public sealed class NotificationService
         }
 
         public void Counted() => _added++;
+
+        /// <summary>Texts queued in this event.</summary>
+        public int Added => _added;
 
         public async Task<string?> SmsRefusalAsync(string phone, int? tenantId, CancellationToken ct)
         {

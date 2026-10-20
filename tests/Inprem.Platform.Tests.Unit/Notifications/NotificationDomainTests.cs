@@ -64,12 +64,25 @@ public class NotificationDomainTests
         Assert.Equal(ConsentState.Given, ConsentRecord.StateFor(history, 1));
     }
 
+    private static ConsentRecord Choice(int? tenant, DateTime at) => ConsentRecord.Record("+12025550123", ConsentAction.Revoke, tenant, "u1", ConsentSources.Console, null, at, "test");
+
     [Fact]
     public void A_Withdrawal_For_One_Organization_Leaves_The_Others()
     {
-        var history = new[] { Grant(1, Now), Grant(2, Now), Revoke(1, Now.AddMinutes(1)), Start(Now.AddMinutes(2)) };
+        var history = new[] { Grant(1, Now), Grant(2, Now), Choice(1, Now.AddMinutes(1)), Start(Now.AddMinutes(2)) };
         Assert.Equal(ConsentState.Withdrawn, ConsentRecord.StateFor(history, 1)); // START undoes a STOP, not a choice made for one organization
         Assert.Equal(ConsentState.Given, ConsentRecord.StateFor(history, 2));
+    }
+
+    [Fact]
+    public void Switching_Off_Inprems_Texts_Leaves_The_Organizations_But_Stop_Ends_All()
+    {
+        var history = new List<ConsentRecord> { Grant(null, Now), Grant(1, Now), Choice(null, Now.AddMinutes(1)) };
+        Assert.Equal(ConsentState.Withdrawn, ConsentRecord.StateFor(history, null));
+        Assert.Equal(ConsentState.Given, ConsentRecord.StateFor(history, 1)); // Inprem's choice is not a STOP
+
+        history.Add(Revoke(1, Now.AddMinutes(2))); // a STOP reply, whichever text it answered
+        Assert.Equal(ConsentState.Withdrawn, ConsentRecord.StateFor(history, 1));
     }
 
     [Fact]

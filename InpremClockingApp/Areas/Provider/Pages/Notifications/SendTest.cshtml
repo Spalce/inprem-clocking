@@ -1,0 +1,17 @@
+@page
+@model InpremClockingApp.Areas.Provider.Pages.Notifications.SendTestModel
+@{
+    ViewData["Title"] = "Send me a test message";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<p><a asp-page="Index">&larr; Delivery log</a></p>
+<h1 class="pc-title">Send me a test message</h1>
+<p class="pc-subtitle">A short message to @Model.Email, and by text to your confirmed phone if you agreed to Inprem's texts on <a asp-page="/MyAlerts">My alerts</a>. Use it to check that messages arrive.</p>
+
+<form method="post" class="pc-card pc-form">
+  <div class="pc-actions">
+    <button type="submit" class="pc-btn pc-btn-primary" data-testid="confirm">Send</button>
+    <a asp-page="Index" class="pc-btn">Cancel</a>
+  </div>
+</form>

@@ -24,6 +24,7 @@
       <div class="pc-actions">
         <a asp-page="Edit" asp-route-id="@s.TenantId" class="pc-btn" data-testid="edit"><i class="fas fa-pen"></i> Edit</a>
         <a asp-page="SignInCodes" asp-route-id="@s.TenantId" class="pc-btn" data-testid="sign-in-codes"><i class="fas fa-mobile-screen"></i> Sign-in codes</a>
+        <a asp-page="Texts" asp-route-id="@s.TenantId" class="pc-btn" data-testid="texts"><i class="fas fa-comment-sms"></i> Texts</a>
         @if (s.Status == OrganizationStatus.Active)
         {
             <a asp-page="Suspend" asp-route-id="@s.TenantId" class="pc-btn pc-btn-danger" data-testid="suspend">Suspend</a>
@@ -198,7 +199,10 @@
         break;
 
     case "messages":
-        <partial name="/Areas/Provider/Pages/Shared/_ComingSoon.cshtml" model="@("Phase 5 (Twilio messages)")" />
+        <p data-testid="messages">This organization's emails and texts are in the delivery log:
+          <a asp-page="/Notifications/Index" asp-route-TenantId="@s.TenantId" class="pc-btn pc-btn-small" data-testid="messages-log">Open the delivery log</a>
+          <span class="pc-muted">(Owners)</span></p>
+        <p><a asp-page="Texts" asp-route-id="@s.TenantId">Texts settings</a> &middot; <a asp-page="SignInCodes" asp-route-id="@s.TenantId">Sign-in codes</a></p>
         break;
 
     case "audit":

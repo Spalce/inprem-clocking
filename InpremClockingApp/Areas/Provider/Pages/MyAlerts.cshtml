@@ -1,0 +1,56 @@
+@page
+@model InpremClockingApp.Areas.Provider.Pages.MyAlertsModel
+@using Inprem.Platform.Domain.Notifications
+@{
+    ViewData["Title"] = "My alerts";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<h1 class="pc-title">My alerts</h1>
+<p class="pc-subtitle">Which Inprem alerts you get. They come by email; with a confirmed phone, also by text if you tick the box below.</p>
+
+@if (Model.Error != null)
+{
+    <div class="pc-error" data-testid="error">@Model.Error</div>
+}
+@if (TempData["Message"] is string message)
+{
+    <div class="pc-success" data-testid="message">@message</div>
+}
+
+<form method="post" class="pc-card pc-form">
+  <div class="pc-field">
+    <label class="pc-check"><input type="checkbox" name="NewSignups" value="true" @(Model.NewSignups ? "checked" : "") data-testid="new-signups" /> New signups on the website</label>
+  </div>
+  @if (Model.MayGetBilling)
+  {
+      <div class="pc-field">
+        <label for="BillingProblems">Billing problems (a payment failed, a subscription was suspended)</label>
+        <select id="BillingProblems" name="BillingProblems" data-testid="billing-problems">
+          <option value="Immediate" selected="@(Model.BillingProblems == AlertDelivery.Immediate)">Each time</option>
+          <option value="DailySummary" selected="@(Model.BillingProblems == AlertDelivery.DailySummary)">One daily summary</option>
+          <option value="Off" selected="@(Model.BillingProblems == AlertDelivery.Off)">Off</option>
+        </select>
+      </div>
+  }
+  @if (Model.MayGetSystem)
+  {
+      <div class="pc-field">
+        <label class="pc-check"><input type="checkbox" name="SystemProblems" value="true" @(Model.SystemProblems ? "checked" : "") data-testid="system-problems" /> System problems (urgent, also at night): PayPal webhooks that fail verification, failed background jobs, texts near the daily spend cap</label>
+      </div>
+  }
+  <div class="pc-field">
+    @if (Model.Phone != null)
+    {
+        <label class="pc-check"><input type="checkbox" name="Texts" value="true" @(Model.Texts ? "checked" : "") data-testid="texts" /> @Model.Wording</label>
+        <p class="pc-muted">Texts go to your confirmed phone @Model.Phone.</p>
+    }
+    else
+    {
+        <p class="pc-muted" data-testid="no-phone">To get alerts by text too, first confirm your phone on <a asp-page="/MyPhone">My phone for codes</a>.</p>
+    }
+  </div>
+  <div class="pc-actions">
+    <button type="submit" class="pc-btn pc-btn-primary" data-testid="save">Save</button>
+  </div>
+</form>

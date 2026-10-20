@@ -26,6 +26,7 @@ public static class DependencyInjection
         services.AddScoped<Application.PublicApi.IBillingAccessStore, BillingAccessStore>();
         services.AddScoped<Application.Notifications.INotificationStore, NotificationStore>();
         services.AddScoped<Application.Notifications.IRecipientDirectory, RecipientDirectory>();
+        services.AddScoped<Application.Notifications.INotificationConsoleStore, NotificationConsoleStore>();
         services.AddSingleton<IClock, SystemClock>();
         services.AddMemoryCache();
         return services;

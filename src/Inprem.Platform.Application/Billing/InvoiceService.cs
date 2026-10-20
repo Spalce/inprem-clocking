@@ -71,13 +71,23 @@ public sealed class InvoiceService
     private readonly IClock _clock;
     private readonly BillingOptions _options;
 
-    public InvoiceService(IInvoiceStore store, IInvoiceProvider paypal, IEmailSender email, IClock clock, BillingOptions options)
+    private readonly Notifications.BillingAlerts? _alerts;
+
+    public InvoiceService(IInvoiceStore store, IInvoiceProvider paypal, IEmailSender email, IClock clock, BillingOptions options, Notifications.BillingAlerts? alerts = null)
     {
         _store = store;
         _paypal = paypal;
         _email = email;
         _clock = clock;
         _options = options;
+        _alerts = alerts;
+    }
+
+    /// <summary>Phase 5 step 5.3: a text to the owners once the invoice is out (once per invoice, whatever the resends).</summary>
+    private async Task AlertIssuedAsync(Invoice invoice, CancellationToken ct)
+    {
+        if (_alerts != null && invoice.Status is not (InvoiceStatus.Draft or InvoiceStatus.Cancelled))
+            await _alerts.InvoiceIssuedAsync(invoice.Id, invoice.TenantId, invoice.Number, invoice.Total, invoice.Currency, invoice.DueDate, ct).ConfigureAwait(false);
     }
 
     public decimal RefundLimit => _options.RefundLimit;
@@ -166,6 +176,7 @@ public sealed class InvoiceService
             return InvoiceResult.Fail("This subscription period already has an invoice.");
 
         var sent = await SendAsync(invoice, actor, first: true, ct).ConfigureAwait(false);
+        await AlertIssuedAsync(invoice, ct).ConfigureAwait(false);
         return sent ?? new InvoiceResult(true, invoice.Id, null);
     }
 
@@ -176,7 +187,9 @@ public sealed class InvoiceService
         if (invoice == null) return InvoiceResult.Fail("Invoice not found.");
         if (invoice.Status == InvoiceStatus.Cancelled || invoice.Outstanding == 0 && invoice.Status != InvoiceStatus.Draft)
             return InvoiceResult.Fail("Only an invoice that is still to be paid can be sent again.", id);
-        return await SendAsync(invoice, actor, first: invoice.Status == InvoiceStatus.Draft, ct).ConfigureAwait(false) ?? new InvoiceResult(true, id, null);
+        var sent = await SendAsync(invoice, actor, first: invoice.Status == InvoiceStatus.Draft, ct).ConfigureAwait(false);
+        await AlertIssuedAsync(invoice, ct).ConfigureAwait(false);
+        return sent ?? new InvoiceResult(true, id, null);
     }
 
     /// <summary>Cancels an invoice nothing was paid on (also at PayPal).</summary>

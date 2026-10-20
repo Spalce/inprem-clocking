@@ -864,6 +864,31 @@ namespace Inprem.Platform.Infrastructure.Persistence.Migrations
                     b.ToTable("NotificationTemplates", "platform");
                 });
 
+            modelBuilder.Entity("Inprem.Platform.Domain.Notifications.ProviderAlertPreferences", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("BillingProblems")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<bool>("NewSignups")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("SystemProblems")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("ProviderAlertPreferences", "platform");
+                });
+
             modelBuilder.Entity("Inprem.Platform.Domain.Notifications.TenantMessagingSettings", b =>
                 {
                     b.Property<int>("TenantId")

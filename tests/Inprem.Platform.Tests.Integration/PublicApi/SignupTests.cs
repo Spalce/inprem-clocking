@@ -99,6 +99,23 @@ public class SignupTests : IClassFixture<PublicApiFixture>
     }
 
     [Fact]
+    public async Task Inprem_Hears_About_A_New_Signup()
+    {
+        // Phase 5 step 5.3: "New signup" to the console users who want it (all roles by default).
+        var support = $"ns-{Guid.NewGuid():N}"[..13] + "@console.test";
+        await Inprem.Platform.Tests.Integration.Provider.ProviderFixture.CreateEnrolledProviderUserAsync(_app.Services, _app.CreatePlatformDbContext, support, Inprem.Platform.Domain.Provider.ProviderRole.Support);
+        var price = await PriceAsync();
+        using var website = _app.CreateClient();
+        var slug = $"ns-{Guid.NewGuid():N}"[..12];
+        Assert.Equal(HttpStatusCode.Created, (await website.SendAsync(Post("/signups", Body(price.Id, slug: slug)))).StatusCode);
+
+        using (var scope = _app.Services.CreateScope())
+            await scope.ServiceProvider.GetRequiredService<Inprem.Platform.Application.Notifications.NotificationSender>().SendDueAsync();
+        var alert = Assert.Single(_app.Emails.To(support), e => e.Subject == "[Inprem] New signup: Website Centre");
+        Assert.Contains("free trial, plan Signup plan", alert.HtmlBody);
+    }
+
+    [Fact]
     public async Task Trial_Signup_Verify_Email_Choose_Password_Then_Sign_In()
     {
         var price = await PriceAsync();

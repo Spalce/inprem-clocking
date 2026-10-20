@@ -1,0 +1,29 @@
+@page "{id:int}"
+@model InpremClockingApp.Areas.Provider.Pages.Tenants.TextsModel
+@{
+    ViewData["Title"] = "Texts";
+    Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
+}
+
+<p><a asp-page="Details" asp-route-id="@RouteData.Values["id"]">&larr; Back to the organization</a></p>
+<h1 class="pc-title">Texts for @Model.Name</h1>
+<p class="pc-subtitle">Texts go only to people who agreed to them. Emails are not affected by these settings. Sign-in codes are not counted.</p>
+
+@if (Model.Error != null)
+{
+    <div class="pc-error" data-testid="error">@Model.Error</div>
+}
+
+<form method="post" class="pc-card pc-form">
+  <div class="pc-field">
+    <label class="pc-check"><input type="checkbox" name="SmsEnabled" value="true" @(Model.SmsEnabled ? "checked" : "") data-testid="sms-enabled" /> Send texts for this organization</label>
+  </div>
+  <div class="pc-field">
+    <label for="MonthlyLimit">At most this many texts a month (in the organization's time zone)</label>
+    <input id="MonthlyLimit" name="MonthlyLimit" type="number" min="0" max="100000" value="@Model.MonthlyLimit" required data-testid="monthly-limit" />
+  </div>
+  <div class="pc-actions">
+    <button type="submit" class="pc-btn pc-btn-primary" data-testid="confirm">Save</button>
+    <a asp-page="Details" asp-route-id="@RouteData.Values["id"]" class="pc-btn">Cancel</a>
+  </div>
+</form>

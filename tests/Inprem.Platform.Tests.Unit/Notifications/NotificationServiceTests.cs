@@ -377,7 +377,7 @@ public class NotificationServiceTests
         public void Set(DateTime now) => UtcNow = now;
     }
 
-    private sealed class FakeDirectory : IRecipientDirectory
+    internal sealed class FakeDirectory : IRecipientDirectory
     {
         public OrganizationContact? Organization { get; set; } = new(Tenant, "Alpha", "America/New_York");
         public List<NotificationRecipient> Members { get; } = new();
@@ -421,6 +421,16 @@ public class NotificationServiceTests
         public Task AddAuditAsync(AuditEntry entry, CancellationToken ct = default) { Audit.Add(entry); return Task.CompletedTask; }
         public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
 
+        public Dictionary<string, ProviderAlertPreferences> Preferences { get; } = new();
+        public Task<IReadOnlyDictionary<string, ProviderAlertPreferences>> PreferencesAsync(IReadOnlyCollection<string> userIds, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyDictionary<string, ProviderAlertPreferences>>(Preferences.Where(p => userIds.Contains(p.Key)).ToDictionary(p => p.Key, p => p.Value));
+        public Task<ProviderAlertPreferences?> FindPreferencesForUpdateAsync(string userId, CancellationToken ct = default) => Task.FromResult(Preferences.GetValueOrDefault(userId));
+        public Task AddPreferencesAsync(ProviderAlertPreferences preferences, CancellationToken ct = default) { Preferences[preferences.UserId] = preferences; return Task.CompletedTask; }
+        public Task<IReadOnlyList<AuditEntry>> AuditSinceAsync(IReadOnlyCollection<string> actions, DateTime sinceUtc, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<AuditEntry>>(Audit.Where(a => actions.Contains(a.Action) && a.OccurredUtc >= sinceUtc).ToList());
+        public int Discarded { get; private set; }
+        public void DiscardPending() => Discarded++;
+
         public List<(string Kind, string Account, bool Succeeded, DateTime At)> Attempts { get; } = new();
         public Task AddAttemptAsync(string kind, string accountId, bool succeeded, DateTime nowUtc, CancellationToken ct = default) { Attempts.Add((kind, accountId, succeeded, nowUtc)); return Task.CompletedTask; }
         public Task<int> CountAttemptsAsync(string kind, string accountId, DateTime sinceUtc, bool succeededOnly = false, bool failedOnly = false, CancellationToken ct = default) =>
@@ -442,7 +452,7 @@ public class NotificationServiceTests
         }
     }
 
-    private sealed class FakeEmail : IEmailSender
+    internal sealed class FakeEmail : IEmailSender
     {
         public List<(string To, string Subject, string Html)> Sent { get; } = new();
         public bool Fail { get; set; }
