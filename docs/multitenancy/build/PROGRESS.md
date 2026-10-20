@@ -130,6 +130,14 @@ _(date — what was tested — result)_
 
 ## Log
 
+- **2026-10-20 — Handover document (developer: the Claude subscription ends in about two days).** `docs/multitenancy/HANDOVER.md` covers:
+  - what to ask the project owner for;
+  - where settings go;
+  - PayPal and Twilio dashboard set-up and settings (no code or table changes needed);
+  - tests, migrations, the deployment plan and going live, including clearing sandbox plan ids;
+  - the Phase 7 work with its files;
+  - errors and their fixes, and open decisions.
+
 - **2026-10-20 — Audit tab shows who by email; two old test-data scripts removed (developer: "merge, delete the two scripts, and fix the audit tab").**
   - **Merged:** `mt/test-guides` into `mt/integration` (fast-forward to `4ec8ff6`, local; not pushed). This fix on `mt/audit-tab-fix`.
   - **Audit tab (the developer's T1-6 note):** an organization's **Audit** tab in the console showed the raw actor (`provider:<id>`); the **Audit log** page and the dashboard show the email. The tab now uses the same lookup (`AuditLogService.ActorNamesAsync`, loaded only when the tab is open). Files: `Areas/Provider/Pages/Tenants/Details.cshtml(.cs)` (new code from Phase 1, not frozen). Actors without an account (jobs, the website) still show as recorded.
