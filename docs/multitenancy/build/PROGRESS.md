@@ -7,7 +7,8 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **Phase:** 6 Staff alerts: implementation complete (6.1–6.3) with the stand-in, Phase 6 bundle rehearsed and confirmed on the local database. Waiting: the project owner's approval of C3-8 and Twilio sender registration (P6-1 as the design words it), real texts on staging (P6-3). Phase 5's Twilio checks (P5-1, P5-4) still wait for credentials
 - **Merged:** Phase 6 into `mt/integration` (fast-forward to `ddc391d`, local; not pushed), developer's request.
 - **Domain cutover:** C.1 to C.3 prepared (settings templates, the optional old-address redirect, runbooks). The DNS changes and deployments are the developer's, following `docs/multitenancy/runbooks/domain-cutover.md`, when deploying after all phases
-- **Next step:** the developer decides: merge the cutover branch into `mt/integration`; then Phase 7 (its entry needs Phases 0–6 exit checks, several of which wait for PayPal, Twilio and staging)
+- **Merged:** the cutover preparation into `mt/integration` (fast-forward to `29aa38a`, local; not pushed), developer's request.
+- **Next step:** the developer decides: Phase 7 (its entry needs Phases 0–6 exit checks, several of which wait for PayPal, Twilio and staging)
 - **Branch:** `mt/domain-cutover` (from `mt/integration` after the Phase 6 merge)
 
 ## Phase status
@@ -22,7 +23,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | 4 Invoices | Implementation complete (4.1–4.4), Phase 4 bundle rehearsed and applied locally. Waiting: invoices and reconciliation in the PayPal sandbox (P4-1, P4-3) | P4-2 (automated); P4-1 and P4-3 with the pretend PayPal | — |
 | 5 Twilio | Implementation complete (5.1–5.3) with the stand-in, Phase 5 bundle rehearsed and applied locally. Waiting for Twilio test credentials: real texts, P5-1 (Verify), P5-4 on staging | P5-2, P5-3 (automated); P5-1 with the stand-in and a pretend Verify; P5-4 with simulated reports | 2026-10-20 (developer's request, before the Twilio checks) |
 | 6 Staff alerts | Implementation complete (6.1–6.3) with the stand-in, Phase 6 bundle rehearsed and confirmed locally. Waiting: project owner approval of C3-8 and Twilio sender registration (design P6-1), real texts on staging (P6-3) | P6-1 setting part, P6-2, P6-3 (automated, with the stand-in) | 2026-10-20 (`ddc391d`, developer's request, before the project owner and Twilio checks) |
-| Cutover | C.1–C.3 prepared (templates, `LegacyRedirect` off by default, runbooks, live check script). Waiting: DNS, certificates and deployments by the developer; the web team's site and redirect rules | Redirect rules: every App-site route 301 (automated); templates start their site (automated). On the live addresses: `check-cutover.ps1` after each step | — |
+| Cutover | C.1–C.3 prepared (templates, `LegacyRedirect` off by default, runbooks, live check script). Waiting: DNS, certificates and deployments by the developer; the web team's site and redirect rules | Redirect rules: every App-site route 301 (automated); templates start their site (automated). On the live addresses: `check-cutover.ps1` after each step | 2026-10-20 (`29aa38a`, developer's request, before the DNS changes and deployments) |
 | 7 Hardening | Not started | — | — |
 
 ## Open follow-ups and shortcuts
