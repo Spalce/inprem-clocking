@@ -1,0 +1,39 @@
+{
+  "Site": {
+    "SiteMode": "All",
+    "AppHost": "",
+    "AdminHost": "",
+    "PublicWebsiteOrigins": []
+  },
+  "Jobs": {
+    "RunServer": true
+  },
+  "Links": {
+    "AppBaseUrl": "https://test-site.example",
+    "AdminBaseUrl": "https://test-site.example/Provider",
+    "WebsiteBaseUrl": "https://test-site.example/demo-site"
+  },
+  "LegacyRedirect": {
+    "Enabled": false
+  },
+  "AdminSite": {
+    "AllowedNetworks": []
+  },
+  "PayPal": {
+    "Mode": "Sandbox",
+    "ReturnUrlAllowList": [ "https://test-site.example" ],
+    "PlanReturnUrl": "https://test-site.example/Billing/PayPalReturn",
+    "PlanCancelUrl": "https://test-site.example/Billing"
+  },
+  "Twilio": {
+    "Mode": "StandIn",
+    "WebhookBaseUrl": "https://test-site.example"
+  },
+  "Email": {
+    "SmtpPort": 587,
+    "EnableSsl": true
+  },
+  "Demo": {
+    "EnableDemoSite": true
+  }
+}

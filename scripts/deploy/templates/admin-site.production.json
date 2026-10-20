@@ -1,0 +1,33 @@
+{
+  "Site": {
+    "SiteMode": "Admin",
+    "AppHost": "app.inpremclockin.org",
+    "AdminHost": "admin.inpremclockin.org",
+    "PublicWebsiteOrigins": []
+  },
+  "Jobs": {
+    "RunServer": false
+  },
+  "Links": {
+    "AppBaseUrl": "https://app.inpremclockin.org",
+    "AdminBaseUrl": "https://admin.inpremclockin.org",
+    "WebsiteBaseUrl": "https://inpremclockin.org"
+  },
+  "AdminSite": {
+    "AllowedNetworks": []
+  },
+  "PayPal": {
+    "Mode": "Sandbox"
+  },
+  "Twilio": {
+    "Mode": "StandIn",
+    "WebhookBaseUrl": "https://app.inpremclockin.org"
+  },
+  "Email": {
+    "SmtpPort": 587,
+    "EnableSsl": true
+  },
+  "Demo": {
+    "EnableDemoSite": false
+  }
+}

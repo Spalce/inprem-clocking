@@ -6,8 +6,9 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 
 - **Phase:** 6 Staff alerts: implementation complete (6.1–6.3) with the stand-in, Phase 6 bundle rehearsed and confirmed on the local database. Waiting: the project owner's approval of C3-8 and Twilio sender registration (P6-1 as the design words it), real texts on staging (P6-3). Phase 5's Twilio checks (P5-1, P5-4) still wait for credentials
 - **Merged:** Phase 6 into `mt/integration` (fast-forward to `ddc391d`, local; not pushed), developer's request.
-- **Next step:** the developer decides: the domain cutover (`09-domain-cutover.md`) or Phase 7 (its entry needs Phases 0–6 exit checks, several of which wait for PayPal, Twilio and staging)
-- **Branch:** `mt/phase6` (from `mt/integration` after the Phase 5 merge)
+- **Domain cutover:** C.1 to C.3 prepared (settings templates, the optional old-address redirect, runbooks). The DNS changes and deployments are the developer's, following `docs/multitenancy/runbooks/domain-cutover.md`, when deploying after all phases
+- **Next step:** the developer decides: merge the cutover branch into `mt/integration`; then Phase 7 (its entry needs Phases 0–6 exit checks, several of which wait for PayPal, Twilio and staging)
+- **Branch:** `mt/domain-cutover` (from `mt/integration` after the Phase 6 merge)
 
 ## Phase status
 
@@ -21,7 +22,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | 4 Invoices | Implementation complete (4.1–4.4), Phase 4 bundle rehearsed and applied locally. Waiting: invoices and reconciliation in the PayPal sandbox (P4-1, P4-3) | P4-2 (automated); P4-1 and P4-3 with the pretend PayPal | — |
 | 5 Twilio | Implementation complete (5.1–5.3) with the stand-in, Phase 5 bundle rehearsed and applied locally. Waiting for Twilio test credentials: real texts, P5-1 (Verify), P5-4 on staging | P5-2, P5-3 (automated); P5-1 with the stand-in and a pretend Verify; P5-4 with simulated reports | 2026-10-20 (developer's request, before the Twilio checks) |
 | 6 Staff alerts | Implementation complete (6.1–6.3) with the stand-in, Phase 6 bundle rehearsed and confirmed locally. Waiting: project owner approval of C3-8 and Twilio sender registration (design P6-1), real texts on staging (P6-3) | P6-1 setting part, P6-2, P6-3 (automated, with the stand-in) | 2026-10-20 (`ddc391d`, developer's request, before the project owner and Twilio checks) |
-| Cutover | Not started | — | — |
+| Cutover | C.1–C.3 prepared (templates, `LegacyRedirect` off by default, runbooks, live check script). Waiting: DNS, certificates and deployments by the developer; the web team's site and redirect rules | Redirect rules: every App-site route 301 (automated); templates start their site (automated). On the live addresses: `check-cutover.ps1` after each step | — |
 | 7 Hardening | Not started | — | — |
 
 ## Open follow-ups and shortcuts
@@ -127,6 +128,32 @@ _(date — what was tested — result)_
 
 ## Log
 
+- **2026-10-20 — Domain cutover C.1 to C.3 (developer: "yes, prepare the cutover").**
+  - **Branch** `mt/domain-cutover` from `mt/integration` (after the Phase 6 merge). Code, settings and runbooks only; no DNS change and no deployment (the developer's, after all phases).
+  - **Found while preparing:** with `Site:AppHost` set, the App site answers 404 on every other address. While `inpremclockin.org` still serves the app (the plan's interim), `Site:AppHost` must therefore stay **empty** on the App site; it is set only after the root has moved to the website (runbook step 6). The templates and the runbook say so. No code change for it.
+  - **C.1 Settings:** templates without secrets in `scripts/deploy/templates/`:
+    - `app-site.production.json`, `admin-site.production.json`;
+    - `test-site.single-host.json` (SiteMode All, D9: the SmarterASP test site today; its address is a placeholder).
+    - `docs/multitenancy/runbooks/site-configuration.md` lists every setting per site, the secrets that stay on the host, the staging rule (swap every address), and the PayPal and Twilio webhook addresses.
+    - `SiteTemplateTests`: each template starts the app as its site (all startup checks pass) and holds no secret-shaped key or address; the two production templates agree on their addresses; jobs on the App site only; PayPal Sandbox.
+  - **C.2 Old addresses:**
+    - `Hosting/LegacyRedirect.cs` (new): `LegacyRedirect:Enabled` (off), `FromHosts`, `TargetBaseUrl`, checked at startup (no https target, no hosts, or a target that is one of the old hosts are refused).
+    - On an old host, the first path segment is matched against 14 rules (`/Account`, `/api`, `/BackOffice`, `/Billing`, `/Error`, `/HoursWorked`, `/Identity`, `/Index`, `/Privacy`, `/Settings`, `/Staff*`, `/User`, `/Volunteer*`, `/webhooks`). A match gets 301 to the same path and query on `app.`; `/` and other paths are left for the website.
+    - It runs first in the pipeline (a startup filter, so an `http://` link takes one hop). It is registered in `SiteHosting.cs` (Phase 0 file), so **no change to `Program.cs`**. `appsettings.json` (C2-11) has the section, off.
+    - `docs/multitenancy/runbooks/root-redirects.md`: the same rules for the web team (generic, nginx, Apache, IIS), website page names to avoid (e.g. `/volunteer` matches `/Volunteer*`), webhooks and forms after a 301, a check.
+    - `LegacyRedirectTests` (17): every App-site route from the endpoint table on the old host → 301 with its query; old links on `inpremclockin.org` and `www.`; GET and POST; other paths, the new host and the setting off unchanged; wrong settings refused; the runbook lists exactly the code's rules. The first run found one uncovered route: the tests' own stand-in controller (`/app-probe`), now left out of the check.
+  - **C.3 Runbook** `docs/multitenancy/runbooks/domain-cutover.md`, each step with its undo:
+    1. before you start (one site or two);
+    2. DNS and certificates;
+    3. deploy both sites (App bound to `app.` and still to the root);
+    4. PayPal and Twilio webhooks to `app.`;
+    5. kiosk devices, the message to the organization, the optional `LegacyRedirect`;
+    6. root to the website with the web team's rules;
+    7. tidy up (`Site:AppHost`).
+    - A table of what each failing check usually means. Menu names checked against the pages (Dashboard, Staff Clocking, Volunteer Clocking; console Notifications → Send me a test message, Delivery log).
+  - **Live check script** `scripts/deploy/check-cutover.ps1 -Stage Interim|Redirect|Website`: GET only, no redirects followed, PASS/FAIL per check, exit 1 on a failure. `CutoverCheckTests` (7) prove that the answers it expects are the app's (App and Admin site with production hosts). Run once against the real addresses (2026-10-20): `app.` and `admin.` "no answer" (they do not exist yet), the root still serves the app (PASS), as expected before step 1.
+  - **Acceptance (09-domain-cutover.md):** "Redirects: every enumerated old path 301" passes (automated). "App on new host", "Admin isolated" against the live addresses and "Integrations" wait for the deployment: the in-process suites cannot run against a URL, so `check-cutover.ps1` is the check on the live sites, with the host-isolation suite in-process.
+  - **Results (full run, one suite at a time):** Unit 262, Architecture 11, **Baseline 314**, Integration 326 (31 new), UI 13 — all passed.
 - **2026-10-20 — Phase 6 bundle and exit review (developer: "Phase 6 bundle + exit review").**
   - **Bundles:** `scripts/migrations/phase6-up.sql` and `phase6-down.sql`, generated by `build-phase6-bundle.ps1` from M1p, with the earlier guards (refusing a database without the Phase 5 schema: 50080; unknown migrations: 50081, 50082). CI checks they are up to date. The earlier bundles rebuild unchanged.
   - **Rehearsal (disposable database on the local SQL Server, synthetic data, dropped afterwards):**

@@ -27,6 +27,11 @@ public static class SiteHosting
         services.AddSingleton<IValidateOptions<SiteOptions>, SiteOptionsValidator>();
         services.AddOptions<SiteOptions>().Bind(section).ValidateOnStart();
 
+        // Domain cutover step C.2: old-address links to app. (off unless LegacyRedirect:Enabled).
+        services.AddSingleton<IValidateOptions<LegacyRedirectOptions>, LegacyRedirectOptionsValidator>();
+        services.AddOptions<LegacyRedirectOptions>().Bind(builder.Configuration.GetSection(LegacyRedirectOptions.SectionName)).ValidateOnStart();
+        services.AddTransient<IStartupFilter, LegacyRedirectStartupFilter>();
+
         services.AddSingleton<IConfigureOptions<RazorPagesOptions>, ConfigureSiteRouting>();
         services.AddSingleton<IConfigureOptions<Microsoft.AspNetCore.Mvc.MvcOptions>, ConfigureSiteRouting>();
 
