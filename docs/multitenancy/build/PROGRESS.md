@@ -4,8 +4,8 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 
 ## Current position
 
-- **Phase:** 6 Staff alerts (starting). Phase 5 done with the stand-in and merged; its Twilio checks (P5-1, P5-4) wait for credentials
-- **Next step:** Phase 6 / Step 6.3 (missed clock-out, long break and end-of-day summary alerts)
+- **Phase:** 6 Staff alerts: steps 6.1 to 6.3 done with the stand-in. Phase 5 done with the stand-in and merged; its Twilio checks (P5-1, P5-4) wait for credentials
+- **Next step:** Phase 6 bundle (M1p) and exit review
 - **Branch:** `mt/phase6` (from `mt/integration` after the Phase 5 merge)
 
 ## Phase status
@@ -19,7 +19,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | 3 Website API | Implementation complete (3.1–3.7), Phase 3 bundle rehearsed. Waiting: J1–J6 with the PayPal sandbox and the web team's site on staging (P3-1); load test on staging (P3-7) | P3-2, P3-3, P3-4, P3-5, P3-6, P3-8, P3-9 (automated); P3-1 with the demo site and the pretend PayPal | 2026-10-16 (`ceeb80c`, developer's request, before the staging checks) |
 | 4 Invoices | Implementation complete (4.1–4.4), Phase 4 bundle rehearsed and applied locally. Waiting: invoices and reconciliation in the PayPal sandbox (P4-1, P4-3) | P4-2 (automated); P4-1 and P4-3 with the pretend PayPal | — |
 | 5 Twilio | Implementation complete (5.1–5.3) with the stand-in, Phase 5 bundle rehearsed and applied locally. Waiting for Twilio test credentials: real texts, P5-1 (Verify), P5-4 on staging | P5-2, P5-3 (automated); P5-1 with the stand-in and a pretend Verify; P5-4 with simulated reports | 2026-10-20 (developer's request, before the Twilio checks) |
-| 6 Staff alerts | Not started | — | — |
+| 6 Staff alerts | Steps 6.1–6.3 done with the stand-in; bundle and exit review next | P6-1, P6-2, P6-3 (automated, with the stand-in) | — |
 | Cutover | Not started | — | — |
 | 7 Hardening | Not started | — | — |
 
@@ -123,6 +123,25 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-20 — Phase 6 / Step 6.3: staff alerts (developer: "go ahead with 6.3").**
+  - **Two decisions by the developer (2026-10-20):**
+    - **Quiet hours:** a staff text that would fall in quiet hours (21:00 to 08:00, the organization's time) is **dropped, not held** for the morning: "still clocked in" is no longer true by then. It is recorded as Skipped with reason `quiet-hours`. With the D32 default (21:00) the missed clock-out text is therefore never sent; the settings page now says so and suggests a time before quiet hours (e.g. 20:30). D32 itself is unchanged.
+    - **End-of-day summary: email only.** The admins' text consent was given for account messages, not shift summaries.
+  - **Check (`Application/Notifications/StaffAlerts.cs`, `StaffAlertsCheck`):** for each organization with staff alerts on, in its own time zone (organizations grouped by zone):
+    - missed clock-out: from the set time of the local day, a text to everyone who clocked in before it and is still clocked in;
+    - long break: a text once the open break is longer than the set minutes;
+    - summary (when chosen): from the set time, one email to the owners and admins listing who is still clocked in; nothing when nobody is.
+  - Texts go through the Phase 5 module (consent, STOP, limits) to the person only (`RecipientType.Person`, `staff:{id}` / `volunteer:{id}`). Each alert has an event key for the person and the local day, so nothing is sent twice. One organization's failure does not stop the others.
+  - **Notification module:** `NotificationEvent.DropInQuietHours` (default false, so the existing alerts are unchanged) and `SkipReasons.QuietHours`. **New messages:** `staff.missed-clock-out`, `staff.long-break` (texts), `staff.shift-summary` (email), editable in the console like the others.
+  - **Reading (`InpremClockingApp/StaffAlerts/StaffAlertSource.cs`, new):** the active organizations with alerts on and their open sessions of the local day. A background job has no signed-in organization, so the query filters are bypassed on purpose and every query names the organization; read-only.
+  - **Job (`StaffAlertsJob`, new):** every 5 minutes, UTC. The plan's "job per time zone bucket" is done as one job that groups organizations by zone and works out each one's local time itself, so clock changes need nothing special; an organization's set time is met within 5 minutes. Registered with the other recurring jobs (`JobsHosting.cs`, a Phase 0 file, one line).
+  - **Settings page:** a line about quiet hours; the summary box says "email". No approved page changed. No model change, so no migration.
+  - **Tests:**
+    - Unit `StaffAlertsCheckTests` (13): New York and London at their own 20:30; clock-change days (New York 8 March and 1 November, London 25 October); someone clocked in after the set time is not told; default 21:00 dropped in quiet hours, not held; no consent and STOP; texts to the person only; long break once; one summary for the admins, email only; none when off or nobody is in; one organization failing.
+    - Integration `StaffAlertsFlowTests` (4), with the database and the job as Hangfire starts it: **P6-3** on New York's clock-change day (London texted at 20:30 UTC, New York not at 00:30 UTC but at 01:30 UTC, nobody twice, no consent recorded as skipped); **P6-1** alerts off texts nobody; a long break texted once, a finished break not; the admins' summary, one email. `StaffAlertSettingsTests` also checks the quiet-hours line.
+  - **Exit checks:** P6-1 (fields and alerts only when on) and P6-3 (two time zones, clock-change day): automated, with the stand-in. P6-2: the baseline suite.
+  - **Results (full run, one suite at a time):** Unit 262, Architecture 11, **Baseline 314**, Integration 295, UI 13 — all passed.
 
 - **2026-10-20 — Phase 6 / Step 6.2: the texts box on the staff and volunteer forms (C3-8; developer: "go ahead with 6.2").**
   - **Smallest change to the approved forms:** they already ask for a phone number (required), so only an unticked box is added, with `ConsentWording.StaffAlerts` (message types, "Msg & data rates may apply", "Reply STOP to opt out"). **C3-8, four lines in C1 files, one each:** `Pages/StaffAttendance.cshtml`, `Pages/VolunteerAttendance.cshtml` (kiosk registration), `Pages/Shared/_StaffEditorModal.cshtml`, `Pages/Shared/_VolunteerEditorModal.cshtml` (Manage Staff / Manage Volunteers, also used by the details pages). Each includes `Areas/Settings/Pages/Shared/_StaffSmsConsent.cshtml`, which renders **nothing** unless the organization switched staff alerts on. No page model, script or other markup of the approved app changed.

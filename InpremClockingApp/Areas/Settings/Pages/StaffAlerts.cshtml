@@ -31,13 +31,14 @@
     <label for="MissedClockOut" class="@label">Still clocked in at (your organization's time)</label>
     <input id="MissedClockOut" name="MissedClockOut" type="time" value="@Model.MissedClockOut" class="@input" required data-testid="missed-clock-out" />
     <p class="@hint">Who is still clocked in at this time gets a reminder to clock out.</p>
+    <p class="@hint" data-testid="quiet-hours">No texts are sent during quiet hours (@Model.QuietHours, your organization's time): a reminder that would fall in them is not sent at all, so choose a time before they start, e.g. 20:30.</p>
 
     <label for="LongBreakMinutes" class="@label">A break is long after (minutes)</label>
     <input id="LongBreakMinutes" name="LongBreakMinutes" type="number" min="10" max="720" value="@Model.LongBreakMinutes" class="@input" required data-testid="long-break" />
     <p class="@hint">Who has been on a break longer than this gets a reminder to end it.</p>
 
     <label class="tw:mb-4 tw:flex tw:items-center tw:gap-2 tw:text-sm tw:text-slate-800">
-      <input type="checkbox" name="AdminSummary" value="true" @(Model.AdminSummary ? "checked" : "") data-testid="admin-summary" /> At that time, send the admins one message: who is still clocked in
+      <input type="checkbox" name="AdminSummary" value="true" @(Model.AdminSummary ? "checked" : "") data-testid="admin-summary" /> At that time, email the admins one message: who is still clocked in
     </label>
 
     <button type="submit" class="@button" data-testid="save">Save</button>

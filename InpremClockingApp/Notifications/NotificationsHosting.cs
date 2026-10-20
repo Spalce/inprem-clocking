@@ -29,6 +29,9 @@ public static class NotificationsHosting
         builder.Services.AddScoped<InpremClockingApp.StaffAlerts.StaffConsentRecorder>();
         builder.Services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(o => o.Filters.Add(new InpremClockingApp.StaffAlerts.KioskConsentPageFilter()));
         builder.Services.AddScoped<NotificationSendJob>();
+        // Phase 6 step 6.3: missed clock-outs, long breaks and the admins' summary, every 5 minutes.
+        builder.Services.AddScoped<IStaffAlertSource, InpremClockingApp.StaffAlerts.StaffAlertSource>();
+        builder.Services.AddScoped<InpremClockingApp.StaffAlerts.StaffAlertsJob>();
         return builder;
     }
 }

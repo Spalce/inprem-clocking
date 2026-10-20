@@ -28,6 +28,9 @@ public static class NotificationTemplates
     public const string BillingProblem = "provider.billing-problem";
     public const string BillingSummary = "provider.billing-summary";
     public const string SystemProblem = "provider.system-problem";
+    public const string MissedClockOut = "staff.missed-clock-out";
+    public const string LongBreak = "staff.long-break";
+    public const string ShiftSummary = "staff.shift-summary";
 
     private static readonly Dictionary<string, TemplateDefault> Defaults = new[]
     {
@@ -72,6 +75,17 @@ public static class NotificationTemplates
             "[Inprem] System problem: {problem}",
             "{problem}\n\n{details}\n\nConsole: {consoleUrl}",
             "Inprem system problem: {problem}."),
+
+        new TemplateDefault(MissedClockOut, "To a staff member or volunteer who agreed to texts: still clocked in at the organization's set time.", NotificationUrgency.Normal,
+            null, null,
+            "{organization}: you are still clocked in (since {clockIn}). Please clock out at the kiosk, or tell an admin. Reply STOP to opt out."),
+        new TemplateDefault(LongBreak, "To a staff member or volunteer who agreed to texts: a break longer than the organization's limit.", NotificationUrgency.Normal,
+            null, null,
+            "{organization}: your break started at {breakStart} and is still open. Please end it at the kiosk when you are back. Reply STOP to opt out."),
+        new TemplateDefault(ShiftSummary, "To the organization's admins, by email: who is still clocked in at the organization's set time (one message).", NotificationUrgency.Normal,
+            "{organization}: {count} still clocked in at {time}",
+            "Hello {firstName},\n\nAt {time} on {date}, these people were still clocked in at {organization}:\n\n{lines}\n\nThey can clock out at the kiosk; an admin can correct the times in the back office.",
+            null),
     }.ToDictionary(t => t.Key, StringComparer.Ordinal);
 
     public static IReadOnlyCollection<TemplateDefault> All => Defaults.Values;

@@ -38,6 +38,8 @@ public class StaffAlertSettingsTests : IClassFixture<ProviderFixture>
         Assert.Null(page.QuerySelector("[data-testid=enabled]")!.GetAttribute("checked")); // off by default
         Assert.Equal("21:00", page.QuerySelector("[data-testid=missed-clock-out]")!.GetAttribute("value"));
         Assert.Equal("60", page.QuerySelector("[data-testid=long-break]")!.GetAttribute("value"));
+        // Step 6.3: staff texts in quiet hours are not sent, and the page says so.
+        Assert.Contains("21:00 to 08:00", page.QuerySelector("[data-testid=quiet-hours]")!.TextContent);
         // Linked from the back-office menu, in the back-office layout.
         Assert.Contains(page.QuerySelectorAll("a"), a => a.TextContent.Trim() == "Manage Staff");
 

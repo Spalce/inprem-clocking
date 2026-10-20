@@ -154,6 +154,7 @@ public sealed class JobServerHost : IHostedService, IDisposable
         var recurring = new RecurringJobManager(_services.GetRequiredService<JobStorage>());
         InpremClockingApp.Billing.BillingReconciliationJob.Register(recurring);
         InpremClockingApp.Notifications.NotificationSendJob.Register(recurring);
+        InpremClockingApp.StaffAlerts.StaffAlertsJob.Register(recurring);
         _logger.LogInformation("Hangfire job server started.");
         return Task.CompletedTask;
     }

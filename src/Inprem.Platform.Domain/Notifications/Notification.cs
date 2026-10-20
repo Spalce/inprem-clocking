@@ -54,6 +54,9 @@ public static class SkipReasons
     public const string MonthlyLimit = "monthly-limit";
     public const string DailySpendCap = "daily-spend-cap";
     public const string TemplateOff = "template-off";
+
+    /// <summary>A staff alert that would have waited for the end of quiet hours: by then it no longer applies (Phase 6 step 6.3).</summary>
+    public const string QuietHours = "quiet-hours";
 }
 
 /// <summary>

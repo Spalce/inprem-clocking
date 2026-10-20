@@ -26,6 +26,8 @@ public enum Audience
 /// Something happened that someone should hear about (design 9: "Event"). <see cref="EventKey"/>
 /// makes raising the same event again harmless; <see cref="Values"/> fill the template's placeholders;
 /// <see cref="Urgency"/> overrides the message's own (e.g. a payment problem the provider wants at once).
+/// <see cref="DropInQuietHours"/>: a normal text that would wait for the end of quiet hours is skipped
+/// instead (staff alerts, Phase 6 step 6.3: "still clocked in" is no longer true the next morning).
 /// </summary>
 public sealed record NotificationEvent(
     string TemplateKey,
@@ -36,7 +38,8 @@ public sealed record NotificationEvent(
     IReadOnlyCollection<ProviderRole>? ProviderRoles = null,
     IReadOnlyList<NotificationRecipient>? Recipients = null,
     IReadOnlyCollection<NotificationChannel>? Channels = null,
-    NotificationUrgency? Urgency = null);
+    NotificationUrgency? Urgency = null,
+    bool DropInQuietHours = false);
 
 /// <summary>What raising an event did: the messages queued and the ones skipped, with their reasons.</summary>
 public sealed record NotificationRaiseResult(int Queued, IReadOnlyList<(NotificationChannel Channel, string RecipientRef, string Reason)> Skipped)
@@ -115,10 +118,14 @@ public sealed class NotificationService
                 var destination = channel == NotificationChannel.Email ? recipient.Email?.Trim() : recipient.Phone;
                 if (channel == NotificationChannel.Sms && string.IsNullOrWhiteSpace(destination)) continue; // no number given: texts are not for them
 
+                var notBefore = channel == NotificationChannel.Sms && urgency == NotificationUrgency.Normal
+                    ? QuietHours.NextAllowedUtc(now, zone, _options.QuietStart, _options.QuietEnd)
+                    : now;
                 var reason = !enabled ? SkipReasons.TemplateOff
                     : string.IsNullOrWhiteSpace(destination) ? SkipReasons.NoAddress
                     : channel == NotificationChannel.Sms ? await limits.SmsRefusalAsync(destination, notificationEvent.TenantId, ct).ConfigureAwait(false)
                     : null;
+                if (reason == null && notBefore > now && notificationEvent.DropInQuietHours) reason = SkipReasons.QuietHours;
 
                 if (reason != null)
                 {
@@ -130,9 +137,6 @@ public sealed class NotificationService
                 }
 
                 var to = channel == NotificationChannel.Sms ? PhoneNumber.ToE164(destination)! : destination!;
-                var notBefore = channel == NotificationChannel.Sms && urgency == NotificationUrgency.Normal
-                    ? QuietHours.NextAllowedUtc(now, zone, _options.QuietStart, _options.QuietEnd)
-                    : now;
                 await _store.AddAsync(Notification.Queue(notificationEvent.TenantId, recipient.Type, recipient.Ref, channel, to,
                     template.Key, title, text, urgency, notificationEvent.EventKey, _options.EstimatedSmsCostUsd, now, notBefore), ct).ConfigureAwait(false);
                 if (channel == NotificationChannel.Sms) limits.Counted();

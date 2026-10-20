@@ -16,7 +16,14 @@ public class StaffAlertsModel : OwnerPageModel
 {
     private readonly StaffAlertSettings _settings;
 
-    public StaffAlertsModel(ITenantContext tenant, StaffAlertSettings settings) : base(tenant) => _settings = settings;
+    public StaffAlertsModel(ITenantContext tenant, StaffAlertSettings settings, NotificationOptions options) : base(tenant)
+    {
+        _settings = settings;
+        QuietHours = $"{options.QuietHoursStart} to {options.QuietHoursEnd}";
+    }
+
+    /// <summary>Quiet hours ("21:00 to 08:00"): staff texts that would fall in them are not sent (step 6.3).</summary>
+    public string QuietHours { get; }
 
     [BindProperty] public bool Enabled { get; set; }
 
