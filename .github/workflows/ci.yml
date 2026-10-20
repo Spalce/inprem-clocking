@@ -177,7 +177,8 @@ jobs:
           ./scripts/migrations/build-phase3-bundle.ps1
           ./scripts/migrations/build-phase4-bundle.ps1
           ./scripts/migrations/build-phase5-bundle.ps1
-          git diff --exit-code -- scripts/migrations/phase0-up.sql scripts/migrations/phase0-down.sql scripts/migrations/phase1-up.sql scripts/migrations/phase1-down.sql scripts/migrations/phase2-up.sql scripts/migrations/phase2-down.sql scripts/migrations/phase3-up.sql scripts/migrations/phase3-down.sql scripts/migrations/phase4-up.sql scripts/migrations/phase4-down.sql scripts/migrations/phase5-up.sql scripts/migrations/phase5-down.sql
+          ./scripts/migrations/build-phase6-bundle.ps1
+          git diff --exit-code -- scripts/migrations/phase0-up.sql scripts/migrations/phase0-down.sql scripts/migrations/phase1-up.sql scripts/migrations/phase1-down.sql scripts/migrations/phase2-up.sql scripts/migrations/phase2-down.sql scripts/migrations/phase3-up.sql scripts/migrations/phase3-down.sql scripts/migrations/phase4-up.sql scripts/migrations/phase4-down.sql scripts/migrations/phase5-up.sql scripts/migrations/phase5-down.sql scripts/migrations/phase6-up.sql scripts/migrations/phase6-down.sql
 
       # One build for both sites (D8).
       - name: Publish

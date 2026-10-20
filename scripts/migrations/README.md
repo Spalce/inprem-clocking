@@ -128,6 +128,23 @@ In SSMS: open the file, turn on **Query > SQLCMD Mode**, choose the database, Ex
 - **Rehearsal (2026-10-20, local SQL Server):** without Phase 4 → refused (50070). After the Phase 0 to 4 bundles: up, up again, down, down again, up; each ended as expected. Verify after up: `M1m=1|4|2|2|0|0 M1n=1|1|0 M1o=1|1|0`. An unknown platform migration → refused (50072). Then `phase5-down.sql` and `phase4-down.sql` back to the Phase 3 schema.
 - **Local database (2026-10-20):** backup `DB_A65635_inpremdb_before_phase5_bundle_20261020.bak` verified first; `phase5-up.sql` found M1m to M1o applied and reported complete; verify as above; app data unchanged (fingerprint).
 
+## All of Phase 6 at once (the bundles)
+
+After the Phase 0 to 5 bundles, Phase 6 adds platform migration M1p (row 21):
+
+```
+sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/phase6-up.sql     # ends with "Phase 6 schema complete."
+sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/phase6-down.sql   # ends with "Phase 6 rolled back"
+```
+
+In SSMS: open the file, turn on **Query > SQLCMD Mode**, choose the database, Execute.
+
+- **Generated:** `build-phase6-bundle.ps1`, same rules and guards as the earlier bundles. CI checks they are up to date.
+- **Guards:** refuses a database without the complete Phase 0 to 5 schema (50080), with app migrations it does not know (50081), or with platform migrations it does not know (50082).
+- **Down** removes the four staff alert columns: every organization's staff alert choices are lost. Consent records and the message log stay.
+- **Rehearsal (2026-10-20, local SQL Server, disposable database with synthetic data):** after the Phase 0 to 4 bundles, without Phase 5 → refused (50080). After `phase5-up.sql` and one existing texts-settings row: up, up again, down, down again, up; each ended as expected. Verify after up `1|4|0|0`; the existing row got `0|21:00|60|0` and was kept by the down script. An unknown platform migration → refused (50082). App data unchanged (fingerprint). Then `phase6-down.sql`, and `phase5-up.sql` found Phase 5 complete.
+- **Local database (2026-10-20):** backup `DB_A65635_inpremdb_before_phase6_bundle_20261020.bak` verified first; `phase6-up.sql` found M1p applied and reported complete; verify `1|4|0|0`; app data unchanged (fingerprint).
+
 ## Running
 
 ```powershell
