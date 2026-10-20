@@ -1,0 +1,86 @@
+@*
+    Phase 6 step 6.2 (C3-8): the "text me reminders" box on the staff and volunteer forms. Included by one
+    line in the approved forms; renders NOTHING unless the organization switched staff alerts on, so with
+    alerts off the forms are exactly as before. The model says where it is:
+      "kiosk"            - kiosk registration (a normal form post; KioskConsentPageFilter records it);
+      "staff-editor"     - Manage Staff's editor (saved by script: this partial's script records it);
+      "volunteer-editor" - Manage Volunteers' editor (the same).
+    The number texted is the one on the form, which must have its country code.
+*@
+@model string
+@inject Inprem.Platform.Application.Notifications.StaffAlertSettings StaffAlerts
+@inject Inprem.Platform.Application.Tenancy.ITenantContext Tenant
+@{
+    var on = Tenant.TenantId is int tenantId && (await StaffAlerts.GetAsync(tenantId)).Enabled;
+    var editor = Model is "staff-editor" or "volunteer-editor";
+    var kind = Model == "volunteer-editor" ? "volunteer" : "staff";
+    // The approved editors' element ids (the volunteer editor prefixes them with "v").
+    var p = Model == "volunteer-editor" ? "v" : "";
+    var phoneId = editor ? p + "PhoneNumber" : "Input_PhoneNumber";
+}
+@if (on)
+{
+    <div class="@(editor ? "tw:sm:col-span-2" : "tw:mt-4")" data-testid="sms-consent">
+      <label class="tw:flex tw:items-start tw:gap-2 tw:text-sm tw:text-slate-700">
+        @if (editor)
+        {
+            @* Not posted: the editor saves by script; this partial's script records the box. *@
+            <input type="checkbox" id="SmsConsentBox" value="true" class="tw:mt-1" data-testid="sms-consent-box" />
+        }
+        else
+        {
+            <input type="checkbox" id="SmsConsentBox" name="@InpremClockingApp.StaffAlerts.KioskConsentPageFilter.FieldName" value="true" class="tw:mt-1" data-testid="sms-consent-box" />
+        }
+        <span>@Inprem.Platform.Application.Notifications.ConsentWording.StaffAlerts</span>
+      </label>
+      <p class="tw:mt-1 tw:text-xs tw:text-slate-500">Optional. For texts, the phone number above needs its country code, e.g. +1 614 516 1812.</p>
+      <p class="tw:mt-1 tw:hidden tw:text-xs tw:text-red-600" id="SmsConsentError" data-testid="sms-consent-error">Add the country code to the phone number (e.g. +1 614 516 1812), or untick the box.</p>
+    </div>
+    <script>
+    (() => {
+      const box = document.getElementById("SmsConsentBox");
+      const error = document.getElementById("SmsConsentError");
+      const phone = document.getElementById("@phoneId");
+      const hasCountryCode = () => /^\s*(\+|00)\d/.test(phone ? phone.value : "");
+      const refuse = e => { e.preventDefault(); e.stopImmediatePropagation(); error.classList.remove("tw:hidden"); };
+      box.addEventListener("change", () => error.classList.add("tw:hidden"));
+      if (phone) phone.addEventListener("input", () => error.classList.add("tw:hidden"));
+      @if (editor)
+      {
+          <text>
+      // The editor's Save button comes after its form: wire up once the page is loaded.
+      document.addEventListener("DOMContentLoaded", () => {
+      // A tick never carries over to the next person: the box is cleared whenever the editor opens.
+      const modal = document.getElementById("@(p)editorModal");
+      new MutationObserver(() => { if (!modal.classList.contains("tw:hidden")) { box.checked = false; error.classList.add("tw:hidden"); } })
+        .observe(modal, { attributes: true, attributeFilter: ["class"] });
+      document.getElementById("@(p)btnSave").addEventListener("click", e => { if (box.checked && !hasCountryCode()) refuse(e); }, true);
+      // After the editor's own save succeeds (and before the page reloads), the ticked box is recorded.
+      const save = /\/(Staff|Volunteer)\?handler=(Create|Update)/;
+      const fetchOriginal = window.fetch.bind(window);
+      window.fetch = async (url, options) => {
+        const response = await fetchOriginal(url, options);
+        if (box.checked && typeof url === "string" && save.test(url) && response.ok) {
+          try {
+            const consent = await fetchOriginal("/api/staff-alerts/consent", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ kind: "@kind", email: document.getElementById("@(p)EmailAddress").value })
+            });
+            const result = consent.ok ? await consent.json() : null;
+            if (!result || !result.recorded) alert("Saved, but the agreement to texts was not recorded: " + ((result && result.reason) || "please try again."));
+          } catch { alert("Saved, but the agreement to texts was not recorded: please try again."); }
+        }
+        return response;
+      };
+      });
+          </text>
+      }
+      else
+      {
+          <text>
+      box.form.addEventListener("submit", e => { if (box.checked && !hasCountryCode()) refuse(e); }, true);
+          </text>
+      }
+    })();
+    </script>
+}

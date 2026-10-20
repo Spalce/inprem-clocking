@@ -120,6 +120,7 @@
                     <span asp-validation-for="Input!.Gender" class="@validation"></span>
                   </div>
                 </div>
+                <partial name="/Areas/Settings/Pages/Shared/_StaffSmsConsent.cshtml" model="@("kiosk")" />
 
                 <button id="registerSubmit" type="submit"
                         class="@btnPrimary tw:mt-5 tw:w-full tw:py-3 tw:text-base">Register</button>

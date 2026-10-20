@@ -5,7 +5,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 6 Staff alerts (starting). Phase 5 done with the stand-in and merged; its Twilio checks (P5-1, P5-4) wait for credentials
-- **Next step:** Phase 6 / Step 6.2 (mobile number and consent on the staff and volunteer forms, only when staff alerts are on)
+- **Next step:** Phase 6 / Step 6.3 (missed clock-out, long break and end-of-day summary alerts)
 - **Branch:** `mt/phase6` (from `mt/integration` after the Phase 5 merge)
 
 ## Phase status
@@ -123,6 +123,14 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 _(date — what was tested — result)_
 
 ## Log
+
+- **2026-10-20 — Phase 6 / Step 6.2: the texts box on the staff and volunteer forms (C3-8; developer: "go ahead with 6.2").**
+  - **Smallest change to the approved forms:** they already ask for a phone number (required), so only an unticked box is added, with `ConsentWording.StaffAlerts` (message types, "Msg & data rates may apply", "Reply STOP to opt out"). **C3-8, four lines in C1 files, one each:** `Pages/StaffAttendance.cshtml`, `Pages/VolunteerAttendance.cshtml` (kiosk registration), `Pages/Shared/_StaffEditorModal.cshtml`, `Pages/Shared/_VolunteerEditorModal.cshtml` (Manage Staff / Manage Volunteers, also used by the details pages). Each includes `Areas/Settings/Pages/Shared/_StaffSmsConsent.cshtml`, which renders **nothing** unless the organization switched staff alerts on. No page model, script or other markup of the approved app changed.
+  - **Recording (new code):** kiosk registration posts the box with the form; `KioskConsentPageFilter` (a global page filter) records it after a registration that succeeded (the page's redirect to the person's clock page). The editors save by script; the partial's own script sends the box to `POST /api/staff-alerts/consent` (admins of the organization) after the editor's save succeeded, before the page reloads, and clears the box whenever the editor opens. `StaffConsentRecorder` records a grant for the organization, the person (`staff:{id}` / `volunteer:{id}`), the source and the wording, for the number saved on the person; only when staff alerts are on (a forged tick with alerts off records nothing).
+  - **Country code:** a number without one cannot be texted: the box's script stops the form with a message; the server records nothing for such a number (the person is registered all the same). Withdrawal is by STOP (Phase 5).
+  - **Tests:** Integration `StaffConsentTests` 4 (no box with alerts off on all four pages and a forged tick ignored; box shown unticked when on; a ticked kiosk registration recorded with its wording; no country code: registered, not recorded; the editors' endpoint only for the organization's own people). UI `StaffConsentBrowserTests` (the editor: country code required, recorded on save, cleared for the next person). The browser test first failed on its own data (an address under the editor's 10-character rule).
+  - **Exit check P6-1 (fields appear only when on): automated.** P6-2 (forms unchanged with alerts off): the baseline suite, see the results.
+  - **Results (full run on commit ac03567, one suite at a time, in a separate copy: the developer's app was running):** Unit 249, Architecture 11, **Baseline 314 (P6-2: the approved forms unchanged with alerts off)**, Integration 291, UI 13 — all passed.
 
 - **2026-10-20 — Phase 6 / Step 6.1: staff alert settings (developer: "branch from mt/integration for phase 6").**
   - **Entry:** Phase 5 merged into `mt/integration` (fast-forward to `47b206a`, local; not pushed yet); `mt/phase6` from there. Phase 5's Twilio checks (P5-1, P5-4) still wait for credentials, as recorded. Sender registration (Phase 6 entry, before real US numbers) is not needed while texts go to the stand-in.

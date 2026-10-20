@@ -19,6 +19,8 @@ public static class ConsentSources
     public const string SmsStop = "sms-stop";
     public const string SmsStart = "sms-start";
     public const string Console = "console";
+    public const string KioskRegistration = "kiosk-registration";
+    public const string BackOffice = "back-office";
 }
 
 /// <summary>

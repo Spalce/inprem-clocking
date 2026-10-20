@@ -101,6 +101,11 @@ public static class ConsentWording
         "Text me about my organization's Inprem Clock-in account (trial ending, payment problems, suspension, invoices). " +
         "Msg frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help.";
 
+    /// <summary>For staff and volunteers, on the kiosk registration and the back-office forms (Phase 6 step 6.2, C3-8).</summary>
+    public const string StaffAlerts =
+        "Text me clock-in reminders from Inprem Clock-in (still clocked in late, long breaks). " +
+        "Msg frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help.";
+
     /// <summary>For Inprem's console users, on "My alerts" (step 5.3).</summary>
     public const string ProviderAlerts =
         "Text me the Inprem console alerts I chose (new signups, billing problems, system problems). " +

@@ -25,6 +25,9 @@ public static class NotificationsHosting
         });
         builder.Services.AddSingleton(sp => sp.GetRequiredService<IOptions<NotificationOptions>>().Value);
         builder.Services.AddTwilio(builder.Configuration);
+        // Phase 6 step 6.2 (C3-8): the staff and volunteer consent box, recorded only when staff alerts are on.
+        builder.Services.AddScoped<InpremClockingApp.StaffAlerts.StaffConsentRecorder>();
+        builder.Services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(o => o.Filters.Add(new InpremClockingApp.StaffAlerts.KioskConsentPageFilter()));
         builder.Services.AddScoped<NotificationSendJob>();
         return builder;
     }
