@@ -110,6 +110,23 @@ sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/phase4-down.sql 
 - **Rehearsal (2026-10-16, LocalDB):** without Phase 3 → refused (50060). After the Phase 0 to 3 bundles: up, up again, down, down again, up; each ended as expected. Verify after up: `M1k=1|2|1|4|2|0 M1l=1|1|2|0|0`. An unknown platform migration → refused (50062). Then the five down bundles back to the approved baseline.
 - **Local database (2026-10-16):** backup `DB_A65635_inpremdb_before_phase4_bundle_20261016.bak` verified first; then `phase4-up.sql` applied M1l (M1k was already there); verify as above; app data unchanged (fingerprint).
 
+## All of Phase 5 at once (the bundles)
+
+After the Phase 0 to 4 bundles, Phase 5 adds platform migrations M1m, M1n and M1o (rows 18 to 20):
+
+```
+sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/phase5-up.sql     # ends with "Phase 5 schema complete."
+sqlcmd -S <server> -d <database> -E -I -b -i scripts/migrations/phase5-down.sql   # ends with "Phase 5 rolled back"
+```
+
+In SSMS: open the file, turn on **Query > SQLCMD Mode**, choose the database, Execute.
+
+- **Generated:** `build-phase5-bundle.ps1`, same rules and guards as the earlier bundles. CI checks they are up to date.
+- **Guards:** refuses a database without the complete Phase 0 to 4 schema (50070), with app migrations it does not know (50071), or with platform migrations it does not know (50072).
+- **Down** removes the message outbox, consent records, edited wordings, texts settings, the sign-in-codes switch and the alert choices; the audit log stays.
+- **Rehearsal (2026-10-20, local SQL Server):** without Phase 4 → refused (50070). After the Phase 0 to 4 bundles: up, up again, down, down again, up; each ended as expected. Verify after up: `M1m=1|4|2|2|0|0 M1n=1|1|0 M1o=1|1|0`. An unknown platform migration → refused (50072). Then `phase5-down.sql` and `phase4-down.sql` back to the Phase 3 schema.
+- **Local database (2026-10-20):** backup `DB_A65635_inpremdb_before_phase5_bundle_20261020.bak` verified first; `phase5-up.sql` found M1m to M1o applied and reported complete; verify as above; app data unchanged (fingerprint).
+
 ## Running
 
 ```powershell
