@@ -5,7 +5,8 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 ## Current position
 
 - **Phase:** 6 Staff alerts: implementation complete (6.1–6.3) with the stand-in, Phase 6 bundle rehearsed and confirmed on the local database. Waiting: the project owner's approval of C3-8 and Twilio sender registration (P6-1 as the design words it), real texts on staging (P6-3). Phase 5's Twilio checks (P5-1, P5-4) still wait for credentials
-- **Next step:** the developer decides: merge Phase 6 into `mt/integration` (as Phases 1 to 5 were, before their outside checks), then the domain cutover (`09-domain-cutover.md`) or Phase 7 (its entry needs Phases 0–6 exit checks, several of which wait for PayPal, Twilio and staging)
+- **Merged:** Phase 6 into `mt/integration` (fast-forward to `ddc391d`, local; not pushed), developer's request.
+- **Next step:** the developer decides: the domain cutover (`09-domain-cutover.md`) or Phase 7 (its entry needs Phases 0–6 exit checks, several of which wait for PayPal, Twilio and staging)
 - **Branch:** `mt/phase6` (from `mt/integration` after the Phase 5 merge)
 
 ## Phase status
@@ -19,7 +20,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 | 3 Website API | Implementation complete (3.1–3.7), Phase 3 bundle rehearsed. Waiting: J1–J6 with the PayPal sandbox and the web team's site on staging (P3-1); load test on staging (P3-7) | P3-2, P3-3, P3-4, P3-5, P3-6, P3-8, P3-9 (automated); P3-1 with the demo site and the pretend PayPal | 2026-10-16 (`ceeb80c`, developer's request, before the staging checks) |
 | 4 Invoices | Implementation complete (4.1–4.4), Phase 4 bundle rehearsed and applied locally. Waiting: invoices and reconciliation in the PayPal sandbox (P4-1, P4-3) | P4-2 (automated); P4-1 and P4-3 with the pretend PayPal | — |
 | 5 Twilio | Implementation complete (5.1–5.3) with the stand-in, Phase 5 bundle rehearsed and applied locally. Waiting for Twilio test credentials: real texts, P5-1 (Verify), P5-4 on staging | P5-2, P5-3 (automated); P5-1 with the stand-in and a pretend Verify; P5-4 with simulated reports | 2026-10-20 (developer's request, before the Twilio checks) |
-| 6 Staff alerts | Implementation complete (6.1–6.3) with the stand-in, Phase 6 bundle rehearsed and confirmed locally. Waiting: project owner approval of C3-8 and Twilio sender registration (design P6-1), real texts on staging (P6-3) | P6-1 setting part, P6-2, P6-3 (automated, with the stand-in) | — |
+| 6 Staff alerts | Implementation complete (6.1–6.3) with the stand-in, Phase 6 bundle rehearsed and confirmed locally. Waiting: project owner approval of C3-8 and Twilio sender registration (design P6-1), real texts on staging (P6-3) | P6-1 setting part, P6-2, P6-3 (automated, with the stand-in) | 2026-10-20 (`ddc391d`, developer's request, before the project owner and Twilio checks) |
 | Cutover | Not started | — | — |
 | 7 Hardening | Not started | — | — |
 
@@ -138,7 +139,7 @@ _(date — what was tested — result)_
     - **P6-1 Setting: passes for the setting.** The fields and the alerts appear only when the organization switches staff alerts on (`StaffConsentTests`, `StaffAlertsFlowTests`). **Waiting:** the design's P6-1 also needs the project owner's approval of C3-8 and Twilio's approval of the sender registration.
     - **P6-2 Behaviour: passes.** With alerts off, the approved forms are unchanged: Baseline 314.
     - **P6-3 Alerts: passes with the stand-in.** The missed clock-out text comes at the set local time in New York and London, also on clock-change days (unit and integration tests). **Waiting:** real texts on staging (Twilio and the test site).
-  - **Not merged:** Phase 6 stays on `mt/phase6` until the developer decides.
+  - **Merged into `mt/integration`** (fast-forward to `ddc391d`, local; not pushed), at the developer's request, before the project owner and Twilio checks.
 
 - **2026-10-20 — Phase 6 / Step 6.3: staff alerts (developer: "go ahead with 6.3").**
   - **Two decisions by the developer (2026-10-20):**
