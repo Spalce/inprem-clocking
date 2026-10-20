@@ -130,6 +130,13 @@ _(date — what was tested — result)_
 
 ## Log
 
+- **2026-10-20 — Audit tab shows who by email; two old test-data scripts removed (developer: "merge, delete the two scripts, and fix the audit tab").**
+  - **Merged:** `mt/test-guides` into `mt/integration` (fast-forward to `4ec8ff6`, local; not pushed). This fix on `mt/audit-tab-fix`.
+  - **Audit tab (the developer's T1-6 note):** an organization's **Audit** tab in the console showed the raw actor (`provider:<id>`); the **Audit log** page and the dashboard show the email. The tab now uses the same lookup (`AuditLogService.ActorNamesAsync`, loaded only when the tab is open). Files: `Areas/Provider/Pages/Tenants/Details.cshtml(.cs)` (new code from Phase 1, not frozen). Actors without an account (jobs, the website) still show as recorded.
+  - **Test first:** Integration `OrganizationPagesTests.Organization_Audit_Tab_Shows_Who_By_Email_Like_The_Audit_Log`: failed on the old line (checked by putting it back), passes now.
+  - **Removed:** `scripts/reset-test-data.sql` and `scripts/seed-test-data.sql` (see the entry before). Nothing else used them.
+  - **Test guides updated:** the known issue is gone from `docs/multitenancy/testing/README.md`, and T1-6 expects the email.
+  - **Results (full run, one suite at a time):** Unit 262, Architecture 11, **Baseline 314**, Integration 327, UI 13 — all passed.
 - **2026-10-20 — Test guides for Phases 0 to 6 and the cutover; old guides removed (developer: "finish everything before hardening. Give me runbooks to test what has been implemented so far").**
   - **Phase 7 paused before any code.** Step 7.1 was looked at first and stopped at a question, which stays open:
     - The plan adds the anti-forgery token through a script line in `_MainLayout` and "the kiosk layout", for jQuery calls. In the code, the back-office pages use `_Layout` (C1, frozen) and send their changes with `fetch`, not jQuery (Move, clocking Edit and actions, the staff and volunteer editors).
@@ -147,7 +154,7 @@ _(date — what was tested — result)_
     - The demo website always sends `smsOptIn: false`, so owner texts can't be tried by hand.
   - **Removed (superseded by the new guides):** root `Test.md` (the rejected multi-tenancy branch's guide), root `TESTING.md` (the pre-multi-tenancy manual test guide), `docs/multitenancy/manual-test-phase0.md`.
   - **Kept on purpose:** `ROLES.md`, `UI-modification.md` and `backoffice-review.md` are cited by comments in frozen (C1) code files; `kiosk-review.md` is `backoffice-review.md`'s companion; `DEMO-SCRIPT.md` is needed by step 7.7; the rehearsal, inspection and baseline-findings records are referenced by PROGRESS and the tests.
-  - **Flagged, not removed:** `scripts/reset-test-data.sql` and `scripts/seed-test-data.sql` (used only by the removed root `TESTING.md`) predate organizations. The reset deletes every organization's people and every account but one, Provider Console accounts included. Removing them is the developer's call.
+  - **Flagged:** `scripts/reset-test-data.sql` and `scripts/seed-test-data.sql` (used only by the removed root `TESTING.md`) predate organizations. The reset deletes every organization's people and every account but one, Provider Console accounts included. Removed the same day at the developer's request (next entry).
 
 - **2026-10-20 — Domain cutover C.1 to C.3 (developer: "yes, prepare the cutover").**
   - **Branch** `mt/domain-cutover` from `mt/integration` (after the Phase 6 merge). Code, settings and runbooks only; no DNS change and no deployment (the developer's, after all phases).

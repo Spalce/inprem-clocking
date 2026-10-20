@@ -119,7 +119,7 @@ Phase 1 lets Inprem run many organizations from one app:
 
 **Expected:**
 - Each change shows at once, and the owner receives the suspension and reactivation emails.
-- **Audit** lists each action once with the time. **Who** shows an account id: a known issue (see the README); the **Audit log** page in the menu shows the email.
+- **Audit** lists each action once, with the time and your email under **Who** (fixed 2026-10-20; it used to show an id such as `provider:85edf…`).
 
 ## T1-7 Plans
 

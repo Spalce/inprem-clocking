@@ -191,6 +191,23 @@ public class OrganizationPagesTests : IClassFixture<ProviderFixture>
     }
 
     [Fact]
+    public async Task Organization_Audit_Tab_Shows_Who_By_Email_Like_The_Audit_Log()
+    {
+        // Found in the developer's manual test (T1-6): the tab showed "provider:<id>" while the Audit log page showed the email.
+        var email = $"auditor-{Guid.NewGuid():N}"[..18] + "@orgs.test";
+        var key = await CreateEnrolledProviderUserAsync(_app.Services, _app.CreatePlatformDbContext, email, ProviderRole.Owner);
+        using var owner = _app.CreateClient();
+        await SignInAsync(owner, email, key);
+        var id = IdFrom(Location(await RunWizardAsync(owner, "Audit Tab Org", Unique("audittab"), Unique("ama") + "@audit.test", "", "Free", "0")));
+        Assert.Contains("tab=notes", Location(await PostAsync(owner, $"/Provider/Tenants/AddNote/{id}", ("Text", "Checked the audit tab."))));
+
+        var rows = (await GetDocumentAsync(owner, $"/Provider/Tenants/Details/{id}?tab=audit")).QuerySelectorAll("[data-testid=tab-audit] tbody tr").ToList();
+        Assert.NotEmpty(rows);
+        Assert.All(rows, r => Assert.Equal(email, r.Children[1].TextContent.Trim()));
+        Assert.DoesNotContain(rows, r => r.TextContent.Contains("provider:", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Organization_Detail_Actions_Each_Write_One_Audit_Entry()
     {
         var (owner, key) = await OwnerAsync();

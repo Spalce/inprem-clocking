@@ -211,7 +211,7 @@
           <tbody>
           @foreach (var entry in org.Audit)
           {
-              <tr><td>@entry.OccurredUtc.ToString("yyyy-MM-dd HH:mm")</td><td>@entry.Actor</td><td><code>@entry.Action</code></td><td>@entry.Details</td></tr>
+              <tr><td>@entry.OccurredUtc.ToString("yyyy-MM-dd HH:mm")</td><td>@(Model.Actors.TryGetValue(entry.Actor, out var who) ? who : entry.Actor)</td><td><code>@entry.Action</code></td><td>@entry.Details</td></tr>
           }
           @if (org.Audit.Count == 0)
           {

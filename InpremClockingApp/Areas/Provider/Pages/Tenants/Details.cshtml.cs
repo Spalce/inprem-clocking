@@ -22,12 +22,15 @@ public class DetailsModel : PageModel
     private readonly Inprem.Platform.Application.Memberships.IClock _clock;
     private readonly Inprem.Platform.Application.Billing.BillingAccountService _billing;
     private readonly Inprem.Platform.Application.Billing.InvoiceService _invoices;
+    private readonly Inprem.Platform.Application.Audit.AuditLogService _audit;
 
     public DetailsModel(OrganizationService organizations, IAuthorizationService authorization,
         Inprem.Platform.Application.Support.SupportSessionService support, Inprem.Platform.Application.Memberships.IClock clock,
-        Inprem.Platform.Application.Billing.BillingAccountService billing, Inprem.Platform.Application.Billing.InvoiceService invoices)
+        Inprem.Platform.Application.Billing.BillingAccountService billing, Inprem.Platform.Application.Billing.InvoiceService invoices,
+        Inprem.Platform.Application.Audit.AuditLogService audit)
     {
         _invoices = invoices;
+        _audit = audit;
         _organizations = organizations;
         _authorization = authorization;
         _support = support;
@@ -43,6 +46,9 @@ public class DetailsModel : PageModel
 
     /// <summary>Owners and Billing users change subscriptions.</summary>
     public bool CanBill { get; private set; }
+
+    /// <summary>Who did what on the Audit tab: actor ids as emails, like the Audit log page.</summary>
+    public IReadOnlyDictionary<string, string> Actors { get; private set; } = new Dictionary<string, string>();
 
     /// <summary>Support sessions still running in this organization.</summary>
     public IReadOnlyList<Inprem.Platform.Domain.Support.SupportSession> ActiveSupport { get; private set; } = Array.Empty<Inprem.Platform.Domain.Support.SupportSession>();
@@ -62,6 +68,7 @@ public class DetailsModel : PageModel
         CanSupport = (await _authorization.AuthorizeAsync(User, ProviderPolicies.SupportSessions)).Succeeded;
         CanBill = (await _authorization.AuthorizeAsync(User, ProviderPolicies.Billing)).Succeeded;
         if (Tab is "subscription" or "invoices") Billing = await _billing.GetAsync(id, HttpContext.RequestAborted);
+        if (Tab == "audit") Actors = await _audit.ActorNamesAsync(HttpContext.RequestAborted);
         if (Tab == "invoices" && CanBill) Invoices = (await _invoices.ListAsync(new(TenantId: id), HttpContext.RequestAborted)).Items;
         ActiveSupport = (await _support.ListForTenantAsync(id, HttpContext.RequestAborted)).Where(s => s.IsActive(_clock.UtcNow)).ToList();
         return Page();

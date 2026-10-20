@@ -110,7 +110,6 @@ These are known and not yet fixed. You don't need to report them again.
 
 | Where | What you see | Status |
 |---|---|---|
-| Console → an organization → **Audit** tab | **Who** shows an account id such as `provider:85edf45f-…` instead of the email (your T1-6 note). The console's own **Audit log** page shows the email | Small fix, not done yet |
 | Local copy only: after a support session (T1-8) | The console asks you to sign in again, or shows **No access**. On one address the support session replaces your console sign-in (your T1-8 note). Production has separate addresses and is not affected | By design for one-address copies |
 | Console → **Extend trial** | Only on the **Subscription** tab, for an organization on a free trial (or whose trial ended) that does not pay by PayPal. Existing organizations are on **Free**, so they don't show it (your T2-2 note). Use the organization you create in T1-5 | Works as designed |
 | Owner texts | The demo website never asks the owner to agree to texts, so trial and billing alerts reach owners by email only in these tests | Website decision |
@@ -118,6 +117,7 @@ These are known and not yet fixed. You don't need to report them again.
 **Fixed since your earlier results:**
 - T1-3: accepting an invitation now shows **Choose organization** (2026-10-16).
 - T2-3: a suspended organization is read-only, with a banner (2026-10-17).
+- T1-6: an organization's **Audit** tab shows who by email, like the **Audit log** page (2026-10-20).
 
 ---
 
@@ -130,7 +130,7 @@ These are known and not yet fixed. You don't need to report them again.
 | The new addresses `app.` and `admin.` | All cutover checks | DNS, certificates and deployment (`docs/multitenancy/runbooks/domain-cutover.md`) |
 | The web team's real website | All of Phase 3 | The web team's site on a test address |
 
-Automated tests cover all of these with a pretend PayPal and a pretend Twilio: 926 tests, all passing on 2026-10-20.
+Automated tests cover all of these with a pretend PayPal and a pretend Twilio: 927 tests, all passing on 2026-10-20.
 
 ---
 
