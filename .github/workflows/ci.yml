@@ -7,7 +7,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: ["mt/**"]
+    branches: ["rmt/**"]
 
 permissions:
   contents: read
