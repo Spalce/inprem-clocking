@@ -101,6 +101,7 @@ public static class PublicApiHosting
             c.DocInclusionPredicate((document, api) => api.GroupName == document);
             c.AddSecurityDefinition("signupToken", new OpenApiSecurityScheme { Type = SecuritySchemeType.Http, Scheme = "bearer", Description = "Returned by POST /signups." });
             c.AddSecurityDefinition("billingAccessToken", new OpenApiSecurityScheme { Type = SecuritySchemeType.Http, Scheme = "bearer", Description = "From POST /billing-access/sessions." });
+            c.OperationFilter<PublicApiOperationFilter>();
         });
         return services;
     }
@@ -133,6 +134,12 @@ public static class PublicApiHosting
     {
         app.UseCors();
         app.UseRateLimiter();
+        // The idempotency filter hashes the body after the endpoint has read it: keep that body re-readable.
+        app.Use((context, next) =>
+        {
+            if (context.GetEndpoint()?.Metadata.GetMetadata<RequiresIdempotencyKey>() != null) context.Request.EnableBuffering();
+            return next(context);
+        });
         if (app.Services.GetRequiredService<IOptions<PublicApiOptions>>().Value.EnableDocs && app.Services.GetRequiredService<IOptions<SiteOptions>>().Value.ServesApp)
         {
             app.UseSwagger(c => c.RouteTemplate = DocsPath.TrimStart('/') + "/{documentName}/openapi.json");
@@ -173,6 +180,40 @@ public static class PublicApiHosting
 public interface IPublicApiEndpointContributor
 {
     void Map(RouteGroupBuilder api);
+}
+
+/// <summary>
+/// The OpenAPI document declares what the code requires: the <c>Idempotency-Key</c> header, and which
+/// token each protected endpoint takes (so the docs page can send them, as the agreed draft does).
+/// </summary>
+internal sealed class PublicApiOperationFilter : Swashbuckle.AspNetCore.SwaggerGen.IOperationFilter
+{
+    public void Apply(OpenApiOperation operation, Swashbuckle.AspNetCore.SwaggerGen.OperationFilterContext context)
+    {
+        var metadata = context.ApiDescription.ActionDescriptor.EndpointMetadata;
+        if (metadata.OfType<RequiresIdempotencyKey>().Any())
+        {
+            operation.Parameters ??= new List<OpenApiParameter>();
+            operation.Parameters.Add(new OpenApiParameter
+            {
+                Name = IdempotencyFilter.Header,
+                In = ParameterLocation.Header,
+                Required = true,
+                Description = "One per user action (for example a UUID). The same key and body within 24 hours get the first answer again.",
+                Schema = new OpenApiSchema { Type = "string", MinLength = 8, MaxLength = 100 },
+            });
+        }
+
+        var policies = metadata.OfType<Microsoft.AspNetCore.Authorization.IAuthorizeData>().Select(a => a.Policy).ToHashSet();
+        var schemes = new List<string>();
+        if (policies.Contains(PublicApiHosting.SignupPolicy) || policies.Contains(PublicApiHosting.AnyTokenPolicy)) schemes.Add("signupToken");
+        if (policies.Contains(PublicApiHosting.BillingPolicy) || policies.Contains(PublicApiHosting.AnyTokenPolicy)) schemes.Add("billingAccessToken");
+        if (schemes.Count > 0)
+            operation.Security = schemes.Select(scheme => new OpenApiSecurityRequirement
+            {
+                [new OpenApiSecurityScheme { Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = scheme } }] = new List<string>(),
+            }).ToList();
+    }
 }
 
 /// <summary>Marks the website API's endpoints (no organization context, no back-office cookie).</summary>

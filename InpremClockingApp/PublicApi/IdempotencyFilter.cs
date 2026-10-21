@@ -97,7 +97,9 @@ public sealed class IdempotencyFilter : IEndpointFilter
 
     private static async Task<string> BodyHashAsync(HttpRequest request)
     {
+        // The endpoint has usually read its JSON body already; UsePublicApi keeps it re-readable (RequiresIdempotencyKey).
         request.EnableBuffering();
+        request.Body.Position = 0;
         using var buffer = new MemoryStream();
         await request.Body.CopyToAsync(buffer, request.HttpContext.RequestAborted);
         request.Body.Position = 0;
@@ -144,9 +146,15 @@ public sealed class IdempotencyFilter : IEndpointFilter
     }
 }
 
+/// <summary>Marks an endpoint that takes an <c>Idempotency-Key</c>: its body is buffered, and the OpenAPI document declares the header.</summary>
+public sealed class RequiresIdempotencyKey
+{
+    public static readonly RequiresIdempotencyKey Instance = new();
+}
+
 public static class IdempotencyExtensions
 {
     /// <summary>The endpoint requires an Idempotency-Key and answers repeats from the stored first answer.</summary>
     public static TBuilder RequireIdempotency<TBuilder>(this TBuilder builder) where TBuilder : IEndpointConventionBuilder =>
-        builder.AddEndpointFilter(new IdempotencyFilter());
+        builder.WithMetadata(RequiresIdempotencyKey.Instance).AddEndpointFilter(new IdempotencyFilter());
 }

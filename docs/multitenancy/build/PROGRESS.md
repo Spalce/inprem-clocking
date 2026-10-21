@@ -130,6 +130,17 @@ _(date — what was tested — result)_
 
 ## Log
 
+- **2026-10-21 — Website API test guides; two API fixes found while writing them.**
+  - **Guides:** `docs/multitenancy/testing/website-api.md` (PowerShell, TA-1 to TA-13) and `website-api-swagger.md` (the docs page, TS-1 to TS-10). Both say where `captchaToken` comes from. Every expected answer was checked against the local copy.
+  - **Fix: the same `Idempotency-Key` with a changed body now answers `422 idempotency_key_reused`.**
+    - Before, it returned the first answer: the endpoints bind their JSON body before the filter runs, so the filter hashed an empty stream.
+    - `UsePublicApi` now buffers the body of endpoints marked `RequiresIdempotencyKey`, and `IdempotencyFilter` rewinds it before hashing.
+    - The existing test endpoint read no body, which is why the tests missed it. New test: `SignupTests.The_Same_Key_With_A_Changed_Signup_Is_Refused_Not_Answered_From_The_First` (failed before the fix).
+  - **Fix: the OpenAPI document declares the `Idempotency-Key` header and each endpoint's token** (`PublicApiOperationFilter`), as the agreed draft does, so the docs page can send them. The contract test `OpenApi_Is_Published_And_Matches_The_Agreed_Draft` now also compares tokens and the header with the draft.
+  - **Left for later:** the generated `ProblemDetails` lacks `code`, `traceId` and `errors`; `trialEndsAt` and `currentPeriodEnd` are written without `Z`.
+  - **Tests:** Unit 262, Architecture 11, Baseline 314, Integration 328, UI 13 (928), all passing.
+  - **Test data:** "API Test Centre 27199" was created in the local database while checking the guide.
+
 - **2026-10-20 — Handover document (developer: the Claude subscription ends in about two days).** `docs/multitenancy/HANDOVER.md` covers:
   - what to ask the project owner for;
   - where settings go;

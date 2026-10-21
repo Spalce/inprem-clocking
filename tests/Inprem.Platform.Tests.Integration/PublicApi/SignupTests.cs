@@ -246,6 +246,21 @@ public class SignupTests : IClassFixture<PublicApiFixture>
     }
 
     [Fact]
+    public async Task The_Same_Key_With_A_Changed_Signup_Is_Refused_Not_Answered_From_The_First()
+    {
+        // The endpoint reads its JSON body before the idempotency filter runs: the filter must still see that body.
+        var price = await PriceAsync();
+        var key = Guid.NewGuid().ToString();
+        var slug = $"web-{Guid.NewGuid():N}"[..14];
+        using var website = _app.CreateClient();
+        Assert.Equal(HttpStatusCode.Created, (await website.SendAsync(Post("/signups", Body(price.Id, slug: slug), key))).StatusCode);
+
+        var changed = await website.SendAsync(Post("/signups", Body(price.Id, slug: slug + "-b"), key));
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, changed.StatusCode);
+        Assert.Equal(Problems.IdempotencyKeyReused, await CodeAsync(changed));
+    }
+
+    [Fact]
     public async Task A_Signup_Token_Sees_Only_Its_Own_Signup_And_Expires()
     {
         var price = await PriceAsync();

@@ -5,6 +5,7 @@ using InpremClockingApp.PublicApi;
 using InpremClockingApp.Tests.Support.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.Swagger;
 using Xunit;
 using YamlDotNet.RepresentationModel;
@@ -233,6 +234,17 @@ public class ApiSkeletonTests : IClassFixture<PublicApiFixture>
                 Assert.Equal(((YamlScalarNode)draftOperation["operationId"]).Value, operation.OperationId);
                 var draftCodes = ((YamlMappingNode)draftOperation["responses"]).Children.Keys.Select(k => ((YamlScalarNode)k).Value).ToHashSet();
                 Assert.All(operation.Responses.Keys, code => Assert.Contains(code, draftCodes));
+
+                // The tokens and the Idempotency-Key header, as the draft declares them (so the docs page can send them).
+                var draftSchemes = draftOperation.Children.TryGetValue(new YamlScalarNode("security"), out var security)
+                    ? ((YamlSequenceNode)security).Children.SelectMany(r => ((YamlMappingNode)r).Children.Keys.Select(k => ((YamlScalarNode)k).Value!)).OrderBy(s => s).ToList()
+                    : new List<string>();
+                var schemes = (operation.Security ?? new List<OpenApiSecurityRequirement>()).SelectMany(r => r.Keys.Select(k => k.Reference.Id)).OrderBy(s => s).ToList();
+                Assert.True(draftSchemes.SequenceEqual(schemes), $"{verb.ToUpperInvariant()} {relative}: tokens [{string.Join(", ", schemes)}], the draft has [{string.Join(", ", draftSchemes)}].");
+                var draftKey = draftOperation.Children.TryGetValue(new YamlScalarNode("parameters"), out var parameters)
+                    && ((YamlSequenceNode)parameters).Children.OfType<YamlMappingNode>().Any(p => p.Children.TryGetValue(new YamlScalarNode("$ref"), out var r) && ((YamlScalarNode)r).Value == "#/components/parameters/IdempotencyKey");
+                var key = operation.Parameters?.Any(p => p.Name == "Idempotency-Key" && p.In == ParameterLocation.Header && p.Required) == true;
+                Assert.True(draftKey == key, $"{verb.ToUpperInvariant()} {relative}: Idempotency-Key {(key ? "declared" : "missing")}, the draft {(draftKey ? "requires it" : "has none")}.");
                 checkedOperations++;
             }
         }

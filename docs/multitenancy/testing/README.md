@@ -14,6 +14,8 @@ Record the result of each test in the [results sheet](#results-sheet) below.
 | [Phase 1: organizations and the console](phase1-organizations-console.md) | Separate organizations, the Provider Console, plans, support sessions, the audit log | 60 min |
 | [Phase 2: billing and unpaid accounts](phase2-billing.md) | The Billing page, trials, free access, read-only accounts, PayPal subscriptions | 30 min |
 | [Phase 3: website sign-up](phase3-website-signup.md) | Sign-up and subscription management from the (demo) website | 30 min |
+| [Website API: direct calls](website-api.md) | The website API from PowerShell: error codes, tokens, the `Idempotency-Key`, limits (TA-1 to TA-13) | 45 min |
+| [Website API: the docs page](website-api-swagger.md) | The API's Swagger page at `/api/public/docs` and what it can try (TS-1 to TS-10) | 20 min |
 | [Phase 4: invoices and refunds](phase4-invoices.md) | Invoices, offline payments, refunds, the monthly reconciliation | 30 min |
 | [Phase 5: messages and texts](phase5-messages-texts.md) | Emails and texts, sign-in codes by text, the console's Notifications pages | 45 min |
 | [Phase 6: staff alerts](phase6-staff-alerts.md) | Reminders to staff and volunteers still clocked in or on a long break | 45 min |
@@ -112,12 +114,14 @@ These are known and not yet fixed. You don't need to report them again.
 |---|---|---|
 | Local copy only: after a support session (T1-8) | The console asks you to sign in again, or shows **No access**. On one address the support session replaces your console sign-in (your T1-8 note). Production has separate addresses and is not affected | By design for one-address copies |
 | Console → **Extend trial** | Only on the **Subscription** tab, for an organization on a free trial (or whose trial ended) that does not pay by PayPal. Existing organizations are on **Free**, so they don't show it (your T2-2 note). Use the organization you create in T1-5 | Works as designed |
+| Website API (TS-8, TA-9) | The docs page's error description lacks `code`, `traceId` and `errors`; `trialEndsAt` and `currentPeriodEnd` have no `Z` at the end. Details in the two API guides | Small, to tidy later |
 | Owner texts | The demo website never asks the owner to agree to texts, so trial and billing alerts reach owners by email only in these tests | Website decision |
 
 **Fixed since your earlier results:**
 - T1-3: accepting an invitation now shows **Choose organization** (2026-10-16).
 - T2-3: a suspended organization is read-only, with a banner (2026-10-17).
 - T1-6: an organization's **Audit** tab shows who by email, like the **Audit log** page (2026-10-20).
+- Website API: the same `Idempotency-Key` with a changed body gives `422` (TA-3), and the docs page sends the `Idempotency-Key` and the tokens (TS-9) (2026-10-21).
 
 ---
 
@@ -130,7 +134,7 @@ These are known and not yet fixed. You don't need to report them again.
 | The new addresses `app.` and `admin.` | All cutover checks | DNS, certificates and deployment (`docs/multitenancy/runbooks/domain-cutover.md`) |
 | The web team's real website | All of Phase 3 | The web team's site on a test address |
 
-Automated tests cover all of these with a pretend PayPal and a pretend Twilio: 927 tests, all passing on 2026-10-20.
+Automated tests cover all of these with a pretend PayPal and a pretend Twilio: 928 tests, all passing on 2026-10-21.
 
 ---
 
@@ -178,6 +182,8 @@ Tester: ______ · Address: ______ · Date: ______
 | T3-8 | Cancel at PayPal (sandbox) | | |
 | T3-9 | Payment problem (sandbox) | | |
 | T3-10 | Demo website off unless switched on | | |
+| TA-1 to TA-13 | Website API, direct calls: results in [its own sheet](website-api.md#results) | | |
+| TS-1 to TS-10 | Website API docs page: results in [its own sheet](website-api-swagger.md#results) | | |
 | T4-1 | Create and send an offline invoice | | |
 | T4-2 | Record offline payments | | |
 | T4-3 | Cancel an unpaid invoice | | |
