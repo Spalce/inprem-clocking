@@ -182,6 +182,30 @@ public class ContentSecurityPolicyBrowserTests : IClassFixture<CspFixture>, IAsy
     }
 
     [Fact]
+    public async Task Sign_In_Checks_Empty_Fields_In_The_Browser_With_jQuery_Validation_1_22_1()
+    {
+        // Step 7.6 (ZAP finding): the Identity pages moved from jQuery Validation 1.17.0 to 1.22.1 (cdnjs, or the
+        // local copy when cdnjs can't be reached). The approved sign-in form still checks its fields before sending.
+        var page = await NewPageAsync();
+        var scripts = new List<string>();
+        var posts = 0;
+        page.Request += (_, request) =>
+        {
+            if (request.Url.Contains("jquery.validate", StringComparison.Ordinal)) scripts.Add(request.Url);
+            if (request.Method == "POST" && request.Url.Contains("/Identity/Account/Login", StringComparison.OrdinalIgnoreCase)) posts++;
+        };
+        await page.GotoAsync("/Identity/Account/Login", new PageGotoOptions { WaitUntil = WaitUntilState.NetworkIdle });
+
+        await page.ClickAsync("button[type='submit']");
+        await page.Locator("input[name='Input.Email'].input-validation-error").WaitForAsync(new() { Timeout = 10_000 });
+
+        Assert.Equal(0, posts); // checked in the browser, nothing sent
+        Assert.Contains(scripts, s => s.Contains("1.22.1/jquery.validate.min.js", StringComparison.Ordinal));
+        Assert.DoesNotContain(scripts, s => s.Contains("1.17.0", StringComparison.Ordinal) || s.Contains("/Identity/lib/jquery-validation/", StringComparison.Ordinal));
+        Assert.Empty(await page.EvaluateAsync<string[]>("() => window.__csp || []"));
+    }
+
+    [Fact]
     public async Task The_Policy_Really_Blocks_What_It_Does_Not_Allow()
     {
         // The check above is only worth something if the recorder sees a real block.

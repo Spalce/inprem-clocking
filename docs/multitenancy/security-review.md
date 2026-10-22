@@ -8,7 +8,7 @@ What step 7.6 checked, what it changed, and what is left. Started 2026-10-22 at 
 | Reads past the organization filters (`IgnoreQueryFilters`) | Reviewed, 20 in 6 files; pinned by a test |
 | Logs: no passwords, tokens, codes, full emails, phone numbers or payloads | Checked by a test; nothing found |
 | Dependency and secret scans | In CI (vulnerable packages, Gitleaks). One low advisory is still to review (below) |
-| OWASP ZAP baseline scan | Run 2026-10-22: **0 high findings**; 3 medium, all explained, one needing a decision (section 4) |
+| OWASP ZAP baseline scan | Run 2026-10-22: **0 high findings**. Fixed since: jQuery Validation (now 1.22.1) and the anti-forgery cookie's Secure flag (section 4) |
 
 ---
 
@@ -131,9 +131,9 @@ The baseline scan only reads, for 2 minutes: it follows links, then checks every
 | Risk | Finding | Where | Verdict |
 |---|---|---|---|
 | Medium | CSP header not set | Every page | Expected: the policy is in `ReportOnly` mode (ZAP lists it separately as "Report-Only Header Found"). Goes away with `Enforce` |
-| Medium | Vulnerable JS library: jQuery Validation 1.19.5 | `/Identity/lib/jquery-validation/…`, the Identity pages (sign-in, forgot password, …) | **Needs a decision.** In Development the pages load 1.19.5 from the Identity UI package. In every other environment they load **1.17.0** from cdnjs (`Areas/Identity/Pages/_ValidationScriptsPartial.cshtml`, a frozen C1 file). Versions before 1.20.0 have known issues: slow regular expressions, which only slow the visitor's own browser, and an XSS through validation messages. The XSS needs the app to put someone else's text into a message, which these pages don't. Low practical risk; the fix is a one-file change to a frozen file (1.21.0 from cdnjs, with its integrity hash) |
+| Medium | Vulnerable JS library: jQuery Validation 1.19.5 | `/Identity/lib/jquery-validation/…`, the Identity pages (sign-in, forgot password, …) | **Fixed 2026-10-22** (developer's approval to change the frozen `Areas/Identity/Pages/_ValidationScriptsPartial.cshtml`). Before, outside Development the pages loaded **1.17.0** from cdnjs, and in Development 1.19.5 from the Identity UI package; versions before 1.20.0 have known issues. Now **1.22.1** everywhere: cdnjs with its `sha512` integrity hash, falling back to a local copy in `wwwroot/vendor/jquery-validation/1.22.1/` (new folder, same hash). Tests: the sign-in page names 1.22.1 and its fallback is served; in a browser, the empty sign-in form is checked without being sent |
 | Medium | Sub-resource integrity attribute missing | The Google Fonts stylesheet in the layouts | Accepted: Google Fonts builds its CSS per browser, so it can't have a fixed integrity hash. The cdnjs scripts have one. Removing the risk means hosting the icon font ourselves (frozen layouts) |
-| Low | Cookie without Secure flag | `.AspNetCore.Antiforgery.*` on the sign-in page | Small fix available in new code (`SiteHosting.cs`: anti-forgery cookie `SecurePolicy = Always`, like the sign-in cookie). The site is https-only, so nothing changes for users |
+| Low | Cookie without Secure flag | `.AspNetCore.Antiforgery.*` on the sign-in page | **Fixed 2026-10-22** in `SiteHosting.cs`: `SecurePolicy = SameAsRequest`, so the cookie is Secure on every https request (all of them on the hosted sites, which redirect http). Not `Always`: anti-forgery then refuses plain-http requests, which broke every form in local http runs and the browser tests. Test: the cookie has `secure` and `httponly` |
 | Low | Strict-Transport-Security not set | Every page | Expected in Development. Outside Development, `UseHsts` sends it (`Program.cs` line 171) |
 | Low | Cross-Origin-Embedder/Opener/Resource-Policy missing | Pages and files | Accepted for now. `Cross-Origin-Embedder-Policy` would block Google Fonts and Turnstile. The other two add little to `X-Frame-Options` and the CSP. Revisit with the policy on `Enforce` |
 
@@ -147,7 +147,5 @@ Informational, nothing to do:
 
 ## 5. Still to do in 7.6
 
-- **Decide on jQuery Validation** (section 4): updating the frozen `_ValidationScriptsPartial.cshtml` to 1.21.0.
-- **The anti-forgery cookie's Secure flag** (section 4): a small change in `SiteHosting.cs`.
 - **Low advisory GHSA-g4vj-cjjj-v7hg** (NuGet.Packaging / NuGet.Protocol 6.11.0, from the design-time packages). Low severity, so the CI gate doesn't fail on it. Review whether a newer design-time package removes it.
 - **Secret scan:** CI's Gitleaks job passes with one known finding: the `EmailService` SMTP credential, in `.gitleaksignore` since G0. Rotating it and removing the ignore line waits for the mailbox owner (PROGRESS, open follow-ups).

@@ -170,6 +170,36 @@ public class SecurityHeadersTests : IAsyncLifetime
         Assert.InRange(logged, SecurityHeadersMiddleware.ReportsLoggedPerMinute, sent - 1);
     }
 
+    [Fact]
+    public async Task The_Anti_Forgery_Cookie_Is_Https_Only()
+    {
+        // ZAP baseline finding (2026-10-22): the sign-in cookie had the flag, the anti-forgery cookie did not.
+        await using var app = Host();
+        using var response = await app.Client().GetAsync("/Identity/Account/Login");
+        var cookie = Assert.Single(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith(".AspNetCore.Antiforgery.", StringComparison.Ordinal));
+        Assert.Contains("secure", cookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("httponly", cookie, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task The_Sign_In_Pages_Load_jQuery_Validation_1_22_1_With_A_Served_Fallback()
+    {
+        // ZAP baseline finding (2026-10-22): 1.17.0 from cdnjs (and 1.19.5 in Development) had known issues.
+        await using var app = Host();
+        using var client = app.Client();
+        var html = await (await client.GetAsync("/Identity/Account/Login")).Content.ReadAsStringAsync();
+        Assert.Contains("https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.22.1/jquery.validate.min.js", html);
+        Assert.Contains("sha512-qu7dMuIm2f0KcKZ3BOoP4c+Hn+r4E8PbD2Ro4rmKsOyheCxcwhzQpf6SojA76dn+owqfANzfTFUTkGA+HpHjOA==", html);
+        Assert.DoesNotContain("jquery-validate/1.17.0", html);
+
+        foreach (var file in new[] { "jquery.validate.min.js", "jquery.validate.js" })
+        {
+            using var fallback = await client.GetAsync($"/vendor/jquery-validation/1.22.1/{file}");
+            Assert.Equal(HttpStatusCode.OK, fallback.StatusCode);
+            Assert.Contains("v1.22.1", await fallback.Content.ReadAsStringAsync());
+        }
+    }
+
     [Theory]
     [InlineData("https://a.test/p?code=1#x", "https://a.test/p")]
     [InlineData("inline", "inline")]

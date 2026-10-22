@@ -51,6 +51,11 @@ public static class SiteHosting
                 cookie.Cookie.SameSite = adminOnly ? SameSiteMode.Strict : SameSiteMode.Lax;
             });
 
+        // Step 7.6 (ZAP finding): the anti-forgery cookie is marked Secure on https, which is every request on the
+        // hosted sites (they redirect http to https). Not "Always": anti-forgery then refuses plain-http requests,
+        // which local runs and the browser tests use.
+        services.Configure<Microsoft.AspNetCore.Antiforgery.AntiforgeryOptions>(antiforgery => antiforgery.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest);
+
         // Keys in the database (platform.DataProtectionKeys) so every instance of a site, and
         // every redeployment, can read the cookies; a separate application name per site, so the
         // Admin site cannot read App cookies and vice versa.

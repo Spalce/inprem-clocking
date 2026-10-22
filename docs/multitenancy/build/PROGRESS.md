@@ -144,7 +144,13 @@ _(date — what was tested — result)_
   - **Found by the enforced browser tests:** Playwright's `WaitForFunctionAsync` evaluates a string, which the policy refuses (no `'unsafe-eval'`). The demo website test now waits with a locator; the app itself needed nothing.
   - **Tests:** Unit 262, Architecture 14, Baseline 314, Integration 352, UI 17 (959), all passing.
   - **d. OWASP ZAP baseline scan (2026-10-22):** 0 high findings; 3 medium. The CSP is in report-only mode, as planned. Google Fonts has no integrity hash, which can't be fixed. jQuery Validation is outdated: 1.17.0 from cdnjs outside Development, in the frozen `Areas/Identity/Pages/_ValidationScriptsPartial.cshtml`, which needs the developer's decision. Low: the anti-forgery cookie lacks the Secure flag. Details in `security-review.md` section 4.
-  - **Left in 7.6:** the jQuery Validation decision, the anti-forgery cookie flag, the low NuGet advisory, and the `EmailService` credential (waits for the mailbox owner). Switching the policy to `Enforce` comes after clean reports on the test site.
+  - **Fixed after the scan (developer's approval, 2026-10-22):**
+    - jQuery Validation 1.17.0/1.19.5 → 1.22.1: the frozen `Areas/Identity/Pages/_ValidationScriptsPartial.cshtml` (approved C1 change, 4 lines), and a local fallback in `wwwroot/vendor/jquery-validation/1.22.1/` (new folder).
+    - The anti-forgery cookie is Secure on https (`SameAsRequest`). `Always` was tried first: it made anti-forgery refuse plain-http requests, which the browser tests caught.
+    - New tests: 2 in `SecurityHeadersTests`, 1 browser test (the empty sign-in form is checked with 1.22.1).
+    - Tests: Unit 262, Architecture 14, Baseline 314, Integration 354, UI 18 (962), all passing.
+  - **Pushed `mt/phase7`, not merged:** the developer tests what is new in Phase 7 first.
+  - **Left in 7.6:** the low NuGet advisory, and the `EmailService` credential (waits for the mailbox owner). Switching the policy to `Enforce` comes after clean reports on the test site.
 
 - **2026-10-21 — Website API test guides; two API fixes found while writing them.**
   - **Guides:** `docs/multitenancy/testing/website-api.md` (PowerShell, TA-1 to TA-13) and `website-api-swagger.md` (the docs page, TS-1 to TS-10). Both say where `captchaToken` comes from. Every expected answer was checked against the local copy.
