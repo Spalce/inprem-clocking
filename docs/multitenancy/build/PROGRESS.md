@@ -10,7 +10,7 @@ Claude Code updates this file at the end of every step. Newest entries at the to
 - **Merged:** the cutover preparation into `mt/integration` (fast-forward to `29aa38a`, local; not pushed), developer's request.
 - **Testing first (developer, 2026-10-20):** "finish everything before hardening". Phase 7 waits until the developer has tested Phases 0 to 6 with the guides in `docs/multitenancy/testing/`. Step 7.1 (anti-forgery) also needs a decision first (see the log entry of 2026-10-20, "Test guides").
 - **Next step:** the developer tests with `docs/multitenancy/testing/`; then Phase 7 (its entry needs Phases 0–6 exit checks, several of which wait for PayPal, Twilio and staging)
-- **Branch:** `mt/domain-cutover` (from `mt/integration` after the Phase 6 merge)
+- **Branch:** `mt/integration` (everything so far is merged there; pushed to `fa7b6a5`, later commits local)
 
 ## Phase status
 

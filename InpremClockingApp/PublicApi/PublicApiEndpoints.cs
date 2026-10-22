@@ -2,7 +2,6 @@ using System.Globalization;
 using Inprem.Platform.Application.Billing;
 using Inprem.Platform.Domain.Billing;
 using Inprem.Platform.Application.Organizations;
-using Inprem.Platform.Domain.Billing;
 using Inprem.Platform.Domain.Organizations;
 using InpremClockingApp.Provider.Organizations;
 using Microsoft.Extensions.Caching.Memory;
