@@ -8,7 +8,7 @@ What step 7.6 checked, what it changed, and what is left. Started 2026-10-22 at 
 | Reads past the organization filters (`IgnoreQueryFilters`) | Reviewed, 20 in 6 files; pinned by a test |
 | Logs: no passwords, tokens, codes, full emails, phone numbers or payloads | Checked by a test; nothing found |
 | Dependency and secret scans | In CI (vulnerable packages, Gitleaks). One low advisory is still to review (below) |
-| OWASP ZAP baseline scan | **Not run yet:** it needs Docker Desktop and a running copy (below) |
+| OWASP ZAP baseline scan | Run 2026-10-22: **0 high findings**; 3 medium, all explained, one needing a decision (section 4) |
 
 ---
 
@@ -116,12 +116,38 @@ The flows:
 
 ---
 
-## 4. Still to do in 7.6
+## 4. OWASP ZAP baseline scan (2026-10-22)
 
-- **OWASP ZAP baseline scan** (0 high findings). Needs Docker Desktop running and a copy of the app the scanner can reach. For example, the local copy at `https://localhost:7078`:
-  ```powershell
-  docker run --rm -t ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t https://host.docker.internal:7078 -r zap-report.html
-  ```
-  Or the test site's address. Record the result here.
+**How it was run:** a Release build of `mt/phase7` on `https://localhost:7092` (Development settings, the local database, jobs off). The scanner was `ghcr.io/zaproxy/zaproxy:stable` in Docker, aimed at `https://host.docker.internal:7092`:
+
+```powershell
+docker run --rm -v "<folder>:/zap/wrk:rw" -t ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t https://host.docker.internal:7092 -m 2 -r zap-report.html -J zap-report.json -I
+```
+
+The baseline scan only reads, for 2 minutes: it follows links, then checks every answer passively. It doesn't attack, sign in or change data, so it saw the signed-out pages only (27 addresses).
+
+**Result: 0 high, 3 medium, 4 low.** The rest are informational. 55 checks passed.
+
+| Risk | Finding | Where | Verdict |
+|---|---|---|---|
+| Medium | CSP header not set | Every page | Expected: the policy is in `ReportOnly` mode (ZAP lists it separately as "Report-Only Header Found"). Goes away with `Enforce` |
+| Medium | Vulnerable JS library: jQuery Validation 1.19.5 | `/Identity/lib/jquery-validation/…`, the Identity pages (sign-in, forgot password, …) | **Needs a decision.** In Development the pages load 1.19.5 from the Identity UI package. In every other environment they load **1.17.0** from cdnjs (`Areas/Identity/Pages/_ValidationScriptsPartial.cshtml`, a frozen C1 file). Versions before 1.20.0 have known issues: slow regular expressions, which only slow the visitor's own browser, and an XSS through validation messages. The XSS needs the app to put someone else's text into a message, which these pages don't. Low practical risk; the fix is a one-file change to a frozen file (1.21.0 from cdnjs, with its integrity hash) |
+| Medium | Sub-resource integrity attribute missing | The Google Fonts stylesheet in the layouts | Accepted: Google Fonts builds its CSS per browser, so it can't have a fixed integrity hash. The cdnjs scripts have one. Removing the risk means hosting the icon font ourselves (frozen layouts) |
+| Low | Cookie without Secure flag | `.AspNetCore.Antiforgery.*` on the sign-in page | Small fix available in new code (`SiteHosting.cs`: anti-forgery cookie `SecurePolicy = Always`, like the sign-in cookie). The site is https-only, so nothing changes for users |
+| Low | Strict-Transport-Security not set | Every page | Expected in Development. Outside Development, `UseHsts` sends it (`Program.cs` line 171) |
+| Low | Cross-Origin-Embedder/Opener/Resource-Policy missing | Pages and files | Accepted for now. `Cross-Origin-Embedder-Policy` would block Google Fonts and Turnstile. The other two add little to `X-Frame-Options` and the CSP. Revisit with the policy on `Enforce` |
+
+Informational, nothing to do:
+- "suspicious comments" (in the original pages and jQuery);
+- cache-control notes;
+- the sign-in form and its anti-forgery cookie being recognised;
+- "user-controllable attribute" on the sign-in form's own fields (Razor encodes them).
+
+**Next:** after the policy is on `Enforce` on the test site, scan the test site's address the same way. A scan signed in as an organization admin (ZAP's authenticated scan) is a separate, longer job.
+
+## 5. Still to do in 7.6
+
+- **Decide on jQuery Validation** (section 4): updating the frozen `_ValidationScriptsPartial.cshtml` to 1.21.0.
+- **The anti-forgery cookie's Secure flag** (section 4): a small change in `SiteHosting.cs`.
 - **Low advisory GHSA-g4vj-cjjj-v7hg** (NuGet.Packaging / NuGet.Protocol 6.11.0, from the design-time packages). Low severity, so the CI gate doesn't fail on it. Review whether a newer design-time package removes it.
 - **Secret scan:** CI's Gitleaks job passes with one known finding: the `EmailService` SMTP credential, in `.gitleaksignore` since G0. Rotating it and removing the ignore line waits for the mailbox owner (PROGRESS, open follow-ups).
