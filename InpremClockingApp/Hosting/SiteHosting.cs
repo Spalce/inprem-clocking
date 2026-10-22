@@ -32,6 +32,10 @@ public static class SiteHosting
         services.AddOptions<LegacyRedirectOptions>().Bind(builder.Configuration.GetSection(LegacyRedirectOptions.SectionName)).ValidateOnStart();
         services.AddTransient<IStartupFilter, LegacyRedirectStartupFilter>();
 
+        // Step 7.6: security headers and the Content-Security-Policy (ReportOnly unless SecurityHeaders:ContentSecurityPolicy says otherwise).
+        services.AddOptions<SecurityHeadersOptions>().Bind(builder.Configuration.GetSection(SecurityHeadersOptions.SectionName)).ValidateOnStart();
+        services.AddTransient<IStartupFilter, SecurityHeadersStartupFilter>();
+
         services.AddSingleton<IConfigureOptions<RazorPagesOptions>, ConfigureSiteRouting>();
         services.AddSingleton<IConfigureOptions<Microsoft.AspNetCore.Mvc.MvcOptions>, ConfigureSiteRouting>();
 

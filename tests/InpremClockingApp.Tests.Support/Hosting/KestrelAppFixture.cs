@@ -18,7 +18,21 @@ public class KestrelAppFixture : AppFixture
     /// <summary>Settings for this fixture's app (a subclass overrides it, e.g. to switch the demo website on).</summary>
     protected virtual IReadOnlyDictionary<string, string?> Settings => new Dictionary<string, string?>();
 
-    private protected override InpremAppFactory CreateFactory(string connectionString) => new KestrelAppFactory(connectionString, Settings);
+    /// <summary>
+    /// Browser tests run with the Content-Security-Policy enforced (step 7.6), so a page script or
+    /// style the policy would block fails the test that uses it. A subclass may override it.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<string, string?> BrowserDefaults = new Dictionary<string, string?>
+    {
+        ["SecurityHeaders:ContentSecurityPolicy"] = "Enforce",
+    };
+
+    private protected override InpremAppFactory CreateFactory(string connectionString)
+    {
+        var settings = new Dictionary<string, string?>(BrowserDefaults);
+        foreach (var (key, value) in Settings) settings[key] = value;
+        return new KestrelAppFactory(connectionString, settings);
+    }
 
     private protected override void StartServer(InpremAppFactory factory) => ((KestrelAppFactory)factory).StartKestrel();
 

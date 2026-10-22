@@ -130,6 +130,21 @@ _(date — what was tested — result)_
 
 ## Log
 
+- **2026-10-22 — Phase 7 step 7.6 (security review), parts a to c; branch `mt/phase7`.**
+  - **Started early at the developer's request** ("yes, so long as it will not break anything built and tested"), before the Phase 0–6 exit checks that wait for PayPal, Twilio and staging. The plan was approved with the policy in report-only mode by default.
+  - **a. Headers:**
+    - `Hosting/SecurityHeaders.cs` (new) is registered in `Hosting/SiteHosting.cs`; `Program.cs` and the frozen files are unchanged.
+    - It adds `nosniff`, `Referrer-Policy`, `X-Frame-Options` and `Permissions-Policy`, and a Content-Security-Policy set by `SecurityHeaders:ContentSecurityPolicy` (`ReportOnly` default, `Enforce`, `Off`; added to `appsettings.json`, C2-11).
+    - Reports go to `/csp-report`, logged without query strings, at most 30 a minute.
+    - Tests: `SecurityHeadersTests` (23); `ContentSecurityPolicyBrowserTests` (4): every owner, console and signed-out page in a browser with the policy enforced, nothing blocked.
+    - **All browser tests now run with the policy enforced** (`KestrelAppFixture`).
+  - **b. Reads past the organization filters:** 20 `IgnoreQueryFilters` calls in 6 web files, each reviewed, all OK. The architecture test `CrossOrganizationReadTests` pins them.
+  - **c. Logs:** `Security/LogScrubbingTests` runs sign-up, verification, sign-in, a billing link, a PayPal webhook and an incoming text. It found no password, token, code, full email, phone number or payload in any log line. A probe checks that the search works.
+  - **Docs:** `docs/multitenancy/security-review.md` (new); `runbooks/site-configuration.md` has the new setting.
+  - **Found by the enforced browser tests:** Playwright's `WaitForFunctionAsync` evaluates a string, which the policy refuses (no `'unsafe-eval'`). The demo website test now waits with a locator; the app itself needed nothing.
+  - **Tests:** Unit 262, Architecture 14, Baseline 314, Integration 352, UI 17 (959), all passing.
+  - **Left in 7.6:** the OWASP ZAP baseline scan (needs Docker Desktop), the low NuGet advisory, and the `EmailService` credential (waits for the mailbox owner). Switching the policy to `Enforce` comes after clean reports on the test site.
+
 - **2026-10-21 — Website API test guides; two API fixes found while writing them.**
   - **Guides:** `docs/multitenancy/testing/website-api.md` (PowerShell, TA-1 to TA-13) and `website-api-swagger.md` (the docs page, TS-1 to TS-10). Both say where `captchaToken` comes from. Every expected answer was checked against the local copy.
   - **Fix: the same `Idempotency-Key` with a changed body now answers `422 idempotency_key_reused`.**

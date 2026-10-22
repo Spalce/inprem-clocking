@@ -55,6 +55,12 @@ Pick one way per site:
 | `LegacyRedirect:FromHosts` | `inpremclockin.org`, `www.inpremclockin.org` | – | – | |
 | `LegacyRedirect:TargetBaseUrl` | `https://app.inpremclockin.org` | – | – | |
 
+### Security headers (step 7.6)
+
+| Setting | App | Admin | Test | Notes |
+|---|---|---|---|---|
+| `SecurityHeaders:ContentSecurityPolicy` | `ReportOnly` (default) | `ReportOnly` (default) | `ReportOnly`, then **`Enforce`** once the reports are clean | `ReportOnly`: browsers block nothing and report to `/csp-report`, which logs a warning "Content-Security-Policy report: …". `Enforce`: browsers block what the policy doesn't allow. `Off`: no policy. Any other value stops the app at start-up. See `docs/multitenancy/security-review.md` |
+
 ### PayPal and Twilio
 
 | Setting | App | Admin | Test | Notes |

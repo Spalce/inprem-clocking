@@ -119,7 +119,9 @@ public class DemoSiteBrowserTests : IClassFixture<DemoSiteFixture>, IAsyncLifeti
     {
         var done = page.Locator("[data-testid=check-email]");
         var error = page.Locator("[data-testid=error]");
-        await page.WaitForFunctionAsync("() => !document.getElementById('done').hidden || document.getElementById('error').textContent.trim().length > 0", null, new() { Timeout = 30_000 });
+        // A locator wait, not WaitForFunctionAsync: that one evaluates a string, which the enforced Content-Security-Policy refuses (no 'unsafe-eval').
+        await page.Locator("#done:not([hidden])").Or(page.Locator("#error").Filter(new() { HasTextRegex = new System.Text.RegularExpressions.Regex(@"\S") }))
+            .First.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 30_000 });
         Assert.True(await done.IsVisibleAsync(), $"Sign-up did not finish; the page says: {await error.TextContentAsync()}");
     }
 
