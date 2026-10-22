@@ -1,4 +1,4 @@
-# Test guides: everything built so far (Phases 0 to 6 and the cutover)
+# Test guides: everything built so far (Phases 0 to 7 and the cutover)
 
 These guides let you check by hand everything the multi-tenancy work has built. Each test:
 - starts with a **use case**: who needs it and why;
@@ -19,6 +19,7 @@ Record the result of each test in the [results sheet](#results-sheet) below.
 | [Phase 4: invoices and refunds](phase4-invoices.md) | Invoices, offline payments, refunds, the monthly reconciliation | 30 min |
 | [Phase 5: messages and texts](phase5-messages-texts.md) | Emails and texts, sign-in codes by text, the console's Notifications pages | 45 min |
 | [Phase 6: staff alerts](phase6-staff-alerts.md) | Reminders to staff and volunteers still clocked in or on a long break | 45 min |
+| [Phase 7: security hardening](phase7-security.md) | Security headers, the content-security policy (report-only and enforce), sign-in validation, Secure cookies (branch `mt/phase7`) | 40 min |
 | [Cutover checks](cutover-checks.md) | The new addresses `app.` and `admin.`, after deployment | 20 min |
 
 Test IDs T0-1 to T4-10 are the same as in the earlier "test guide (Phases 0 to 4)". Results you already recorded there still count. Re-test the ones that failed: they were fixed (see [Known issues](#known-issues)).
@@ -213,6 +214,7 @@ Tester: ______ · Address: ______ · Date: ______
 | T6-7 | End-of-day summary to admins | | |
 | T6-8 | Quiet hours and no consent | | |
 | T6-9 | Real staff texts (Twilio) | | |
+| T7-1 to T7-9 | Phase 7 security: results in [its own sheet](phase7-security.md#results) | | |
 | TC-1 | New addresses answer (after deployment) | | |
 | TC-2 | Admin site only from allowed addresses | | |
 | TC-3 | Old links move to app. | | |
