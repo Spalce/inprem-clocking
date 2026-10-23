@@ -43,8 +43,8 @@ public sealed class StandInSmsSender : ISmsSender
 }
 
 /// <summary>
-/// Texts through Twilio's Messaging Service (Twilio:Mode = Twilio): POST /2010-04-01/Accounts/{sid}/Messages.json
-/// with the Messaging Service, the number, the text and the status callback address. Twilio's answer
+/// Texts through Twilio (Twilio:Mode = Twilio): POST /2010-04-01/Accounts/{sid}/Messages.json with the Messaging
+/// Service (or, without one, Twilio:FromNumber), the number, the text and the status callback address. Twilio's answer
 /// decides what happens next: accepted (its id is kept), a temporary problem (tried again later), or
 /// a refusal (failed; error 21610 means the number replied STOP).
 /// </summary>
@@ -68,17 +68,19 @@ public sealed class TwilioSmsSender : ISmsSender
 
     public async Task<SmsSendResult> SendAsync(string toE164, string body, CancellationToken ct = default)
     {
+        var form = new Dictionary<string, string>
+        {
+            ["To"] = toE164,
+            ["Body"] = body,
+            ["StatusCallback"] = new Uri(_options.WebhookBaseUrl!, StatusCallbackPath).ToString(),
+        };
+        if (!string.IsNullOrWhiteSpace(_options.MessagingServiceSid)) form["MessagingServiceSid"] = _options.MessagingServiceSid;
+        else form["From"] = _options.FromNumber!;
         using var request = new HttpRequestMessage(HttpMethod.Post, $"2010-04-01/Accounts/{Uri.EscapeDataString(_options.AccountSid!)}/Messages.json")
         {
-            Content = new FormUrlEncodedContent(new Dictionary<string, string>
-            {
-                ["MessagingServiceSid"] = _options.MessagingServiceSid!,
-                ["To"] = toE164,
-                ["Body"] = body,
-                ["StatusCallback"] = new Uri(_options.WebhookBaseUrl!, StatusCallbackPath).ToString(),
-            }),
+            Content = new FormUrlEncodedContent(form),
         };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{_options.AccountSid}:{_options.AuthToken}")));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Basic", _options.BasicCredentials());
 
         HttpResponseMessage response;
         try

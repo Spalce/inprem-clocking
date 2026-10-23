@@ -79,9 +79,13 @@ public static class TwilioHosting
             : sp.GetRequiredService<StandInSmsSender>());
         services.AddSingleton<StandInOtpService>();
         services.AddSingleton<TwilioVerifyOtpService>();
-        services.AddSingleton<IOtpService>(sp => sp.GetRequiredService<IOptions<TwilioOptions>>().Value.Mode == SmsMode.Twilio
-            ? sp.GetRequiredService<TwilioVerifyOtpService>()
-            : sp.GetRequiredService<StandInOtpService>());
+        services.AddSingleton<TwilioMessagedOtpService>();
+        services.AddSingleton<IOtpService>(sp => sp.GetRequiredService<IOptions<TwilioOptions>>().Value switch
+        {
+            { Mode: SmsMode.Twilio, VerifyServiceSid: { Length: > 0 } } => sp.GetRequiredService<TwilioVerifyOtpService>(),
+            { Mode: SmsMode.Twilio } => sp.GetRequiredService<TwilioMessagedOtpService>(),
+            _ => sp.GetRequiredService<StandInOtpService>(),
+        });
         return services;
     }
 }

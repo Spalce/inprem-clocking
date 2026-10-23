@@ -43,7 +43,7 @@ public class SiteTemplateTests : IAsyncLifetime
     [MemberData(nameof(Templates))]
     public void A_Template_Holds_No_Secrets(string name)
     {
-        var secretKeys = new[] { "Password", "Secret", "AuthToken", "ClientId", "AccountSid", "MessagingServiceSid", "VerifyServiceSid", "WebhookId", "CodeHash", "ApiKeyHashes", "UserName", "From", "SmtpHost", "Mailbox", "RecoveryApprovers" };
+        var secretKeys = new[] { "Password", "Secret", "AuthToken", "ApiKeySid", "ApiKeySecret", "ClientId", "AccountSid", "MessagingServiceSid", "VerifyServiceSid", "WebhookId", "CodeHash", "ApiKeyHashes", "UserName", "From", "SmtpHost", "Mailbox", "RecoveryApprovers" };
         foreach (var (key, value) in Settings(name))
         {
             Assert.False(key.StartsWith("ConnectionStrings", StringComparison.OrdinalIgnoreCase), $"{name}: {key} belongs in the host's configuration.");

@@ -37,8 +37,10 @@ From the **project owner** (Inprem's PayPal Business account and Twilio account;
 | A PayPal sandbox **buyer** account (email + password) | made in the sandbox dashboard | for paying in tests |
 | Twilio **Account SID** | `AC` + 32 characters | `Twilio:AccountSid` |
 | Twilio **Auth Token** | 32 characters | `Twilio:AuthToken` |
-| Twilio **Messaging Service SID** (with a phone number in it) | `MG` + 32 characters | `Twilio:MessagingServiceSid` |
-| Twilio **Verify Service SID** | `VA` + 32 characters | `Twilio:VerifyServiceSid` |
+| Twilio **API key** (optional; replaces the Auth Token for sending) | `SK` + 32 characters, and a secret | `Twilio:ApiKeySid`, `Twilio:ApiKeySecret` |
+| Twilio **phone number**, or a **Messaging Service SID** with the number in it | `+1…`, or `MG` + 32 characters | `Twilio:FromNumber`, or `Twilio:MessagingServiceSid` |
+| Twilio **Verify Service SID** (optional) | `VA` + 32 characters | `Twilio:VerifyServiceSid`; without it the app makes the sign-in codes itself |
+| The **sender address** for email (Twilio Email API) | e.g. `no-reply@inpremclockin.org` | `Email:From` |
 | Their answers on: approval of the staff texts box (C3-8), sender registration, the 21:00 default (section 11) | written | `docs/multitenancy/build/PROGRESS.md`, "Open follow-ups" |
 
 Ask for them to be shared **privately** (not by email in plain text if avoidable). They must never be committed to the repository: CI's secret scan fails the build if they are.
@@ -158,9 +160,11 @@ Webhooks make it immediate.
 ### 4.1 What the code already does
 
 All in place, nothing to change:
-- texts through a **Messaging Service**, with delivery reports to `POST /webhooks/twilio/status`;
+- texts through a **Messaging Service**, or without one from a plain Twilio number (`Twilio:FromNumber`), with delivery reports to `POST /webhooks/twilio/status`;
 - STOP, START and HELP replies through `POST /webhooks/twilio/inbound`, both checked with Twilio's signature;
-- sign-in codes through **Twilio Verify**;
+- sign-in codes through **Twilio Verify**, or without it made by the app and texted like any other text;
+- emails through Twilio's Email API when `Email:Provider` = `Twilio` (`InpremClockingApp/Services/EmailService.cs`);
+- sign-in to Twilio with an API key when `Twilio:ApiKeySid` and `Twilio:ApiKeySecret` are set, otherwise with the Account SID and Auth Token;
 - consent, quiet hours, monthly and daily limits.
 
 Code: `src/Inprem.Platform.Infrastructure/Twilio/`, `InpremClockingApp/Notifications/TwilioWebhookController.cs`.
@@ -173,13 +177,13 @@ Code: `src/Inprem.Platform.Infrastructure/Twilio/`, `InpremClockingApp/Notificat
 2. **A phone number**: **Phone Numbers** → **Buy a number** (one with SMS). On a **trial** account, Twilio gives one number free, but:
    - it texts **only verified numbers** (add yours under **Verified Caller IDs**);
    - every text starts with "Sent from your Twilio trial account".
-3. **Messaging Service**: **Messaging** → **Services** → **Create Messaging Service**.
+3. **Messaging Service** (optional: without one, set `Twilio:FromNumber` to the number, and enter the incoming-messages address on the number itself: **Phone Numbers** → the number → **Messaging** → **A message comes in**, `https://<public address>/webhooks/twilio/inbound`, **HTTP POST**): **Messaging** → **Services** → **Create Messaging Service**.
    - **Sender Pool:** add the number.
    - **Integration** → **Incoming Messages**: choose "Send a webhook". Request URL: `https://<public address>/webhooks/twilio/inbound`, method **HTTP POST**.
    - Leave the **Status callback URL** empty: the app gives it with each text (`<Twilio:WebhookBaseUrl>/webhooks/twilio/status`).
    - **Opt-out management:** leave Twilio's default STOP handling on. Twilio blocks texts to a number that replied STOP (error 21610). The app also records the STOP, so the log and the **Opt-outs** page are right.
    - Copy the Service SID (`MG…`).
-4. **Verify service**: **Verify** → **Services** → **Create**. Friendly name e.g. "Inprem Clock-in", code length 6. Copy its SID (`VA…`). Verify sends from Twilio's own numbers; it needs no registration.
+4. **Verify service** (optional: without one the app makes the codes itself): **Verify** → **Services** → **Create**. Friendly name e.g. "Inprem Clock-in", code length 6. Copy its SID (`VA…`). Verify sends from Twilio's own numbers; it needs no registration.
 5. **Sender registration** (before texting **US** numbers for real):
    - either **toll-free verification** (a toll-free number);
    - or **A2P 10DLC** (brand + campaign) for a normal US number.
@@ -199,6 +203,11 @@ dotnet user-secrets set "Twilio:MessagingServiceSid" "<MG...>" --project InpremC
 dotnet user-secrets set "Twilio:VerifyServiceSid" "<VA...>" --project InpremClockingApp
 dotnet user-secrets set "Twilio:WebhookBaseUrl" "https://<tunnel or site address>" --project InpremClockingApp
 ```
+
+- **Without a Messaging Service:** instead of `MessagingServiceSid`, set `Twilio:FromNumber` to the Twilio number (`+1…`).
+- **Without Verify:** leave out `VerifyServiceSid`. The app then makes the codes itself and texts them.
+- **With an API key:** also set `Twilio:ApiKeySid` (`SK…`) and `Twilio:ApiKeySecret`. Keep `Twilio:AuthToken`: it checks Twilio's reports and replies.
+- **Email through Twilio:** `Email:Provider` = `Twilio`, `Email:From` (the sender address) and optionally `Email:FromName`. This works without `Twilio:Mode` = `Twilio`, so emails can go out while texts stay on the stand-in. If Twilio refuses (`Twilio refused the email (HTTP 400, error …)`), the sender address or its domain is probably not yet set up in the Twilio console.
 
 - `Twilio:WebhookBaseUrl` must be **exactly** the address Twilio calls: https, **no path, no trailing slash**. Twilio's signatures are checked against it; any difference (http vs https, `www.`, a port) makes every report fail with 403.
 - On a server: the same keys with `__` (`Twilio__Mode`, `Twilio__AccountSid`, …).
@@ -437,7 +446,9 @@ Plan: `docs/multitenancy/build/10-phase7-hardening.md`. Its entry condition is t
 | `PayPal:ClientId is set but PayPal:Secret is missing` (or the reverse) | One of the pair missing | Set both, or neither |
 | `PayPal:ReturnUrlAllowList entry '…' must be an https origin…` | A path, a trailing `/`, or http | Only `https://host` (e.g. `https://localhost:7078`) |
 | `PayPal:PlanReturnUrl must be an https address on an origin in PayPal:ReturnUrlAllowList` | The return page's host is not on the allow-list | Add that origin to `ReturnUrlAllowList` |
-| `Twilio:AccountSid must be the account's SID (AC…, 34 characters)` (same for `MessagingServiceSid` MG…, `VerifyServiceSid` VA…) | Wrong or truncated value, or a space | Copy the SID again from the Twilio console |
+| `Twilio:AccountSid must be the account's SID (AC…, 34 characters)` (same for `MessagingServiceSid` MG…, `VerifyServiceSid` VA…, `ApiKeySid` SK…) | Wrong or truncated value, or a space | Copy the SID again from the Twilio console |
+| `Twilio:MessagingServiceSid or Twilio:FromNumber is required…` | Neither is set | Set one of them |
+| `Twilio:ApiKeySid and Twilio:ApiKeySecret go together…` | Only one of the pair | Set both, or neither |
 | `Twilio:WebhookBaseUrl is required with Twilio:Mode = Twilio…` / `…must be the site's https address without a path…` | Missing, or with a path or trailing slash | `https://your-address` exactly |
 | `Jobs:RunServer must be false on the Admin site…` | Jobs switched on for the Admin site | `Jobs__RunServer=false` on Admin; jobs run on the App site only |
 | `LegacyRedirect:…` messages | The old-address redirect is on with wrong values | `docs/multitenancy/runbooks/root-redirects.md`, or `LegacyRedirect__Enabled=false` |
@@ -470,7 +481,10 @@ Plan: `docs/multitenancy/build/10-phase7-hardening.md`. Its entry condition is t
 | `quiet-hours`, `sms-off`, `monthly-limit`, `daily-spend-cap`, `template-off` | The app's own rules | Settings in the console or section 4.3 |
 | Texts stay **Sent**, never **Delivered** | Delivery reports don't arrive: `Twilio:WebhookBaseUrl` differs from the address Twilio calls, or no public address | Make it exactly the site's address; for local, a tunnel |
 | STOP replies don't appear under **Opt-outs** | The Messaging Service's incoming URL is not `/webhooks/twilio/inbound` on this site | Section 4.2 step 3 |
-| Sign-in codes don't arrive; the page says the code service could not be reached | Wrong `VerifyServiceSid` (`20404`), or Twilio down | Check the SID; the authenticator app still works for console sign-in |
+| Sign-in codes don't arrive; the page says the code service could not be reached | Wrong `VerifyServiceSid` (`20404`), or Twilio down; without Verify, the text was refused (see the log line "Twilio refused a text") | Check the SID or the number; the authenticator app still works for console sign-in |
+| A code that just arrived says "expired" (without Verify) | The site restarted after the code was sent (codes are kept in memory) | Ask for a new code |
+| `Email is not configured: with Email:Provider = Twilio…` | `Email:From` or the Twilio sign-in is missing | Set `Email:From`, and the API key or the Account SID and Auth Token |
+| `Twilio refused the email (HTTP …, error …)` | Usually the sender address or domain is not set up at Twilio, or wrong credentials (401) | Check the sender in the Twilio console; check the credentials |
 | "Too many codes asked for" | 3 codes in 10 minutes or 10 a day per account (on purpose) | Wait |
 
 ### Database

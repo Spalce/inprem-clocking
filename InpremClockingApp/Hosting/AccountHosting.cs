@@ -21,6 +21,9 @@ public static class AccountHosting
         // Email settings (Email:*) come from host configuration (P0-5). EmailService also handles
         // Email:DropFolder (Development only: emails saved as files), for every sender.
         builder.Services.AddOptions<Services.EmailOptions>().Bind(builder.Configuration.GetSection(Services.EmailOptions.SectionName));
+        // Email:Provider = Twilio: one client, no retries (a retried send could email twice); the framework's
+        // HttpClient logging writes headers, the Basic credentials included: off.
+        builder.Services.AddHttpClient(EmailService.TwilioHttpClientName, client => client.Timeout = TimeSpan.FromSeconds(30)).RemoveAllLoggers();
         builder.Services.AddScoped<PlatformEmailSender, ApprovedAppEmailSender>();
 
         // Step 0.5: account lookups by id/name/email see past the fail-closed AppUser filter

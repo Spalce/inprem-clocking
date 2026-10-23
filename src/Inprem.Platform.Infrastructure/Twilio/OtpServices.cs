@@ -46,15 +46,24 @@ public sealed class StandInOtpService : IOtpService
 
     private static string Key(string phone) => "standin-otp:" + phone;
 
-    public async Task<OtpSendResult> SendAsync(string phoneE164, CancellationToken ct = default)
+    public static string Text(string code) => $"Your Inprem Clock-in code is {code}. It works for 10 minutes.";
+
+    /// <summary>A new code for the number (replacing any earlier one), kept only as a hash; the code itself is returned.</summary>
+    public string Issue(string phoneE164)
     {
         var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
         _cache.Set(Key(phoneE164), new Pending { CodeHash = SHA256.HashData(Encoding.UTF8.GetBytes(code)), ExpiresUtc = _clock.UtcNow + Lifetime }, Lifetime + TimeSpan.FromMinutes(1));
+        return code;
+    }
+
+    public async Task<OtpSendResult> SendAsync(string phoneE164, CancellationToken ct = default)
+    {
+        var code = Issue(phoneE164);
         if (!string.IsNullOrWhiteSpace(_options.StandInFolder))
         {
             Directory.CreateDirectory(_options.StandInFolder);
             var file = Path.Combine(_options.StandInFolder, $"{DateTime.UtcNow:yyyyMMdd-HHmmss-fff}-code-{phoneE164.TrimStart('+')}.txt");
-            await File.WriteAllTextAsync(file, $"To: {phoneE164}\r\nSaved: {DateTime.UtcNow:u}\r\n\r\nYour Inprem Clock-in code is {code}. It works for 10 minutes.\r\n", Encoding.UTF8, ct).ConfigureAwait(false);
+            await File.WriteAllTextAsync(file, $"To: {phoneE164}\r\nSaved: {DateTime.UtcNow:u}\r\n\r\n{Text(code)}\r\n", Encoding.UTF8, ct).ConfigureAwait(false);
         }
         _log.LogInformation("Stand-in login code for {Phone}: not texted (Twilio Verify is not set up).", PhoneNumber.Mask(phoneE164));
         return OtpSendResult.Ok;
@@ -76,6 +85,33 @@ public sealed class StandInOtpService : IOtpService
             return Task.FromResult(OtpCheck.Approved);
         }
     }
+}
+
+/// <summary>
+/// Login codes without Twilio Verify (Twilio:Mode = Twilio, no Twilio:VerifyServiceSid): the app makes and checks the
+/// code with the stand-in's rules (once, 10 minutes, 5 tries; kept in this instance's memory) and texts it through
+/// Twilio's Messages API straight away, not through the outbox. The code is never logged.
+/// </summary>
+public sealed class TwilioMessagedOtpService : IOtpService
+{
+    private readonly StandInOtpService _codes;
+    private readonly TwilioSmsSender _sms;
+
+    public TwilioMessagedOtpService(StandInOtpService codes, TwilioSmsSender sms)
+    {
+        _codes = codes;
+        _sms = sms;
+    }
+
+    public bool IsStandIn => false;
+
+    public async Task<OtpSendResult> SendAsync(string phoneE164, CancellationToken ct = default)
+    {
+        var result = await _sms.SendAsync(phoneE164, StandInOtpService.Text(_codes.Issue(phoneE164)), ct).ConfigureAwait(false);
+        return result.Accepted ? OtpSendResult.Ok : new OtpSendResult(false, result.Error ?? "Twilio refused the text.", Temporary: result.Temporary);
+    }
+
+    public Task<OtpCheck> CheckAsync(string phoneE164, string code, CancellationToken ct = default) => _codes.CheckAsync(phoneE164, code, ct);
 }
 
 /// <summary>
@@ -123,7 +159,7 @@ public sealed class TwilioVerifyOtpService : IOtpService
     private async Task<(HttpStatusCode Status, string Json)> PostAsync(string action, Dictionary<string, string> form, CancellationToken ct)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, $"v2/Services/{Uri.EscapeDataString(_options.VerifyServiceSid!)}/{action}") { Content = new FormUrlEncodedContent(form) };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{_options.AccountSid}:{_options.AuthToken}")));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Basic", _options.BasicCredentials());
         try
         {
             using var response = await _http.CreateClient(HttpClientName).SendAsync(request, ct).ConfigureAwait(false);

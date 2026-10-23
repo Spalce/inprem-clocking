@@ -71,16 +71,19 @@ Pick one way per site:
 | `PayPal:PlanCancelUrl` | `https://app.inpremclockin.org/Billing` | – | test site + same path | |
 | `Twilio:Mode` | `StandIn` until Twilio is set up | same | `StandIn` | `StandIn` sends nothing |
 | `Twilio:WebhookBaseUrl` | `https://app.inpremclockin.org` | same | the test site | Twilio's reports come here, and their signatures are checked against it |
+| `Twilio:FromNumber` | only without a Messaging Service | same | the account's Twilio number | E.164, e.g. `+12125550199`. Texts are sent from it when `Twilio:MessagingServiceSid` is empty; when both are set, the Messaging Service is used |
 
 **Addresses to enter at PayPal and Twilio** (cutover step 3):
 - PayPal webhook: `https://app.inpremclockin.org/webhooks/paypal`
 - Twilio status callback: `https://app.inpremclockin.org/webhooks/twilio/status`
-- Twilio incoming messages (STOP, START, HELP): `https://app.inpremclockin.org/webhooks/twilio/inbound`
+- Twilio incoming messages (STOP, START, HELP): `https://app.inpremclockin.org/webhooks/twilio/inbound`. With a Messaging Service, enter it under the service's **Integration**; with only `Twilio:FromNumber`, on the number itself (**Phone Numbers** → the number → **Messaging** → **A message comes in**)
 
 ### Email and others
 
 | Setting | App | Admin | Test | Notes |
 |---|---|---|---|---|
+| `Email:Provider` | `Smtp` (default) or `Twilio` | same | same | `Twilio`: every email goes through Twilio's Email API with the Twilio account (API key, or Account SID and Auth Token); the `Email:Smtp*`, `UserName` and `Password` settings are not used |
+| `Email:FromName` | `Inprem Clocking` (default) | same | same | Twilio only: the sender's name shown in the inbox |
 | `Email:SmtpPort` | `587` | `587` | `587` | Port 465 is not supported |
 | `Email:EnableSsl` | `true` | `true` | `true` | |
 | `PublicApi:EnableDocs` | `false` | – | – | `true` shows the API description at `/api/public/docs` |
@@ -91,9 +94,13 @@ Pick one way per site:
 | Setting | App | Admin | Notes |
 |---|---|---|---|
 | `ConnectionStrings:DefaultConnection` | yes | yes | The same database for both sites |
-| `Email:SmtpHost`, `Email:UserName`, `Email:Password`, `Email:From` | yes | yes | Without them nothing is emailed, and the app says so |
+| `Email:From` | yes | yes | The sender address. Without it nothing is emailed, and the app says so |
+| `Email:SmtpHost`, `Email:UserName`, `Email:Password` | with `Email:Provider` = `Smtp` | same | The mail account |
 | `PayPal:ClientId`, `PayPal:Secret`, `PayPal:WebhookId` | yes | yes | Sandbox keys from the project owner |
-| `Twilio:AccountSid`, `Twilio:AuthToken`, `Twilio:MessagingServiceSid`, `Twilio:VerifyServiceSid` | yes | yes | Test credentials from the project owner; then `Twilio:Mode` = `Twilio` |
+| `Twilio:AccountSid`, `Twilio:AuthToken` | yes | yes | Test credentials from the project owner; then `Twilio:Mode` = `Twilio`. The Auth Token is needed even with an API key: it checks Twilio's reports and replies |
+| `Twilio:ApiKeySid`, `Twilio:ApiKeySecret` | optional | optional | A Twilio API key (`SK…`): when both are set, texts, codes and Twilio email sign in with it instead of the Auth Token. Set both or neither |
+| `Twilio:MessagingServiceSid` | or `Twilio:FromNumber` | same | `MG…`; one of the two is required with `Twilio:Mode` = `Twilio` |
+| `Twilio:VerifyServiceSid` | optional | optional | `VA…`. Without it the app makes the sign-in codes itself (once, 10 minutes, 5 tries, kept in memory: one instance of the site only) and texts them like any other text |
 | `Captcha:Secret` | yes | – | The website form's CAPTCHA (Turnstile) |
 | `PublicApi:ApiKeyHashes` | if used | – | Only for server-to-server calls from the website |
 | `Bootstrap:CodeHash` | – | until the first Provider Owner is set up | `bootstrap-and-recovery.md` |

@@ -23,6 +23,7 @@ public class TwilioClientTests
     private const string VerifySid = "VA00000000000000000000000000000001";
     private const string Token = "test-auth-token-not-real";
     private const string Phone = "+12025550123";
+    private const string FromNumber = "+12125550199";
 
     private sealed record Seen(string Path, string Authorization, Dictionary<string, string> Form);
 
@@ -157,7 +158,10 @@ public class TwilioClientTests
     [InlineData("Twilio:AccountSid", "not-a-sid", "Twilio:AccountSid")]
     [InlineData("Twilio:AuthToken", "", "Twilio:AuthToken")]
     [InlineData("Twilio:MessagingServiceSid", "PN000", "Twilio:MessagingServiceSid")]
-    [InlineData("Twilio:VerifyServiceSid", "", "Twilio:VerifyServiceSid")]
+    [InlineData("Twilio:VerifyServiceSid", "VA000", "Twilio:VerifyServiceSid")]
+    [InlineData("Twilio:FromNumber", "0244123456", "Twilio:FromNumber")]
+    [InlineData("Twilio:ApiKeySid", "SK00000000000000000000000000000001", "Twilio:ApiKeySecret")]
+    [InlineData("Twilio:ApiKeySecret", "key-secret-not-real", "Twilio:ApiKeySid")]
     [InlineData("Twilio:WebhookBaseUrl", "http://app.inprem.test", "Twilio:WebhookBaseUrl")]
     [InlineData("Twilio:WebhookBaseUrl", "https://app.inprem.test/sub", "Twilio:WebhookBaseUrl")]
     public void Wrong_Settings_Stop_The_App_At_Startup(string key, string value, string named)
@@ -166,6 +170,53 @@ public class TwilioClientTests
         using var __ = sp;
         var error = Assert.Throws<OptionsValidationException>(() => sp.GetRequiredService<IOptions<TwilioOptions>>().Value);
         Assert.Contains(error.Failures, f => f.Contains(named));
+    }
+
+    [Fact]
+    public void Twilio_Mode_Needs_A_Messaging_Service_Or_A_From_Number()
+    {
+        var (sp, _, _) = Create(new() { ["Twilio:MessagingServiceSid"] = null });
+        using var __ = sp;
+        var error = Assert.Throws<OptionsValidationException>(() => sp.GetRequiredService<IOptions<TwilioOptions>>().Value);
+        Assert.Contains(error.Failures, f => f.Contains("Twilio:MessagingServiceSid or Twilio:FromNumber"));
+    }
+
+    [Fact]
+    public async Task Without_A_Messaging_Service_A_Text_Goes_From_The_Twilio_Number()
+    {
+        var (sp, fake, _) = Create(new() { ["Twilio:MessagingServiceSid"] = null, ["Twilio:FromNumber"] = FromNumber });
+        using var __ = sp;
+        Assert.True((await sp.GetRequiredService<ISmsSender>().SendAsync(Phone, "x")).Accepted);
+        var seen = Assert.Single(fake.Requests);
+        Assert.Equal($"/2010-04-01/Accounts/{AccountSid}/Messages.json", seen.Path);
+        Assert.Equal(FromNumber, seen.Form["From"]);
+        Assert.False(seen.Form.ContainsKey("MessagingServiceSid"));
+    }
+
+    [Fact]
+    public async Task With_An_Api_Key_Texts_And_Codes_Sign_In_With_The_Key()
+    {
+        const string KeySid = "SK00000000000000000000000000000001", KeySecret = "key-secret-not-real";
+        var (sp, fake, logs) = Create(new() { ["Twilio:ApiKeySid"] = KeySid, ["Twilio:ApiKeySecret"] = KeySecret });
+        using var __ = sp;
+        await sp.GetRequiredService<ISmsSender>().SendAsync(Phone, "x");
+        await sp.GetRequiredService<IOtpService>().SendAsync(Phone);
+
+        var key = "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes($"{KeySid}:{KeySecret}"));
+        Assert.All(fake.Requests, r => Assert.Equal(key, r.Authorization));
+        Assert.Equal($"/2010-04-01/Accounts/{AccountSid}/Messages.json", fake.Requests.First().Path); // the account still names the address
+        Assert.DoesNotContain(logs.Lines, l => l.Contains(KeySecret));
+    }
+
+    [Fact]
+    public async Task The_Messaging_Service_Wins_When_Both_Are_Set()
+    {
+        var (sp, fake, _) = Create(new() { ["Twilio:FromNumber"] = FromNumber });
+        using var __ = sp;
+        await sp.GetRequiredService<ISmsSender>().SendAsync(Phone, "x");
+        var seen = Assert.Single(fake.Requests);
+        Assert.Equal(ServiceSid, seen.Form["MessagingServiceSid"]);
+        Assert.False(seen.Form.ContainsKey("From"));
     }
 
     [Fact]
@@ -214,6 +265,45 @@ public class TwilioClientTests
         Assert.Equal(OtpCheck.TooManyAttempts, await otp.CheckAsync(Phone, "123456"));
 
         Assert.DoesNotContain(logs.Lines, l => l.Contains("123456") || l.Contains("5550123") || l.Contains(Token));
+    }
+
+    [Fact]
+    public async Task Without_Verify_The_App_Texts_Its_Own_Code_Once_Ten_Minutes_Five_Tries()
+    {
+        var clock = new Provider.TestClock();
+        var (sp, fake, logs) = Create(new() { ["Twilio:VerifyServiceSid"] = null, ["Twilio:MessagingServiceSid"] = null, ["Twilio:FromNumber"] = FromNumber }, clock);
+        using var __ = sp;
+        var otp = sp.GetRequiredService<IOtpService>();
+        Assert.IsType<TwilioMessagedOtpService>(otp);
+        Assert.False(otp.IsStandIn);
+
+        Assert.True((await otp.SendAsync(Phone)).Sent);
+        var text = Assert.Single(fake.Requests);
+        Assert.Equal($"/2010-04-01/Accounts/{AccountSid}/Messages.json", text.Path); // the Messages API, not Verify
+        Assert.Equal((Phone, FromNumber), (text.Form["To"], text.Form["From"]));
+        var code = System.Text.RegularExpressions.Regex.Match(text.Form["Body"], @"\b\d{6}\b").Value;
+        Assert.Equal(6, code.Length);
+
+        Assert.Equal(OtpCheck.Wrong, await otp.CheckAsync(Phone, code == "000000" ? "111111" : "000000"));
+        Assert.Equal(OtpCheck.Approved, await otp.CheckAsync(Phone, code));
+        Assert.Equal(OtpCheck.ExpiredOrUsed, await otp.CheckAsync(Phone, code)); // once only
+
+        await otp.SendAsync(Phone);
+        code = System.Text.RegularExpressions.Regex.Match(fake.Requests.Last().Form["Body"], @"\b\d{6}\b").Value;
+        clock.Advance(TimeSpan.FromMinutes(11));
+        Assert.Equal(OtpCheck.ExpiredOrUsed, await otp.CheckAsync(Phone, code)); // expired
+
+        Assert.DoesNotContain(logs.Lines, l => l.Contains(code) || l.Contains("5550123") || l.Contains(Token));
+    }
+
+    [Fact]
+    public async Task Without_Verify_A_Refused_Code_Text_Is_Not_Sent()
+    {
+        var (sp, fake, _) = Create(new() { ["Twilio:VerifyServiceSid"] = null });
+        using var __ = sp;
+        fake.Answers.Enqueue((HttpStatusCode.ServiceUnavailable, "<html>down</html>"));
+        var result = await sp.GetRequiredService<IOtpService>().SendAsync(Phone);
+        Assert.Equal((false, true), (result.Sent, result.Temporary));
     }
 
     [Fact]
