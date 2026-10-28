@@ -7,6 +7,7 @@ using Inprem.Platform.Infrastructure;
 using InpremClockingApp.Models.Identity;
 using InpremClockingApp.Provider;
 using InpremClockingApp.Services;
+using InpremClockingApp.Testing;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -31,6 +32,7 @@ builder.Services.AddScoped<StaffClockingService>();
 builder.Services.AddScoped<VolunteerClockingService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<TestAccountProvisioner>();
 // The old BillingService and BillingBackgroundService were removed in multi-tenancy Phase 2
 // step 2.9: billing is the platform's (PayPal, Inprem.Platform.Application.Billing).
 

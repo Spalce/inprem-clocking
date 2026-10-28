@@ -128,13 +128,13 @@ public sealed class OrganizationService
 
     // ---------------------------------------------------------------- create
 
-    public async Task<OrganizationResult> CreateAsync(NewOrganization input, string actor, string? appLinkBase, CancellationToken ct = default)
+    public async Task<OrganizationResult> CreateAsync(NewOrganization input, string actor, string? appLinkBase, CancellationToken ct = default, bool sendEmail = true)
     {
         var errors = new List<string>();
         errors.AddRange(await CheckOrganizationStepAsync(input.Name, input.Slug, input.TimeZoneId, input.Address, input.ContactInfo, ct).ConfigureAwait(false));
         errors.AddRange(await CheckOwnerStepAsync(input.OwnerFirstName, input.OwnerLastName, input.OwnerEmail, input.OwnerMobile, ct).ConfigureAwait(false));
         errors.AddRange(await CheckBillingStepAsync(input.PlanId, input.PlanPriceId, input.Mode, input.TrialDays, ct).ConfigureAwait(false));
-        if (!_mail.CanBuildLinks(appLinkBase)) errors.Add("Links:AppBaseUrl is not configured, so the owner's invitation link cannot be built.");
+        if (sendEmail && !_mail.CanBuildLinks(appLinkBase)) errors.Add("Links:AppBaseUrl is not configured, so the owner's invitation link cannot be built.");
         if (errors.Count > 0) return OrganizationResult.Fail(string.Join(" ", errors));
 
         var now = _clock.UtcNow;
@@ -156,6 +156,11 @@ public sealed class OrganizationService
         {
             // The store's transaction rolled back: nothing of the organization exists.
             return OrganizationResult.Fail($"The organization could not be created, and nothing was saved ({e.GetType().Name}: {e.Message}). Try again; if it keeps failing, check the logs.");
+        }
+
+        if (!sendEmail)
+        {
+            return OrganizationResult.Ok(created.TenantId, "The organization was created without sending an owner invitation.");
         }
 
         // After the commit: the email may fail without undoing the organization (Resend is on the Admins tab).

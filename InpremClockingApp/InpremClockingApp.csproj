@@ -31,4 +31,8 @@
     <ProjectReference Include="..\src\Inprem.Platform.Infrastructure\Inprem.Platform.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Areas\Provider\Pages\Testing\" />
+  </ItemGroup>
+
 </Project>
