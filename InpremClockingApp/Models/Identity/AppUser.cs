@@ -14,4 +14,6 @@ public class AppUser : IdentityUser
     // accounts, which aren't scoped to any one tenant. Stamped into a claim at sign-in
     // (Phase 2) - see multi-tenancy.md.
     public int? TenantId { get; set; }
+
+    public bool RequiresPasswordChange { get; set; }
 }

@@ -1,4 +1,5 @@
 using System.Net.Mail;
+using System.Security.Cryptography;
 using Inprem.Platform.Application.Billing;
 using Inprem.Platform.Application.Memberships;
 using Inprem.Platform.Application.Provider;
@@ -66,7 +67,13 @@ public sealed class OrganizationService
         var value = (slug ?? "").Trim().ToLowerInvariant();
         var problem = TenantProfile.SlugProblem(value);
         if (problem == null && await _store.SlugTakenAsync(value, exceptTenantId, ct).ConfigureAwait(false)) problem = $"\"{value}\" is already used.";
-        return new SlugCheck(problem == null, problem, problem == null ? value : await SuggestAsync(value.Length > 0 ? value : "org", exceptTenantId, ct).ConfigureAwait(false));
+        var suggestion = value.Length > 0 ? value : "org";
+        if (problem != null)
+        {
+            suggestion = await SuggestAsync(suggestion, exceptTenantId, ct).ConfigureAwait(false);
+        }
+
+        return new SlugCheck(problem == null, problem, suggestion);
     }
 
     private async Task<string> SuggestAsync(string start, int? exceptTenantId, CancellationToken ct)
@@ -146,11 +153,12 @@ public sealed class OrganizationService
         };
         var existing = await _accounts.FindByEmailAsync(normalized.OwnerEmail, ct).ConfigureAwait(false);
         var subscription = Subscription.Start(0, plan, price, input.Mode, input.TrialDays, now);
+        var temporaryPassword = existing == null ? CreateTemporaryPassword() : null;
 
         ProvisionedOrganization created;
         try
         {
-            created = await _store.ProvisionAsync(new OrganizationProvisioning(normalized, existing?.Id, subscription, actor, now), ct).ConfigureAwait(false);
+            created = await _store.ProvisionAsync(new OrganizationProvisioning(normalized, existing?.Id, subscription, actor, now, TemporaryPassword: temporaryPassword), ct).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
@@ -160,7 +168,7 @@ public sealed class OrganizationService
 
         if (!sendEmail)
         {
-            return OrganizationResult.Ok(created.TenantId, "The organization was created without sending an owner invitation.");
+            return OrganizationResult.Ok(created.TenantId, "The organization was created without sending an owner invitation.", temporaryPassword);
         }
 
         // After the commit: the email may fail without undoing the organization (Resend is on the Admins tab).
@@ -176,8 +184,10 @@ public sealed class OrganizationService
             return OrganizationResult.Ok(created.TenantId, $"The organization was created, but the email to {normalized.OwnerEmail} could not be sent. Use \"Resend invitation\" on the Admins tab once email works.");
         }
 
-        return OrganizationResult.Ok(created.TenantId);
+        return OrganizationResult.Ok(created.TenantId, temporaryPassword: temporaryPassword);
     }
+
+    private static string CreateTemporaryPassword() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(18)) + "aA1!";
 
     // ---------------------------------------------------------------- detail actions
 
@@ -214,14 +224,19 @@ public sealed class OrganizationService
     {
         var result = await ChangeProfileAsync(tenantId, actor, "organization.suspended",
             p => { p.Suspend(reason, _clock.UtcNow); return $"Reason: {reason.Trim()}{(shareReason ? " (shared with the owners)" : "")}"; }, ct).ConfigureAwait(false);
-        return result.Succeeded ? await TellOwnersAsync(tenantId, suspended: true, shareReason ? reason.Trim() : null, ct).ConfigureAwait(false) : result;
+        if (!result.Succeeded) return result;
+
+        var ownerReason = shareReason ? reason.Trim() : null;
+        return await TellOwnersAsync(tenantId, suspended: true, ownerReason, ct).ConfigureAwait(false);
     }
 
     /// <summary>Reactivates the organization (full access again) and emails its active owners.</summary>
     public async Task<OrganizationResult> ReactivateAsync(int tenantId, string reason, string actor, CancellationToken ct = default)
     {
         var result = await ChangeProfileAsync(tenantId, actor, "organization.reactivated", p => { p.Reactivate(reason, _clock.UtcNow); return $"Reason: {reason.Trim()}"; }, ct).ConfigureAwait(false);
-        return result.Succeeded ? await TellOwnersAsync(tenantId, suspended: false, null, ct).ConfigureAwait(false) : result;
+        if (!result.Succeeded) return result;
+
+        return await TellOwnersAsync(tenantId, suspended: false, null, ct).ConfigureAwait(false);
     }
 
     /// <summary>Emails the active owners; a failure is audited and reported as a warning (the change stands).</summary>
@@ -247,9 +262,17 @@ public sealed class OrganizationService
             await AuditAsync("system", "notification.failed", tenantId, $"Organization {(suspended ? "suspended" : "reactivated")} email not delivered to: {string.Join(", ", failed)}", ct).ConfigureAwait(false);
             await _store.SaveChangesAsync(ct).ConfigureAwait(false);
         }
-        return owners.Count == 0 ? OrganizationResult.Ok(tenantId, "The organization has no active owner to email.")
-            : failed.Count > 0 ? OrganizationResult.Ok(tenantId, "Done, but the email to the owners could not be sent.")
-            : OrganizationResult.Ok(tenantId);
+        if (owners.Count == 0)
+        {
+            return OrganizationResult.Ok(tenantId, "The organization has no active owner to email.");
+        }
+
+        if (failed.Count > 0)
+        {
+            return OrganizationResult.Ok(tenantId, "Done, but the email to the owners could not be sent.");
+        }
+
+        return OrganizationResult.Ok(tenantId);
     }
 
     public async Task<OrganizationResult> AddNoteAsync(int tenantId, string text, string actor, CancellationToken ct = default)

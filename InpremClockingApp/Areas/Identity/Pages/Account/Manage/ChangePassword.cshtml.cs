@@ -43,6 +43,9 @@ namespace InpremClockingApp.Areas.Identity.Pages.Account.Manage
         [TempData]
         public string StatusMessage { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public string ReturnUrl { get; set; }
+
         /// <summary>
         ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
@@ -122,7 +125,25 @@ namespace InpremClockingApp.Areas.Identity.Pages.Account.Manage
             _logger.LogInformation("User changed their password successfully.");
             StatusMessage = "Your password has been changed.";
 
-            return RedirectToPage();
+            user.RequiresPasswordChange = false;
+            var updated = await _userManager.UpdateAsync(user);
+            if (!updated.Succeeded)
+            {
+                foreach (var error in updated.Errors)
+                {
+                    ModelState.AddModelError(string.Empty, error.Description);
+                }
+                return Page();
+            }
+
+            if (!await _userManager.GetTwoFactorEnabledAsync(user))
+            {
+                return RedirectToPage("./EnableAuthenticator");
+            }
+
+            return string.IsNullOrWhiteSpace(ReturnUrl) || !Url.IsLocalUrl(ReturnUrl)
+                ? RedirectToPage()
+                : LocalRedirect(ReturnUrl);
         }
     }
 }

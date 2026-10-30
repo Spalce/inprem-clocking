@@ -156,6 +156,11 @@ namespace InpremClockingApp.Areas.Identity.Pages.Account
                         return Page();
                     }
 
+                    if (signedIn?.RequiresPasswordChange == true)
+                    {
+                        return RedirectToPage("./Manage/ChangePassword", new { ReturnUrl = returnUrl });
+                    }
+
                     return LocalRedirect(returnUrl);
                 }
                 if (result.RequiresTwoFactor)

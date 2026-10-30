@@ -52,8 +52,9 @@ public class LoginModel : PageModel
         if (result.RequiresTwoFactor) return RedirectToPage("/LoginWith2fa", new { area = "Provider" });
         if (result.Succeeded)
         {
-            // Password only (two-factor not set up yet): a provider session that can only enrol.
             await _session.SignInAsync(user, twoFactor: false);
+            if (user.RequiresPasswordChange)
+                return RedirectToPage("/ChangePassword", new { area = "Provider" });
             return RedirectToPage("/EnrolTwoFactor", new { area = "Provider" });
         }
 

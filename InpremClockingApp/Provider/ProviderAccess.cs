@@ -74,6 +74,9 @@ public sealed class ProviderAccessFilter : IAsyncPageFilter
             case ProviderAccessOutcome.Enrol:
                 context.Result = new RedirectToPageResult("/EnrolTwoFactor", new { area = "Provider" });
                 return;
+            case ProviderAccessOutcome.PasswordChange:
+                context.Result = new RedirectToPageResult("/ChangePassword", new { area = "Provider" });
+                return;
             case ProviderAccessOutcome.SignOut:
                 await _signIn.SignOutAsync();
                 break;
@@ -94,6 +97,8 @@ public enum ProviderAccessOutcome
 
     /// <summary>Two-factor not enrolled, or re-enrolment due after a recovery code (Level 1).</summary>
     Enrol,
+
+    PasswordChange,
 }
 
 /// <summary>
@@ -126,6 +131,9 @@ public sealed class ProviderAccessCheck
 
         var provider = await _provider.FindUsableProviderUserAsync(user.Id);
         if (provider == null) return (ProviderAccessOutcome.Login, null);
+
+        if (level == ProviderAccessLevel.Console && user.RequiresPasswordChange)
+            return (ProviderAccessOutcome.PasswordChange, provider);
 
         if (level == ProviderAccessLevel.Console)
         {

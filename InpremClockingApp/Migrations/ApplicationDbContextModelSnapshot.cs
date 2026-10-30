@@ -17,7 +17,7 @@ namespace InpremClockingApp.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.0")
+                .HasAnnotation("ProductVersion", "8.0.32")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -33,6 +33,9 @@ namespace InpremClockingApp.Migrations
 
                     b.Property<string>("InvitedByUserId")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("LastSignInUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Role")
                         .IsRequired()
@@ -357,6 +360,9 @@ namespace InpremClockingApp.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("PhoneNumberConfirmed")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("RequiresPasswordChange")
                         .HasColumnType("bit");
 
                     b.Property<string>("SecurityStamp")

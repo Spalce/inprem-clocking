@@ -28,6 +28,13 @@ public sealed class AccountGateway : IAccountGateway
         return user.Id;
     }
 
+    public async Task<string> CreateWithPasswordAsync(string email, string password, CancellationToken ct = default)
+    {
+        var user = new AppUser { UserName = email, Email = email, EmailConfirmed = true, TenantId = null, LockoutEnabled = true, RequiresPasswordChange = true };
+        Check(await _users.CreateAsync(user, password), "create the account");
+        return user.Id;
+    }
+
     public async Task<IReadOnlyList<string>> SetPasswordAsync(string userId, string password, CancellationToken ct = default)
     {
         var user = await RequireAsync(userId);

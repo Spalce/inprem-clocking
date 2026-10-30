@@ -42,7 +42,7 @@ public sealed record OrganizationEdit(string Name, string Slug, string TimeZoneI
 /// <summary>Everything the store creates in one transaction for a new organization.</summary>
 public sealed record OrganizationProvisioning(
     NewOrganization Organization, string? ExistingOwnerUserId, Subscription Subscription, string Actor, DateTime NowUtc,
-    SignupProvisioning? Signup = null);
+    SignupProvisioning? Signup = null, string? TemporaryPassword = null);
 
 /// <summary>
 /// A website signup (Phase 3 step 3.3): the organization starts PendingVerification, the given
@@ -52,9 +52,9 @@ public sealed record SignupProvisioning(Guid SignupId, Inprem.Platform.Domain.Pu
 
 public sealed record ProvisionedOrganization(int TenantId, string OwnerUserId, bool OwnerIsNewAccount);
 
-public sealed record OrganizationResult(bool Succeeded, int? TenantId, string? Error, string? Warning = null)
+public sealed record OrganizationResult(bool Succeeded, int? TenantId, string? Error, string? Warning = null, string? TemporaryPassword = null)
 {
-    public static OrganizationResult Ok(int tenantId, string? warning = null) => new(true, tenantId, null, warning);
+    public static OrganizationResult Ok(int tenantId, string? warning = null, string? temporaryPassword = null) => new(true, tenantId, null, warning, temporaryPassword);
 
     public static OrganizationResult Fail(string error) => new(false, null, error);
 }

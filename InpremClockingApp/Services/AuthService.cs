@@ -50,11 +50,23 @@ public class AuthService
         _http = http;
     }
 
-    // C2-6 (multi-tenancy Phase 0 steps 0.4-0.5): the organization's admins are its members -
-    // exactly the accounts the fail-closed AppUser query filter lets this organization see (an
-    // Active membership, or an account of this organization with no membership row yet).
-    // Without an organization the list is empty.
-    private Task<IQueryable<AppUser>> MembersQueryAsync() => Task.FromResult(_userManager.Users);
+    // C2-6 (multi-tenancy Phase 0 steps 0.4-0.5): resolve the current organization's active
+    // memberships explicitly before querying accounts. The account query filter remains a
+    // defense-in-depth measure, but the Admins page must not depend on it to establish scope.
+    private async Task<IQueryable<AppUser>> MembersQueryAsync()
+    {
+        if (!_currentTenant.TenantId.HasValue)
+            return _userManager.Users.Where(_ => false);
+
+        var memberIds = (await _memberships.ListMembersAsync(_currentTenant.TenantId.Value).ConfigureAwait(false))
+            .Where(m => m.Status == MembershipStatus.Active)
+            .Select(m => m.UserId)
+            .ToArray();
+
+        return _userManager.Users
+            .IgnoreQueryFilters()
+            .Where(u => memberIds.Contains(u.Id));
+    }
 
     public async Task<IEnumerable<AppUser>> GetAll()
     {

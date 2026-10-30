@@ -66,6 +66,9 @@ internal sealed class FakeAccounts : IAccountGateway
     public Task<string> CreateWithoutPasswordAsync(string email, CancellationToken ct = default) =>
         Task.FromResult(Add(email, password: null, confirmed: false, twoFactor: false).Id);
 
+    public Task<string> CreateWithPasswordAsync(string email, string password, CancellationToken ct = default) =>
+        Task.FromResult(Add(email, password, confirmed: true, twoFactor: false).Id);
+
     public Task<IReadOnlyList<string>> SetPasswordAsync(string userId, string password, CancellationToken ct = default)
     {
         if (password.Length < 8) return Task.FromResult<IReadOnlyList<string>>(new[] { "Too short." });

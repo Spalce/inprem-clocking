@@ -33,6 +33,8 @@ public class InviteModel : ProviderUserPage
         }
 
         TempData["Success"] = result.Message;
+        if (!string.IsNullOrWhiteSpace(result.TemporaryPassword))
+            TempData["TemporaryPassword"] = result.TemporaryPassword;
         return RedirectToPage("Index");
     }
 }

@@ -71,7 +71,9 @@ public class NewModel : PageModel
 
         if (move == "create")
         {
-            var result = await _organizations.CreateAsync(Input(), User.Actor(), OrganizationUi.AppLinkBase(HttpContext), HttpContext.RequestAborted);
+            // Temporary-password test flow: retain the real invitation email implementation in OrganizationService,
+            // but do not send it until the provider email/Twilio setup is available.
+            var result = await _organizations.CreateAsync(Input(), User.Actor(), OrganizationUi.AppLinkBase(HttpContext), HttpContext.RequestAborted, sendEmail: false);
             if (!result.Succeeded)
             {
                 Errors = new[] { result.Error! };
@@ -79,6 +81,8 @@ public class NewModel : PageModel
             }
 
             TempData["Success"] = result.Warning ?? $"Organization \"{Name.Trim()}\" created. The owner was emailed.";
+            if (!string.IsNullOrWhiteSpace(result.TemporaryPassword))
+                TempData["OrganizationTemporaryPassword"] = result.TemporaryPassword;
             return RedirectToPage("Details", new { id = result.TenantId });
         }
 

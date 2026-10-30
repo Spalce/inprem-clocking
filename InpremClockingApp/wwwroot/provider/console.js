@@ -2,6 +2,17 @@
 (function () {
   "use strict";
 
+  var passwordDialog = document.querySelector("[data-temporary-password-dialog]");
+  if (passwordDialog) {
+    var closePasswordDialog = passwordDialog.querySelector("[data-close-temporary-password]");
+    if (closePasswordDialog) {
+      closePasswordDialog.focus();
+      closePasswordDialog.addEventListener("click", function () {
+        passwordDialog.remove();
+      });
+    }
+  }
+
   // Organization wizard: suggest an address name from the name, and check availability while typing.
   var slug = document.querySelector("[data-slug-input]");
   if (slug) {

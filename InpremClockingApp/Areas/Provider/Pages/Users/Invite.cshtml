@@ -7,7 +7,7 @@
 
 <p><a asp-page="Index">&larr; Provider users</a></p>
 <h1 class="pc-title">Invite a provider user</h1>
-<p class="pc-subtitle">They get a link (valid 24 hours) to set a password and two-factor sign-in. Use an address that has no organization account.</p>
+    <p class="pc-subtitle">A temporary password is displayed once after creation. Use an address that has no organization account.</p>
 
 @if (Model.Error != null)
 {
@@ -25,7 +25,7 @@
     </select>
   </div>
   <div class="pc-actions">
-    <button type="submit" class="pc-btn pc-btn-primary" data-testid="confirm">Send invitation</button>
+    <button type="submit" class="pc-btn pc-btn-primary" data-testid="confirm">Create provider</button>
     <a asp-page="Index" class="pc-btn">Cancel</a>
   </div>
 </form>

@@ -6,6 +6,17 @@
     Layout = "/Areas/Provider/Pages/Shared/_ConsoleLayout.cshtml";
     var users = await Provider.ListProviderUsersAsync();
 }
+@if (TempData["TemporaryPassword"] is string temporaryPassword && !string.IsNullOrWhiteSpace(temporaryPassword))
+{
+    <div class="pc-modal-backdrop" data-temporary-password-dialog role="dialog" aria-modal="true" aria-labelledby="temporary-password-title">
+      <div class="pc-modal">
+        <h2 id="temporary-password-title">Provider created</h2>
+        <p>Give this temporary password to the provider securely. It will not be shown again.</p>
+        <p class="pc-temporary-password" data-testid="temporary-password">@temporaryPassword</p>
+        <button type="button" class="pc-btn pc-btn-primary" data-close-temporary-password>OK</button>
+      </div>
+    </div>
+}
 
 <div class="pc-heading">
   <div>

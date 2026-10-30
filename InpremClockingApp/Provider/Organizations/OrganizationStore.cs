@@ -166,9 +166,12 @@ public sealed class OrganizationStore : IOrganizationStore
             {
                 UserName = input.OwnerEmail, Email = input.OwnerEmail, EmailConfirmed = false, LockoutEnabled = true,
                 FirstName = input.OwnerFirstName, LastName = input.OwnerLastName, PhoneNumber = input.OwnerMobile,
-                Type = IdentitySeeder.AdminRole, TenantId = tenant.Id,
+                Type = IdentitySeeder.AdminRole, TenantId = tenant.Id, RequiresPasswordChange = provisioning.TemporaryPassword != null,
             };
-            Check(await _users.CreateAsync(owner), "create the owner's account");
+            var created = provisioning.TemporaryPassword == null
+                ? await _users.CreateAsync(owner)
+                : await _users.CreateAsync(owner, provisioning.TemporaryPassword);
+            Check(created, "create the owner's account");
             ownerId = owner.Id;
         }
 

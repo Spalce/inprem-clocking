@@ -62,6 +62,8 @@ public interface IAccountGateway
     /// <summary>Creates an account with no password (the person sets it from the invitation).</summary>
     Task<string> CreateWithoutPasswordAsync(string email, CancellationToken ct = default);
 
+    Task<string> CreateWithPasswordAsync(string email, string password, CancellationToken ct = default);
+
     /// <summary>Sets the password of an account that has none, and marks the email confirmed.</summary>
     Task<IReadOnlyList<string>> SetPasswordAsync(string userId, string password, CancellationToken ct = default);
 

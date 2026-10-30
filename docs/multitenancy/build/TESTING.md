@@ -18,6 +18,24 @@ Use a real SQL Server for integration tests (not the EF in-memory provider). Eac
 
 A shared builder seeds at least two organizations: **Alpha** (`America/New_York`) and **Beta** (`Europe/London`), each with an owner, an admin, three staff, three volunteers and clockings across several days including a daylight-saving change day. Add **Gamma** with no data for signup tests. No real personal data.
 
+## Provider test account
+
+The application has no public provisioning endpoint. For a local or SmarterASP test deployment,
+configure the optional seeded account outside source control:
+
+- `Provider:Seed:Enabled` — `true` only for the test deployment; leave `false` in production.
+- `Provider:Seed:Username` — the seeded Provider username/email.
+- `Provider:Seed:TemporaryPassword` — a password meeting the configured Identity policy.
+
+Use user-secrets, environment variables (`Provider__Seed__...`), or SmarterASP application
+settings. Startup creates one platform-level Provider Owner (`TenantId = null`) and is idempotent;
+it creates no organization membership and never logs the password. The first login must change the
+temporary password and enroll an authenticator app before the Provider Console is available.
+
+After testing, set `Provider:Seed:Enabled` to `false` and remove the seeded `AspNetUsers` and
+`platform.ProviderUsers` rows through the normal controlled database procedure. Do not place
+credentials in JSON committed to the repository.
+
 ## Required suites
 
 | Suite | What it proves | From |

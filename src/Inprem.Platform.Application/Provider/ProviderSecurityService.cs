@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Mail;
+using System.Security.Cryptography;
 using Inprem.Platform.Application.Memberships;
 using Inprem.Platform.Domain.Audit;
 using Inprem.Platform.Domain.Provider;
@@ -7,9 +8,9 @@ using Inprem.Platform.Domain.Provider;
 namespace Inprem.Platform.Application.Provider;
 
 /// <summary>Outcome of a provider security use case. <see cref="Code"/> is stable (tests, audit); <see cref="Message"/> is for people.</summary>
-public sealed record ProviderResult(bool Succeeded, string Code, string Message, IReadOnlyList<string> Plan)
+public sealed record ProviderResult(bool Succeeded, string Code, string Message, IReadOnlyList<string> Plan, string? TemporaryPassword = null)
 {
-    public static ProviderResult Ok(string code, string message, IReadOnlyList<string>? plan = null) => new(true, code, message, plan ?? Array.Empty<string>());
+    public static ProviderResult Ok(string code, string message, IReadOnlyList<string>? plan = null, string? temporaryPassword = null) => new(true, code, message, plan ?? Array.Empty<string>(), temporaryPassword);
 
     public static ProviderResult Refused(string code, string message) => new(false, code, message, Array.Empty<string>());
 }
@@ -220,9 +221,13 @@ public sealed class ProviderSecurityService
         return new OwnerStatus(owners.Count, owners.Count(o => o.TwoFactorEnabled));
     }
 
-    /// <summary>Records completed two-factor enrolment (audit only).</summary>
+    /// <summary>Records completed two-factor enrolment and activates a newly configured provider.</summary>
     public async Task RecordTwoFactorEnrolledAsync(string userId, CancellationToken ct = default)
     {
+        var provider = await _store.FindProviderUserAsync(userId, ct).ConfigureAwait(false);
+        if (provider is { Status: ProviderUserStatus.Invited })
+            provider.Activate();
+
         await AuditAsync($"provider:{userId}", "provider.two-factor.enrolled", userId, null, _clock.UtcNow, ct).ConfigureAwait(false);
         await _store.SaveChangesAsync(ct).ConfigureAwait(false);
     }
@@ -298,117 +303,155 @@ public sealed class ProviderSecurityService
         var targetEmail = request.TargetEmail?.Trim() ?? "";
         var approvers = request.Approvers.Select(a => a.Trim()).Where(a => a.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
-        if (await _store.CountFailuresSinceAsync(BreakGlassAttempt, now - RecoveryInterval, ct).ConfigureAwait(false) >= BreakGlassFailuresBeforeLock)
-        {
-            if (!request.DryRun)
-            {
-                await AuditAsync(request.Actor, "provider.recovery.refused", null, "refused.locked", now, ct).ConfigureAwait(false);
-                await _store.SaveChangesAsync(ct).ConfigureAwait(false);
-            }
-            return ProviderResult.Refused("refused.locked", "The recover command is locked for 24 hours after repeated failures.");
-        }
+        var locked = await _store.CountFailuresSinceAsync(BreakGlassAttempt, now - RecoveryInterval, ct).ConfigureAwait(false) >= BreakGlassFailuresBeforeLock;
+        if (locked) return await RefuseLockedBreakGlassAsync(request, now, ct).ConfigureAwait(false);
 
-        // Checks that do not involve a secret: refused without counting as a failure.
-        AccountInfo? target = null;
-        ProviderUser? targetProvider = null;
-        ProviderResult? refusal = null;
+        var (target, targetProvider, refusal) = await ValidateBreakGlassTargetAsync(
+            request, targetEmail, approvers, now, ct).ConfigureAwait(false);
+        var failure = refusal == null
+            ? await ValidateBreakGlassSecretAsync(request, approvers, ct).ConfigureAwait(false)
+            : null;
+        if (refusal != null || failure != null)
+            return await RefuseBreakGlassAsync(request, target, level, refusal ?? failure!, now, failure != null, ct).ConfigureAwait(false);
+        if (request.DryRun)
+            return BuildBreakGlassDryRun(request, targetEmail, approvers);
+        return await CreateBreakGlassAsync(request, target!, approvers, level, now, ct).ConfigureAwait(false);
+    }
+
+    private async Task<(AccountInfo? Target, ProviderUser? Provider, ProviderResult? Refusal)> ValidateBreakGlassTargetAsync(
+        BreakGlassRequest request, string targetEmail, IReadOnlyList<string> approvers, DateTime now, CancellationToken ct)
+    {
+        var refusal = ValidateBreakGlassRequest(request, approvers);
+        if (refusal != null)
+            return (null, null, refusal);
+
+        var target = await _accounts.FindByEmailAsync(targetEmail, ct).ConfigureAwait(false);
+        ProviderUser? provider = null;
+        if (target != null)
+            provider = await _store.FindProviderUserAsync(target.Id, ct).ConfigureAwait(false);
+        if (target == null || provider is not { Role: ProviderRole.Owner } || provider.Status == ProviderUserStatus.Disabled)
+            return (target, provider, ProviderResult.Refused("refused.no-target", "That email does not belong to a Provider Owner."));
+        if (!request.Replace && !target.EmailConfirmed)
+            return (target, provider, ProviderResult.Refused("refused.email-not-verified", "That owner's email was never verified; Level 3 sends links only to a verified email. Use Level 4."));
+        if (approvers.Any(a => string.Equals(a, targetEmail, StringComparison.OrdinalIgnoreCase) || string.Equals(a, request.NewEmail?.Trim(), StringComparison.OrdinalIgnoreCase)))
+            return (target, provider, ProviderResult.Refused("refused.approvers", "An approver cannot be the owner being recovered or the new owner."));
+        if (request.Replace && await _accounts.FindByEmailAsync(request.NewEmail!.Trim(), ct).ConfigureAwait(false) != null)
+            return (target, provider, ProviderResult.Refused("refused.account-exists", "An account with the new email already exists. Use a separate address for the new owner."));
+        if (await _store.AnyRecoverySinceAsync(target.Id, now - RecoveryInterval, ct).ConfigureAwait(false))
+            return (target, provider, ProviderResult.Refused("refused.rate-limited", "This account was already recovered in the last 24 hours."));
+
+        return (target, provider, null);
+    }
+
+    private ProviderResult? ValidateBreakGlassRequest(BreakGlassRequest request, IReadOnlyList<string> approvers)
+    {
         if (string.IsNullOrWhiteSpace(_options.BreakGlassCodeHash))
-            refusal = ProviderResult.Refused("refused.not-configured", "No break-glass code is configured on this server (Security:BreakGlassCodeHash).");
-        else if (LinkBaseOrNull(null) == null)
-            refusal = ProviderResult.Refused("refused.no-link-base", "Links:AdminBaseUrl is not configured, so no approval link can be built.");
-        else if (approvers.Count != (request.Replace ? 2 : 1))
-            refusal = ProviderResult.Refused("refused.approvers", request.Replace ? "Level 4 needs two different approvers (--approver twice)." : "Name one approver (--approver).");
-        else if (request.Replace && string.IsNullOrWhiteSpace(request.ApprovalReference))
-            refusal = ProviderResult.Refused("refused.no-approval-reference", "Level 4 needs the reference of the written approval (--approval-ref).");
-        else if (request.Replace && !IsValidEmail(request.NewEmail?.Trim() ?? ""))
-            refusal = ProviderResult.Refused("refused.invalid-email", "Give the new owner's email (--new-email).");
+            return ProviderResult.Refused("refused.not-configured", "No break-glass code is configured on this server (Security:BreakGlassCodeHash).");
+        if (LinkBaseOrNull(null) == null)
+            return ProviderResult.Refused("refused.no-link-base", "Links:AdminBaseUrl is not configured, so no approval link can be built.");
+        var requiredApprovers = request.Replace ? 2 : 1;
+        if (approvers.Count != requiredApprovers)
+            return ProviderResult.Refused("refused.approvers", GetApproverMessage(request.Replace));
+        if (request.Replace && string.IsNullOrWhiteSpace(request.ApprovalReference))
+            return ProviderResult.Refused("refused.no-approval-reference", "Level 4 needs the reference of the written approval (--approval-ref).");
+        if (request.Replace && !IsValidEmail(request.NewEmail?.Trim() ?? ""))
+            return ProviderResult.Refused("refused.invalid-email", "Give the new owner's email (--new-email).");
+        return null;
+    }
+
+    private static string GetApproverMessage(bool replace)
+    {
+        if (replace)
+            return "Level 4 needs two different approvers (--approver twice).";
+        return "Name one approver (--approver).";
+    }
+
+    private async Task<ProviderResult?> ValidateBreakGlassSecretAsync(BreakGlassRequest request, IReadOnlyList<string> approvers, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Code) || !SecretTokens.Matches(request.Code, _options.BreakGlassCodeHash))
+            return ProviderResult.Refused("refused.wrong-code", "The break-glass code is not valid.");
+        if (await _store.IsCodeUsedAsync(SecretTokens.Hash(request.Code), ct).ConfigureAwait(false))
+            return ProviderResult.Refused("refused.code-used", "This break-glass code has already been used. A new one must be put in the secret store.");
+        if (approvers.Any(a => !_options.RecoveryApprovers.Contains(a, StringComparer.OrdinalIgnoreCase)))
+            return ProviderResult.Refused("refused.unknown-approver", "Every approver must be listed in Security:RecoveryApprovers.");
+        return null;
+    }
+
+    private async Task<ProviderResult> RefuseLockedBreakGlassAsync(BreakGlassRequest request, DateTime now, CancellationToken ct)
+    {
+        if (!request.DryRun)
+        {
+            await AuditAsync(request.Actor, "provider.recovery.refused", null, "refused.locked", now, ct).ConfigureAwait(false);
+            await _store.SaveChangesAsync(ct).ConfigureAwait(false);
+        }
+        return ProviderResult.Refused("refused.locked", "The recover command is locked for 24 hours after repeated failures.");
+    }
+
+    private async Task<ProviderResult> RefuseBreakGlassAsync(BreakGlassRequest request, AccountInfo? target,
+        RecoveryLevel level, ProviderResult refusal, DateTime now, bool countsAsFailure, CancellationToken ct)
+    {
+        if (!request.DryRun)
+        {
+            if (countsAsFailure)
+                await _store.AddAttemptAsync(BreakGlassAttempt, false, request.Actor, now, ct).ConfigureAwait(false);
+            await AuditAsync(request.Actor, "provider.recovery.refused", target?.Id,
+                $"Level {(int)level}: {refusal.Code}", now, ct).ConfigureAwait(false);
+            await _store.SaveChangesAsync(ct).ConfigureAwait(false);
+            if (countsAsFailure && await _store.CountFailuresSinceAsync(BreakGlassAttempt, now - RecoveryInterval, ct).ConfigureAwait(false) >= BreakGlassFailuresBeforeLock)
+                await NotifyAsync("Recover command locked",
+                    $"{BreakGlassFailuresBeforeLock} failed break-glass attempts in 24 hours (last by {request.Actor}). The recover command is locked for 24 hours.", ct).ConfigureAwait(false);
+        }
+        return refusal;
+    }
+
+    private static ProviderResult BuildBreakGlassDryRun(BreakGlassRequest request, string targetEmail, IReadOnlyList<string> approvers)
+    {
+        var plan = new List<string> { "Mark the break-glass code as used (a new one must then be put in the secret store)." };
+        plan.AddRange(approvers.Select(a => $"Email an approval link (valid 1 hour) to {a}."));
+        plan.Add("Notify all Provider Owners and the security mailbox.");
+        if (request.Replace)
+        {
+            plan.Add($"After both approvals and a 24-hour delay (unless both approvers waive it): disable {targetEmail}, sign out all its sessions, withdraw its pending links.");
+            plan.Add($"Create {request.NewEmail?.Trim()} without a password as a Provider Owner and email it a setup link valid 24 hours.");
+        }
         else
         {
-            target = await _accounts.FindByEmailAsync(targetEmail, ct).ConfigureAwait(false);
-            targetProvider = target == null ? null : await _store.FindProviderUserAsync(target.Id, ct).ConfigureAwait(false);
-            if (target == null || targetProvider is not { Role: ProviderRole.Owner } || targetProvider.Status == ProviderUserStatus.Disabled)
-                refusal = ProviderResult.Refused("refused.no-target", "That email does not belong to a Provider Owner.");
-            else if (!request.Replace && !target.EmailConfirmed)
-                refusal = ProviderResult.Refused("refused.email-not-verified", "That owner's email was never verified; Level 3 sends links only to a verified email. Use Level 4.");
-            else if (approvers.Any(a => string.Equals(a, targetEmail, StringComparison.OrdinalIgnoreCase) || string.Equals(a, request.NewEmail?.Trim(), StringComparison.OrdinalIgnoreCase)))
-                refusal = ProviderResult.Refused("refused.approvers", "An approver cannot be the owner being recovered or the new owner.");
-            else if (request.Replace && await _accounts.FindByEmailAsync(request.NewEmail!.Trim(), ct).ConfigureAwait(false) != null)
-                refusal = ProviderResult.Refused("refused.account-exists", "An account with the new email already exists. Use a separate address for the new owner.");
-            else if (await _store.AnyRecoverySinceAsync(target.Id, now - RecoveryInterval, ct).ConfigureAwait(false))
-                refusal = ProviderResult.Refused("refused.rate-limited", "This account was already recovered in the last 24 hours.");
+            plan.Add($"After approval: remove the password and two-factor of {targetEmail}, sign out all its sessions, withdraw its pending links.");
+            plan.Add($"Email a 1-hour link to set a new password to {targetEmail} (its existing verified email).");
         }
+        return ProviderResult.Ok("dry-run", "Dry run: every check passed; nothing was changed.", plan);
+    }
 
-        // Checks on secrets and approvers: each failure counts towards the 24-hour lock.
-        var failure = refusal != null ? null
-            : string.IsNullOrWhiteSpace(request.Code) || !SecretTokens.Matches(request.Code, _options.BreakGlassCodeHash)
-                ? ProviderResult.Refused("refused.wrong-code", "The break-glass code is not valid.")
-            : await _store.IsCodeUsedAsync(SecretTokens.Hash(request.Code), ct).ConfigureAwait(false)
-                ? ProviderResult.Refused("refused.code-used", "This break-glass code has already been used. A new one must be put in the secret store.")
-            : approvers.Any(a => !_options.RecoveryApprovers.Contains(a, StringComparer.OrdinalIgnoreCase))
-                ? ProviderResult.Refused("refused.unknown-approver", "Every approver must be listed in Security:RecoveryApprovers.")
-                : null;
-
-        if (refusal != null || failure != null)
-        {
-            if (!request.DryRun)
-            {
-                if (failure != null) await _store.AddAttemptAsync(BreakGlassAttempt, false, request.Actor, now, ct).ConfigureAwait(false);
-                await AuditAsync(request.Actor, "provider.recovery.refused", target?.Id, $"Level {(int)level}: {(refusal ?? failure)!.Code}", now, ct).ConfigureAwait(false);
-                await _store.SaveChangesAsync(ct).ConfigureAwait(false);
-                if (failure != null && await _store.CountFailuresSinceAsync(BreakGlassAttempt, now - RecoveryInterval, ct).ConfigureAwait(false) >= BreakGlassFailuresBeforeLock)
-                {
-                    await NotifyAsync("Recover command locked",
-                        $"{BreakGlassFailuresBeforeLock} failed break-glass attempts in 24 hours (last by {request.Actor}). The recover command is locked for 24 hours.", ct).ConfigureAwait(false);
-                }
-            }
-            return (refusal ?? failure)!;
-        }
-
+    private async Task<ProviderResult> CreateBreakGlassAsync(BreakGlassRequest request, AccountInfo target,
+        IReadOnlyList<string> approvers, RecoveryLevel level, DateTime now, CancellationToken ct)
+    {
         var newEmail = request.NewEmail?.Trim();
-        if (request.DryRun)
-        {
-            var plan = new List<string> { $"Mark the break-glass code as used (a new one must then be put in the secret store)." };
-            plan.AddRange(approvers.Select(a => $"Email an approval link (valid 1 hour) to {a}."));
-            plan.Add("Notify all Provider Owners and the security mailbox.");
-            if (request.Replace)
-            {
-                plan.Add($"After both approvals and a 24-hour delay (unless both approvers waive it): disable {targetEmail}, sign out all its sessions, withdraw its pending links.");
-                plan.Add($"Create {newEmail} without a password as a Provider Owner and email it a setup link valid 24 hours.");
-            }
-            else
-            {
-                plan.Add($"After approval: remove the password and two-factor of {targetEmail}, sign out all its sessions, withdraw its pending links.");
-                plan.Add($"Email a 1-hour link to set a new password to {targetEmail} (its existing verified email).");
-            }
-            return ProviderResult.Ok("dry-run", "Dry run: every check passed; nothing was changed.", plan);
-        }
-
         await _store.MarkCodeUsedAsync(SecretTokens.Hash(request.Code), BreakGlassAttempt, now, ct).ConfigureAwait(false);
         await _store.AddAttemptAsync(BreakGlassAttempt, true, request.Actor, now, ct).ConfigureAwait(false);
         await _store.SaveChangesAsync(ct).ConfigureAwait(false);
-
         var tokens = approvers.Select(_ => SecretTokens.NewToken()).ToList();
-        var record = request.Replace
-            ? RecoveryRecord.BreakGlassReplace(target!.Id, target.Email, newEmail!, request.Actor, request.ApprovalReference!.Trim(),
-                approvers[0], SecretTokens.Hash(tokens[0]), approvers[1], SecretTokens.Hash(tokens[1]), now)
-            : RecoveryRecord.BreakGlassReissue(target!.Id, target.Email, request.Actor, approvers[0], SecretTokens.Hash(tokens[0]), now);
+        var record = CreateBreakGlassRecord(request, target, newEmail!, approvers, tokens, now);
         await _store.AddRecoveryAsync(record, ct).ConfigureAwait(false);
         await AuditAsync(request.Actor, $"provider.recovery.level{(int)level}.started", target.Id,
             $"Recovery {record.Id} for {target.Email}{(request.Replace ? $", new owner {newEmail}, approval {request.ApprovalReference!.Trim()}" : "")}; approvers {string.Join(", ", approvers)}", now, ct).ConfigureAwait(false);
         await _store.SaveChangesAsync(ct).ConfigureAwait(false);
-
         for (var i = 0; i < approvers.Count; i++)
-        {
             await _email.SendAsync(approvers[i], $"Approve provider recovery (Level {(int)level})",
                 Html($"{request.Actor} started a Level {(int)level} recovery of the Provider Owner {target.Email}{(request.Replace ? $", to be replaced by {newEmail} (written approval: {request.ApprovalReference!.Trim()})" : "")}.",
-                     "Open this link only if you agree. It is valid for 1 hour:",
-                     LinkFor("ApproveRecovery", tokens[i], null)), ct).ConfigureAwait(false);
-        }
+                    "Open this link only if you agree. It is valid for 1 hour:", LinkFor("ApproveRecovery", tokens[i], null)), ct).ConfigureAwait(false);
         await NotifyAsync($"Recovery Level {(int)level} started",
             $"{request.Actor} started a Level {(int)level} recovery of {target.Email}{(request.Replace ? $" (replacement by {newEmail})" : "")}. Waiting for approval by {string.Join(" and ", approvers)}.", ct).ConfigureAwait(false);
-
         return ProviderResult.Ok("recovery.started",
             $"Recovery {record.Id} started. Approval link(s) emailed to {string.Join(" and ", approvers)} (valid 1 hour). The break-glass code is now used; put a new one in the secret store.");
+    }
+
+    private static RecoveryRecord CreateBreakGlassRecord(BreakGlassRequest request, AccountInfo target, string newEmail,
+        IReadOnlyList<string> approvers, IReadOnlyList<string> tokens, DateTime now)
+    {
+        if (request.Replace)
+            return RecoveryRecord.BreakGlassReplace(target.Id, target.Email, newEmail, request.Actor, request.ApprovalReference!.Trim(),
+                approvers[0], SecretTokens.Hash(tokens[0]), approvers[1], SecretTokens.Hash(tokens[1]), now);
+        return RecoveryRecord.BreakGlassReissue(target.Id, target.Email, request.Actor, approvers[0], SecretTokens.Hash(tokens[0]), now);
     }
 
     public async Task<RecoveryApprovalInfo?> FindRecoveryForApprovalAsync(string token, CancellationToken ct = default)
@@ -445,8 +488,11 @@ public sealed class ProviderSecurityService
             return ProviderResult.Refused("refused.approval-expired", "This approval link has expired (1 hour). Nothing was changed; the operator must start again with a new break-glass code.");
         }
 
+        var delayNote = "";
+        if (record.Level == RecoveryLevel.BreakGlassReplace)
+            delayNote = waiveDelay ? " (waives the 24-hour delay)" : " (keeps the 24-hour delay)";
         await AuditAsync($"approver:{approverEmail}", $"provider.recovery.level{(int)record.Level}.approved", record.TargetUserId,
-            $"Recovery {record.Id} approved by {approverEmail}{(record.Level == RecoveryLevel.BreakGlassReplace ? (waiveDelay ? " (waives the 24-hour delay)" : " (keeps the 24-hour delay)") : "")}", now, ct).ConfigureAwait(false);
+            $"Recovery {record.Id} approved by {approverEmail}{delayNote}", now, ct).ConfigureAwait(false);
         await _store.SaveChangesAsync(ct).ConfigureAwait(false);
 
         if (!complete) return ProviderResult.Ok("recovery.approved-partly", "Thank you. Waiting for the other approver.");
@@ -529,17 +575,13 @@ public sealed class ProviderSecurityService
                 ? ProviderResult.Refused("refused.already-provider", "That person is already a provider user.")
                 : ProviderResult.Refused("refused.account-exists", "That email already has an account (e.g. an organization admin). Provider accounts are separate: use another address.");
         }
-        if (LinkBaseOrNull(linkBase) == null) return ProviderResult.Refused("refused.no-link-base", "Links:AdminBaseUrl is not configured, so no setup link can be built.");
-
-        var userId = await _accounts.CreateWithoutPasswordAsync(address, ct).ConfigureAwait(false);
+        var temporaryPassword = CreateTemporaryPassword();
+        var userId = await _accounts.CreateWithPasswordAsync(address, temporaryPassword, ct).ConfigureAwait(false);
         await _store.AddProviderUserAsync(ProviderUser.Invite(userId, role, now), ct).ConfigureAwait(false);
-        var token = await AddInvitationAsync(address, userId, InvitationPurpose.ProviderSetup, SetupInvitationLifetime, $"provider:{actorUserId}", now, ct).ConfigureAwait(false);
         await AuditAsync($"provider:{actorUserId}", "provider.user.invited", userId, $"{address} invited as {role}", now, ct).ConfigureAwait(false);
         await _store.SaveChangesAsync(ct).ConfigureAwait(false);
 
-        await SendInvitationAsync(address, InvitationPurpose.ProviderSetup, LinkFor("AcceptInvitation", token, linkBase), SetupInvitationLifetime, ct).ConfigureAwait(false);
-        await NotifyAsync("Provider user invited", $"{await EmailOfAsync(actorUserId, ct).ConfigureAwait(false)} invited {address} as {role}.", ct).ConfigureAwait(false);
-        return ProviderResult.Ok("user.invited", $"{address} was invited as {role}. The setup link is valid for 24 hours.");
+        return ProviderResult.Ok("user.invited", $"{address} was created as {role}. Give the temporary password to the provider securely.", temporaryPassword: temporaryPassword);
     }
 
     /// <summary>A new setup link for someone who has not finished setting up (the old link stops working).</summary>
@@ -603,10 +645,13 @@ public sealed class ProviderSecurityService
         return ProviderResult.Ok("user.disabled", $"{email} was disabled and signed out everywhere.");
     }
 
-    private async Task<ProviderResult?> RequireActiveOwnerAsync(string actorUserId, CancellationToken ct) =>
-        await _store.FindProviderUserAsync(actorUserId, ct).ConfigureAwait(false) is { IsActiveOwner: true }
-            ? null
-            : ProviderResult.Refused("refused.not-owner", "Only an active Provider Owner can manage provider users.");
+    private async Task<ProviderResult?> RequireActiveOwnerAsync(string actorUserId, CancellationToken ct)
+    {
+        var provider = await _store.FindProviderUserAsync(actorUserId, ct).ConfigureAwait(false);
+        if (provider is { IsActiveOwner: true }) return null;
+
+        return ProviderResult.Refused("refused.not-owner", "Only an active Provider Owner can manage provider users.");
+    }
 
     // A safety net: the acting owner can never act on themselves and stays an active owner, so this
     // never refuses today. It keeps the rule true if other paths (e.g. support tooling) are added.
@@ -615,6 +660,8 @@ public sealed class ProviderSecurityService
 
     private async Task<string> EmailOfAsync(string userId, CancellationToken ct) =>
         (await _accounts.FindByIdAsync(userId, ct).ConfigureAwait(false))?.Email ?? userId;
+
+    private static string CreateTemporaryPassword() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(18)) + "aA1!";
 
     // ---------------------------------------------------------------- helpers
 

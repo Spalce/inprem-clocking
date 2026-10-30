@@ -41,6 +41,17 @@
 {
     <div class="pc-success" data-testid="success">@success</div>
 }
+@if (TempData["OrganizationTemporaryPassword"] is string temporaryPassword && !string.IsNullOrWhiteSpace(temporaryPassword))
+{
+    <div class="pc-modal-backdrop" data-temporary-password-dialog role="dialog" aria-modal="true" aria-labelledby="organization-temporary-password-title">
+      <div class="pc-modal">
+        <h2 id="organization-temporary-password-title">Organization owner created</h2>
+        <p>Give this temporary password to the organization owner securely. It will not be shown again.</p>
+        <p class="pc-temporary-password" data-testid="organization-temporary-password">@temporaryPassword</p>
+        <button type="button" class="pc-btn pc-btn-primary" data-close-temporary-password>OK</button>
+      </div>
+    </div>
+}
 @if (TempData["Error"] is string error)
 {
     <div class="pc-error" data-testid="error">@error</div>

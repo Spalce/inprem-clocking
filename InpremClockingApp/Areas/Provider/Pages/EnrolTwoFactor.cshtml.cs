@@ -52,6 +52,7 @@ public class EnrolTwoFactorModel : PageModel
     {
         var user = await _users.GetUserAsync(User);
         if (user == null) return RedirectToPage("/Login", new { area = "Provider" });
+        if (user.RequiresPasswordChange) return RedirectToPage("/ChangePassword", new { area = "Provider" });
         if (!MustEnrol(user, await _users.GetTwoFactorEnabledAsync(user))) return RedirectToPage("/Index", new { area = "Provider" });
 
         await LoadKeyAsync(user);
@@ -62,6 +63,7 @@ public class EnrolTwoFactorModel : PageModel
     {
         var user = await _users.GetUserAsync(User);
         if (user == null) return RedirectToPage("/Login", new { area = "Provider" });
+        if (user.RequiresPasswordChange) return RedirectToPage("/ChangePassword", new { area = "Provider" });
         if (!MustEnrol(user, await _users.GetTwoFactorEnabledAsync(user))) return RedirectToPage("/Index", new { area = "Provider" });
 
         var valid = await _users.VerifyTwoFactorTokenAsync(user, _users.Options.Tokens.AuthenticatorTokenProvider, AccountGateway.NormalizeCode(Code ?? ""));
