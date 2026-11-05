@@ -39,6 +39,15 @@ The normal tenant-registration flow is:
 9. The owner opens the verification link in the email and chooses a password.
 10. If the registration requires paid checkout, create a checkout session using the signup token.
 
+The volunteer registration flow is separate from tenant signup:
+
+1. Obtain the organization `tenantId` from the website's organization-selection flow.
+2. Collect the volunteer's existing registration fields.
+3. Render Turnstile and obtain a fresh CAPTCHA token.
+4. Submit `POST /volunteers` with a new `Idempotency-Key`.
+5. Show the pending-approval confirmation to the volunteer.
+6. Do not treat the volunteer as active until the organization approves the registration.
+
 ## Public endpoints
 
 ### Health check
@@ -214,6 +223,74 @@ If the demo site is enabled, open its signup page and complete the form. It obta
 Postman does not generate a Turnstile token. For Postman testing, ask the backend/deployment owner for a QA-only test-token configuration. Do not copy a token from an old request and do not use production CAPTCHA secrets in the browser.
 
 If the API returns `captcha_failed`, the token was missing, expired, invalid, or created for a different environment.
+
+## Register a volunteer
+
+```text
+POST {API_BASE_URL}/volunteers
+```
+
+The endpoint is public and does not require a bearer token. It requires a valid active organization ID, CAPTCHA, consent, and an idempotency key.
+
+Example request:
+
+```json
+{
+  "tenantId": 123,
+  "emailAddress": "volunteer@example.com",
+  "firstName": "Ama",
+  "lastName": "Owusu",
+  "zipCode": "43229",
+  "gender": "F",
+  "phoneNumber": "555-0100001",
+  "address": "123 Main Street",
+  "volunteerCategory": "Personal or Individual Volunteering",
+  "consent": true,
+  "captchaToken": "TOKEN-FROM-CAPTCHA-WIDGET"
+}
+```
+
+Example JavaScript:
+
+```javascript
+const response = await fetch(`${API_BASE_URL}/volunteers`, {
+  method: "POST",
+  headers: {
+	"Content-Type": "application/json",
+	"Idempotency-Key": crypto.randomUUID()
+  },
+  body: JSON.stringify({
+	tenantId,
+	emailAddress,
+	firstName,
+	lastName,
+	zipCode,
+	gender,
+	phoneNumber,
+	address,
+	volunteerCategory,
+	consent: true,
+	captchaToken
+  })
+});
+```
+
+Successful response: `202 Accepted`.
+
+```json
+{
+  "registrationId": 123,
+  "status": "pending_approval",
+  "message": "Your volunteer registration has been submitted for review."
+}
+```
+
+The organization reviews and approves the registration. Handle these stable conflict codes:
+
+- `tenant_not_found`
+- `tenant_not_active`
+- `volunteer_email_already_registered`
+- `volunteer_phone_already_registered`
 
 ## Create a tenant signup
 

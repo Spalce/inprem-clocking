@@ -58,6 +58,7 @@ These endpoints do not require a bearer token.
 | `GET` | `/timezones` | Returns supported time zones for the registration form. |
 | `GET` | `/slugs/{slug}/availability` | Checks whether an organization slug is available. |
 | `POST` | `/signups` | Creates the tenant, owner account, membership, profile, subscription, and signup record. |
+| `POST` | `/volunteers` | Submits a volunteer registration for an active organization in pending-approval status. |
 
 ### Health
 
@@ -135,6 +136,49 @@ A successful response is `201 Created` and contains a temporary signup token:
 ```
 
 The signup token is secret, expires after two hours, and is scoped to the signup that created it.
+
+### Register a volunteer
+
+```text
+POST https://inprem-003-site3.etempurl.com/api/public/v1/volunteers
+```
+
+Required headers:
+
+```text
+Content-Type: application/json
+Idempotency-Key: a-unique-request-id
+```
+
+Example request body:
+
+```json
+{
+  "tenantId": 123,
+  "emailAddress": "volunteer@example.com",
+  "firstName": "Ama",
+  "lastName": "Owusu",
+  "zipCode": "43229",
+  "gender": "F",
+  "phoneNumber": "555-0100001",
+  "address": "123 Main Street",
+  "volunteerCategory": "Personal or Individual Volunteering",
+  "consent": true,
+  "captchaToken": "TOKEN-FROM-CAPTCHA-WIDGET"
+}
+```
+
+The API verifies that the organization exists and is active. A successful response is `202 Accepted`:
+
+```json
+{
+  "registrationId": 123,
+  "status": "pending_approval",
+  "message": "Your volunteer registration has been submitted for review."
+}
+```
+
+The organization must approve the volunteer before the registration becomes active. Duplicate email and phone registrations return `409 Conflict`.
 
 ## Signup-token endpoints
 

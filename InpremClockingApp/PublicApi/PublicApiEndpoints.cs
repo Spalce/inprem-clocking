@@ -288,7 +288,8 @@ public static class PublicApiEndpoints
                 VolunteerRegistrationError.Captcha => Problems.Create(http, StatusCodes.Status400BadRequest, Problems.CaptchaFailed, result.Message!),
                 VolunteerRegistrationError.TenantNotFound => Problems.Create(http, StatusCodes.Status404NotFound, Problems.TenantNotFound, result.Message!),
                 VolunteerRegistrationError.TenantNotActive => Problems.Create(http, StatusCodes.Status409Conflict, Problems.TenantNotActive, result.Message!),
-                VolunteerRegistrationError.Duplicate => Problems.Create(http, StatusCodes.Status409Conflict, Problems.VolunteerAlreadyRegistered, result.Message!),
+                VolunteerRegistrationError.DuplicateEmail => Problems.Create(http, StatusCodes.Status409Conflict, Problems.VolunteerEmailAlreadyRegistered, result.Message!),
+                VolunteerRegistrationError.DuplicatePhone => Problems.Create(http, StatusCodes.Status409Conflict, Problems.VolunteerPhoneAlreadyRegistered, result.Message!),
                 _ => Problems.Create(http, StatusCodes.Status500InternalServerError, Problems.InternalError, "Something went wrong. Try again later."),
             };
         }

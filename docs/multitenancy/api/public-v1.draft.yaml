@@ -57,6 +57,8 @@ tags:
     description: Existing owners on the website (J3, J4).
   - name: Account
     description: Billing for one organization, with a billingAccessToken.
+  - name: Volunteers
+    description: Public volunteer registration for an active organization.
 security: []
 
 paths:
@@ -77,6 +79,32 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/Plan" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /volunteers:
+    post:
+      tags: [Volunteers]
+      operationId: registerVolunteer
+      summary: Submit a volunteer registration
+      description: Creates a volunteer registration for the supplied organization in pending-approval status.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/ApiKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VolunteerRegistrationRequest" }
+      responses:
+        "202":
+          description: Volunteer registration accepted for organization review.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VolunteerRegistered" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/IdempotencyConflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /timezones:
@@ -485,12 +513,12 @@ components:
         application/problem+json:
           schema: { $ref: "#/components/schemas/Problem" }
     NotFound:
-      description: "Not found, or not visible to this token. Code: not_found."
+      description: "Not found, or not visible to this token. Codes: not_found, tenant_not_found."
       content:
         application/problem+json:
           schema: { $ref: "#/components/schemas/Problem" }
     Conflict:
-      description: "The request conflicts with the current state. Codes: slug_taken, email_in_use, checkout_expired, checkout_final, subscription_not_cancellable, cannot_keep, resend_limit_reached, already_verified."
+      description: "The request conflicts with the current state. Codes: slug_taken, email_in_use, tenant_not_active, volunteer_email_already_registered, volunteer_phone_already_registered, checkout_expired, checkout_final, subscription_not_cancellable, cannot_keep, resend_limit_reached, already_verified."
       content:
         application/problem+json:
           schema: { $ref: "#/components/schemas/Problem" }
@@ -537,6 +565,10 @@ components:
             - not_found
             - slug_taken
             - email_in_use
+             - tenant_not_found
+             - tenant_not_active
+             - volunteer_email_already_registered
+             - volunteer_phone_already_registered
             - checkout_expired
             - checkout_final
             - subscription_not_cancellable
@@ -654,6 +686,37 @@ components:
           enum: [trial, subscribe]
           description: trial = J1 (no payment); subscribe = J2 (continue with POST /checkout-sessions).
         captchaToken: { type: string, description: "CAPTCHA response token, verified on the server." }
+
+    VolunteerRegistrationRequest:
+      type: object
+      required: [tenantId, emailAddress, firstName, lastName, zipCode, gender, phoneNumber, volunteerCategory, consent, captchaToken]
+      properties:
+        tenantId: { type: integer, minimum: 1, description: Organization identifier supplied by the API client. }
+        emailAddress: { type: string, format: email, maxLength: 100 }
+        firstName: { type: string, maxLength: 100 }
+        lastName: { type: string, maxLength: 100 }
+        zipCode: { type: string }
+        gender: { type: string, minLength: 1, maxLength: 1 }
+        phoneNumber: { type: string, minLength: 10, maxLength: 20 }
+        address: { type: string, nullable: true, maxLength: 255 }
+        volunteerCategory: { type: string, maxLength: 100 }
+        mandateType: { type: string, nullable: true, maxLength: 100 }
+        institutionName: { type: string, nullable: true, maxLength: 200 }
+        placeOfWork: { type: string, nullable: true, maxLength: 200 }
+        contactPerson: { type: string, nullable: true, maxLength: 200 }
+        contactPersonPosition: { type: string, nullable: true, maxLength: 200 }
+        contactPersonEmail: { type: string, nullable: true, format: email, maxLength: 100 }
+        contactPersonPhone: { type: string, nullable: true, maxLength: 20 }
+        consent: { type: boolean, enum: [true] }
+        captchaToken: { type: string, description: "CAPTCHA response token, verified on the server." }
+
+    VolunteerRegistered:
+      type: object
+      required: [registrationId, status, message]
+      properties:
+        registrationId: { type: integer, format: int64 }
+        status: { type: string, enum: [pending_approval] }
+        message: { type: string }
 
     SignupCreated:
       type: object

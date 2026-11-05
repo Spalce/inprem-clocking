@@ -1,10 +1,12 @@
 using System.ComponentModel.DataAnnotations;
+using System.Net.Mail;
 using Inprem.Platform.Application.PublicApi;
 using InpremClockingApp.Data;
 using InpremClockingApp.Helpers;
 using InpremClockingApp.Models;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 
 namespace InpremClockingApp.PublicApi;
 
@@ -34,7 +36,8 @@ public enum VolunteerRegistrationError
     Captcha,
     TenantNotFound,
     TenantNotActive,
-    Duplicate
+    DuplicateEmail,
+    DuplicatePhone
 }
 
 public sealed record VolunteerRegistrationResult(
@@ -88,13 +91,18 @@ public sealed class VolunteerRegistrationService
         var email = request.EmailAddress!.Trim();
         var phone = request.PhoneNumber!.Trim();
         var duplicate = await _db.Volunteers.IgnoreQueryFilters().AsNoTracking()
-            .AnyAsync(v => v.TenantId == request.TenantId.Value &&
-                (v.EmailAddress == email || v.PhoneNumber == phone), ct)
+            .Where(v => v.TenantId == request.TenantId.Value &&
+                (v.EmailAddress == email || v.PhoneNumber == phone))
+            .Select(v => new { v.EmailAddress, v.PhoneNumber })
+            .FirstOrDefaultAsync(ct)
             .ConfigureAwait(false);
 
-        if (duplicate)
-            return VolunteerRegistrationResult.Fail(VolunteerRegistrationError.Duplicate,
-                "A volunteer with these contact details is already registered.");
+        if (duplicate != null)
+            return duplicate.EmailAddress == email
+                ? VolunteerRegistrationResult.Fail(VolunteerRegistrationError.DuplicateEmail,
+                    "A volunteer with this email address is already registered.")
+                : VolunteerRegistrationResult.Fail(VolunteerRegistrationError.DuplicatePhone,
+                    "A volunteer with this phone number is already registered.");
 
         var volunteer = new Volunteer
         {
@@ -124,10 +132,10 @@ public sealed class VolunteerRegistrationService
             _db.Volunteers.Add(volunteer);
             await _db.SaveChangesAsync(ct).ConfigureAwait(false);
         }
-        catch (DbUpdateException)
+        catch (DbUpdateException ex) when (IsDuplicateEmailViolation(ex))
         {
-            return VolunteerRegistrationResult.Fail(VolunteerRegistrationError.Duplicate,
-                "A volunteer with these contact details is already registered.");
+            return VolunteerRegistrationResult.Fail(VolunteerRegistrationError.DuplicateEmail,
+                "A volunteer with this email address is already registered.");
         }
 
         return new VolunteerRegistrationResult(volunteer, null);
@@ -144,6 +152,8 @@ public sealed class VolunteerRegistrationService
             errors.AddModelError("gender", "Gender is required.");
         if (string.IsNullOrWhiteSpace(request.CaptchaToken))
             errors.AddModelError("captchaToken", "The CAPTCHA answer is required.");
+        if (!string.IsNullOrWhiteSpace(request.EmailAddress) && !IsValidEmail(request.EmailAddress))
+            errors.AddModelError("emailAddress", "Enter a valid email address.");
 
         var volunteer = new Volunteer
         {
@@ -181,6 +191,23 @@ public sealed class VolunteerRegistrationService
     }
 
     private static string? Blank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static bool IsValidEmail(string value)
+    {
+        try
+        {
+            var address = new MailAddress(value.Trim());
+            return string.Equals(address.Address, value.Trim(), StringComparison.OrdinalIgnoreCase);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+    }
+
+    private static bool IsDuplicateEmailViolation(DbUpdateException ex) =>
+        ex.InnerException is SqlException sql && (sql.Number == 2601 || sql.Number == 2627) &&
+        sql.Message.Contains("IX_Volunteers_TenantId_EmailAddress", StringComparison.OrdinalIgnoreCase);
 
     private static string ToCamelCase(string value) => string.IsNullOrEmpty(value)
         ? value

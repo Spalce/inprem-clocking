@@ -133,7 +133,7 @@ public sealed class VolunteerRegistrationTests : IClassFixture<PublicApiFixture>
 
         var response = await client.SendAsync(Post(ValidBody(_app.Data.Alpha.Id, email)));
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        Assert.Equal(Problems.VolunteerAlreadyRegistered, (await PublicApiFixture.JsonAsync(response)).GetProperty("code").GetString());
+        Assert.Equal(Problems.VolunteerEmailAlreadyRegistered, (await PublicApiFixture.JsonAsync(response)).GetProperty("code").GetString());
     }
 
     [Fact]
