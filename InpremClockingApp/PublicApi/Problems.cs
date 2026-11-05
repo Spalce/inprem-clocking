@@ -19,6 +19,9 @@ public static class Problems
     public const string NotFound = "not_found";
     public const string SlugTaken = "slug_taken";
     public const string EmailInUse = "email_in_use";
+    public const string TenantNotFound = "tenant_not_found";
+    public const string TenantNotActive = "tenant_not_active";
+    public const string VolunteerAlreadyRegistered = "volunteer_already_registered";
     public const string CheckoutExpired = "checkout_expired";
     public const string CheckoutFinal = "checkout_final";
     public const string SubscriptionNotCancellable = "subscription_not_cancellable";
@@ -36,7 +39,7 @@ public static class Problems
     public static readonly string[] All =
     {
         ValidationFailed, CaptchaFailed, ReturnUrlNotAllowed, PlanNotAvailable, InvalidCode, TokenMissing, TokenInvalid, TokenExpired,
-        NotFound, SlugTaken, EmailInUse, CheckoutExpired, CheckoutFinal, SubscriptionNotCancellable, CannotKeep, ResendLimitReached,
+        NotFound, SlugTaken, EmailInUse, TenantNotFound, TenantNotActive, VolunteerAlreadyRegistered, CheckoutExpired, CheckoutFinal, SubscriptionNotCancellable, CannotKeep, ResendLimitReached,
         AlreadyVerified, IdempotencyKeyReused, RateLimited, PaymentProviderUnavailable, InternalError,
     };
 

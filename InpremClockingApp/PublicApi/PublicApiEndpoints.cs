@@ -26,6 +26,20 @@ public static class PublicApiEndpoints
             .Produces<HealthResponse>()
             .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
+        api.MapPost("/volunteers", RegisterVolunteerAsync)
+            .AllowAnonymous()
+            .RequireRateLimiting(PublicApiHosting.WriteRatePolicy)
+            .RequireIdempotency()
+            .WithName("registerVolunteer")
+            .WithTags("Volunteers")
+            .Accepts<VolunteerRegistrationRequest>("application/json")
+            .Produces<VolunteerRegisteredResponse>(StatusCodes.Status202Accepted)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
         api.MapGet("/plans", GetPlansAsync)
             .AllowAnonymous()
             .WithName("listPlans")
@@ -259,6 +273,31 @@ public static class PublicApiEndpoints
             signup.Mode == Inprem.Platform.Domain.PublicApi.SignupMode.Subscribe ? "checkout" : "verify_email"));
     }
 
+    private static async Task<IResult> RegisterVolunteerAsync(
+        HttpContext http, VolunteerRegistrationRequest? body, VolunteerRegistrationService volunteers)
+    {
+        if (body == null)
+            return Problems.Validation(http, new Dictionary<string, string[]> { ["body"] = new[] { "A JSON body is required." } });
+
+        var result = await volunteers.RegisterAsync(body, http.Connection.RemoteIpAddress?.ToString(), http.RequestAborted);
+        if (result.Error is { } error)
+        {
+            return error switch
+            {
+                VolunteerRegistrationError.Validation => Problems.Validation(http, result.Errors!),
+                VolunteerRegistrationError.Captcha => Problems.Create(http, StatusCodes.Status400BadRequest, Problems.CaptchaFailed, result.Message!),
+                VolunteerRegistrationError.TenantNotFound => Problems.Create(http, StatusCodes.Status404NotFound, Problems.TenantNotFound, result.Message!),
+                VolunteerRegistrationError.TenantNotActive => Problems.Create(http, StatusCodes.Status409Conflict, Problems.TenantNotActive, result.Message!),
+                VolunteerRegistrationError.Duplicate => Problems.Create(http, StatusCodes.Status409Conflict, Problems.VolunteerAlreadyRegistered, result.Message!),
+                _ => Problems.Create(http, StatusCodes.Status500InternalServerError, Problems.InternalError, "Something went wrong. Try again later."),
+            };
+        }
+
+        var volunteer = result.Volunteer!;
+        return Results.Json(new VolunteerRegisteredResponse(volunteer.VolunteerId, "pending_approval",
+            "Your volunteer registration has been submitted for review."), statusCode: StatusCodes.Status202Accepted);
+    }
+
     /// <summary>The signup token's own signup only; anything else is "not found".</summary>
     private static bool OwnSignup(HttpContext http, Guid signupId) => PublicApiClaims.SignupOf(http.User) == signupId;
 
@@ -448,6 +487,8 @@ public static class PublicApiEndpoints
     public sealed record SignupCreatedResponse(Guid SignupId, string SignupToken, DateTime SignupTokenExpiresAt, string Status, string NextAction);
 
     public sealed record SignupStatusResponse(Guid SignupId, string Status, string? SubscriptionStatus);
+
+    public sealed record VolunteerRegisteredResponse(long RegistrationId, string Status, string Message);
 
     public sealed record HealthResponse(string Status);
 
