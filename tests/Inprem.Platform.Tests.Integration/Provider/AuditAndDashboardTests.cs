@@ -119,7 +119,7 @@ public class AuditAndDashboardTests : IClassFixture<ProviderFixture>
             var priceId = (await plans.FindAsync(planId))!.Prices[0].Id;
             var orgs = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Inprem.Platform.Application.Organizations.OrganizationService>(scope.ServiceProvider);
             var name = $"Trial Org {Guid.NewGuid():N}"[..20];
-            var created = await orgs.CreateAsync(new(name, $"trial-{Guid.NewGuid():N}"[..14], "UTC", null, null, "T", "Owner", $"t-{Guid.NewGuid():N}"[..10] + "@trial.test", null,
+            var created = await orgs.CreateAsync(new(name, $"trial-{Guid.NewGuid():N}"[..14], "UTC", null, null, null, "T", "Owner", $"t-{Guid.NewGuid():N}"[..10] + "@trial.test", null,
                 planId, priceId, Inprem.Platform.Domain.Billing.BillingMode.PayPal, 7), "test", "https://localhost");
             Assert.True(created.Succeeded, created.Error);
             Assert.Contains(name, (await GetDocumentAsync(owner, "/Provider")).QuerySelector("[data-testid=trials]")!.TextContent);

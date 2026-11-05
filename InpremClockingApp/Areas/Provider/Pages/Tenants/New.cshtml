@@ -37,7 +37,8 @@
       <input type="hidden" name="Slug" value="@Model.Slug" />
       <input type="hidden" name="TimeZoneId" value="@Model.TimeZoneId" />
       <input type="hidden" name="Address" value="@Model.Address" />
-      <input type="hidden" name="ContactInfo" value="@Model.ContactInfo" />
+       <input type="hidden" name="Phone" value="@Model.Phone" />
+       <input type="hidden" name="Email" value="@Model.Email" />
   }
   @if (step != 2)
   {
@@ -78,8 +79,12 @@
         <input id="Address" name="Address" value="@Model.Address" maxlength="255" />
       </div>
       <div class="pc-field">
-        <label for="ContactInfo">Contact <span class="pc-muted">(phone, email; shown on reports)</span></label>
-        <input id="ContactInfo" name="ContactInfo" value="@Model.ContactInfo" maxlength="255" />
+        <label for="Phone">Phone <span class="pc-muted">(shown on reports)</span></label>
+        <input id="Phone" name="Phone" type="tel" value="@Model.Phone" maxlength="255" />
+      </div>
+      <div class="pc-field">
+        <label for="Email">Email <span class="pc-muted">(shown on reports)</span></label>
+        <input id="Email" name="Email" type="email" value="@Model.Email" maxlength="255" />
       </div>
   }
   else if (step == 2)
@@ -143,7 +148,8 @@
         <dt>Address name</dt><dd><code>@Model.Slug</code></dd>
         <dt>Time zone</dt><dd>@Model.TimeZoneId</dd>
         <dt>Address</dt><dd>@(string.IsNullOrWhiteSpace(Model.Address) ? "—" : Model.Address)</dd>
-        <dt>Contact</dt><dd>@(string.IsNullOrWhiteSpace(Model.ContactInfo) ? "—" : Model.ContactInfo)</dd>
+        <dt>Phone</dt><dd>@(string.IsNullOrWhiteSpace(Model.Phone) ? "—" : Model.Phone)</dd>
+        <dt>Email</dt><dd>@(string.IsNullOrWhiteSpace(Model.Email) ? "—" : Model.Email)</dd>
         <dt>Owner</dt><dd>@Model.OwnerFirstName @Model.OwnerLastName &lt;@Model.OwnerEmail&gt;@(string.IsNullOrWhiteSpace(Model.OwnerMobile) ? "" : $", {Model.OwnerMobile}")</dd>
         <dt>Plan</dt><dd>@Model.ChosenPlanText()</dd>
         <dt>Billing</dt><dd>@Model.Mode@(Model.Mode != BillingMode.Free && Model.TrialDays > 0 ? $", {Model.TrialDays}-day trial" : "")</dd>

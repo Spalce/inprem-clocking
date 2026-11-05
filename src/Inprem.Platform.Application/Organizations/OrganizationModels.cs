@@ -17,7 +17,7 @@ public sealed record AdminView(
     DateTime? LastSignInUtc, bool TwoFactorEnabled, bool HasPassword);
 
 public sealed record OrganizationDetail(
-    OrganizationSummary Summary, string TimeZoneId, string? Address, string? ContactInfo,
+    OrganizationSummary Summary, string TimeZoneId, string? Address, string? Phone, string? Email,
     string? StatusReason, DateTime? StatusChangedUtc, int Staff, int Volunteers,
     SubscriptionView? Subscription, IReadOnlyList<AdminView> Admins, IReadOnlyList<TenantNote> Notes, IReadOnlyList<AuditEntry> Audit);
 
@@ -33,11 +33,11 @@ public sealed record OrganizationPage(IReadOnlyList<OrganizationSummary> Items, 
 
 /// <summary>What the wizard collects (Organization → Owner → Billing → Review).</summary>
 public sealed record NewOrganization(
-    string Name, string Slug, string TimeZoneId, string? Address, string? ContactInfo,
+    string Name, string Slug, string TimeZoneId, string? Address, string? Phone, string? Email,
     string OwnerFirstName, string OwnerLastName, string OwnerEmail, string? OwnerMobile,
     Guid? PlanId, Guid? PlanPriceId, BillingMode Mode, int TrialDays);
 
-public sealed record OrganizationEdit(string Name, string Slug, string TimeZoneId, string? Address, string? ContactInfo);
+public sealed record OrganizationEdit(string Name, string Slug, string TimeZoneId, string? Address, string? Phone, string? Email);
 
 /// <summary>Everything the store creates in one transaction for a new organization.</summary>
 public sealed record OrganizationProvisioning(

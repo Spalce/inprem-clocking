@@ -35,7 +35,8 @@ public class NewModel : PageModel
     [BindProperty] public string Slug { get; set; } = "";
     [BindProperty] public string TimeZoneId { get; set; } = "America/New_York";
     [BindProperty] public string? Address { get; set; }
-    [BindProperty] public string? ContactInfo { get; set; }
+    [BindProperty] public string? Phone { get; set; }
+    [BindProperty] public string? Email { get; set; }
 
     [BindProperty] public string OwnerFirstName { get; set; } = "";
     [BindProperty] public string OwnerLastName { get; set; } = "";
@@ -88,7 +89,7 @@ public class NewModel : PageModel
 
         Errors = Step switch
         {
-            1 => await _organizations.CheckOrganizationStepAsync(Name, Slug, TimeZoneId, Address, ContactInfo, HttpContext.RequestAborted),
+            1 => await _organizations.CheckOrganizationStepAsync(Name, Slug, TimeZoneId, Address, Phone, Email, HttpContext.RequestAborted),
             2 => await _organizations.CheckOwnerStepAsync(OwnerFirstName, OwnerLastName, OwnerEmail, OwnerMobile, HttpContext.RequestAborted),
             3 => await _organizations.CheckBillingStepAsync(ChosenPlan().PlanId, ChosenPlan().PriceId, Mode, TrialDays, HttpContext.RequestAborted),
             _ => Array.Empty<string>(),
@@ -121,6 +122,6 @@ public class NewModel : PageModel
     private NewOrganization Input()
     {
         var (planId, priceId) = ChosenPlan();
-        return new NewOrganization(Name, Slug, TimeZoneId, Address, ContactInfo, OwnerFirstName, OwnerLastName, OwnerEmail, OwnerMobile, planId, priceId, Mode, TrialDays);
+        return new NewOrganization(Name, Slug, TimeZoneId, Address, Phone, Email, OwnerFirstName, OwnerLastName, OwnerEmail, OwnerMobile, planId, priceId, Mode, TrialDays);
     }
 }

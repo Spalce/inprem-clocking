@@ -127,7 +127,7 @@ public sealed class SignupService
 
         var now = _clock.UtcNow;
         var signupId = Guid.NewGuid();
-        var organization = new NewOrganization(input.OrganizationName!.Trim(), slug, input.TimeZone!.Trim(), null, null,
+        var organization = new NewOrganization(input.OrganizationName!.Trim(), slug, input.TimeZone!.Trim(), null, null, null,
             input.OwnerFirstName!.Trim(), input.OwnerLastName!.Trim(), email, string.IsNullOrWhiteSpace(input.OwnerMobile) ? null : input.OwnerMobile.Trim(),
             plan.Id, price.Id, BillingMode.PayPal, mode == SignupMode.Trial ? plan.TrialDays : 0);
         var subscription = mode == SignupMode.Trial

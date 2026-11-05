@@ -90,7 +90,7 @@ public sealed class OrganizationService
 
     // ---------------------------------------------------------------- wizard checks (one per step)
 
-    public async Task<IReadOnlyList<string>> CheckOrganizationStepAsync(string name, string slug, string timeZoneId, string? address, string? contact, CancellationToken ct = default)
+    public async Task<IReadOnlyList<string>> CheckOrganizationStepAsync(string name, string slug, string timeZoneId, string? address, string? phone, string? email, CancellationToken ct = default)
     {
         var errors = new List<string>();
         if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > 200) errors.Add("Give the organization's name (up to 200 characters).");
@@ -98,7 +98,8 @@ public sealed class OrganizationService
         if (!slugCheck.Available) errors.Add(slugCheck.Problem!);
         if (TimeZoneResolver.TryFind(timeZoneId) == null) errors.Add("Choose a time zone.");
         if (address?.Trim().Length > 255) errors.Add("The address is too long (255 characters at most).");
-        if (contact?.Trim().Length > 255) errors.Add("The contact details are too long (255 characters at most).");
+        if (phone?.Trim().Length > 255) errors.Add("The phone number is too long (255 characters at most).");
+        if (email?.Trim().Length > 255) errors.Add("The organization email is too long (255 characters at most).");
         return errors;
     }
 
@@ -138,7 +139,7 @@ public sealed class OrganizationService
     public async Task<OrganizationResult> CreateAsync(NewOrganization input, string actor, string? appLinkBase, CancellationToken ct = default, bool sendEmail = true)
     {
         var errors = new List<string>();
-        errors.AddRange(await CheckOrganizationStepAsync(input.Name, input.Slug, input.TimeZoneId, input.Address, input.ContactInfo, ct).ConfigureAwait(false));
+        errors.AddRange(await CheckOrganizationStepAsync(input.Name, input.Slug, input.TimeZoneId, input.Address, input.Phone, input.Email, ct).ConfigureAwait(false));
         errors.AddRange(await CheckOwnerStepAsync(input.OwnerFirstName, input.OwnerLastName, input.OwnerEmail, input.OwnerMobile, ct).ConfigureAwait(false));
         errors.AddRange(await CheckBillingStepAsync(input.PlanId, input.PlanPriceId, input.Mode, input.TrialDays, ct).ConfigureAwait(false));
         if (sendEmail && !_mail.CanBuildLinks(appLinkBase)) errors.Add("Links:AppBaseUrl is not configured, so the owner's invitation link cannot be built.");
@@ -148,7 +149,7 @@ public sealed class OrganizationService
         var (plan, price) = await FindPlanAsync(input.PlanId, input.PlanPriceId, ct).ConfigureAwait(false);
         var normalized = input with
         {
-            Name = input.Name.Trim(), Slug = input.Slug.Trim().ToLowerInvariant(), Address = Blank(input.Address), ContactInfo = Blank(input.ContactInfo),
+            Name = input.Name.Trim(), Slug = input.Slug.Trim().ToLowerInvariant(), Address = Blank(input.Address), Phone = Blank(input.Phone), Email = Blank(input.Email),
             OwnerFirstName = input.OwnerFirstName.Trim(), OwnerLastName = input.OwnerLastName.Trim(), OwnerEmail = input.OwnerEmail.Trim(), OwnerMobile = Blank(input.OwnerMobile),
         };
         var existing = await _accounts.FindByEmailAsync(normalized.OwnerEmail, ct).ConfigureAwait(false);
@@ -200,16 +201,19 @@ public sealed class OrganizationService
         var slug = await CheckSlugAsync(edit.Slug, tenantId, ct).ConfigureAwait(false);
         if (!slug.Available) errors.Add(slug.Problem!);
         if (TimeZoneResolver.TryFind(edit.TimeZoneId) == null) errors.Add("Choose a time zone.");
-        if (edit.Address?.Trim().Length > 255 || edit.ContactInfo?.Trim().Length > 255) errors.Add("Address and contact details are 255 characters at most.");
+        if (edit.Address?.Trim().Length > 255) errors.Add("The address is too long (255 characters at most).");
+        if (edit.Phone?.Trim().Length > 255) errors.Add("The phone number is too long (255 characters at most).");
+        if (edit.Email?.Trim().Length > 255) errors.Add("The organization email is too long (255 characters at most).");
         if (errors.Count > 0) return OrganizationResult.Fail(string.Join(" ", errors));
 
-        var clean = new OrganizationEdit(edit.Name.Trim(), edit.Slug.Trim().ToLowerInvariant(), edit.TimeZoneId, Blank(edit.Address), Blank(edit.ContactInfo));
+        var clean = new OrganizationEdit(edit.Name.Trim(), edit.Slug.Trim().ToLowerInvariant(), edit.TimeZoneId, Blank(edit.Address), Blank(edit.Phone), Blank(edit.Email));
         var changes = new List<string>();
         if (clean.Name != current.Summary.Name) changes.Add($"name \"{current.Summary.Name}\" → \"{clean.Name}\"");
         if (clean.Slug != current.Summary.Slug) changes.Add($"slug {current.Summary.Slug} → {clean.Slug}");
         if (clean.TimeZoneId != current.TimeZoneId) changes.Add($"time zone {current.TimeZoneId} → {clean.TimeZoneId}");
         if (clean.Address != current.Address) changes.Add("address");
-        if (clean.ContactInfo != current.ContactInfo) changes.Add("contact");
+        if (clean.Phone != current.Phone) changes.Add("phone");
+        if (clean.Email != current.Email) changes.Add("email");
         if (changes.Count == 0) return OrganizationResult.Ok(tenantId);
 
         await _store.UpdateAsync(tenantId, clean, Audit(actor, "organization.updated", tenantId, "Changed: " + string.Join(", ", changes)), ct).ConfigureAwait(false);

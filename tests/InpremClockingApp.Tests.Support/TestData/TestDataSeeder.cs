@@ -106,7 +106,8 @@ public static class TestDataSeeder
             TimeZoneId = timeZoneId,
             CreatedAt = createdUtc,
             Address = $"1 {name} Test Street, Testville",
-            ContactInfo = $"555-0100 | office@{domain}.test",
+            Phone = "555-0100",
+            Email = $"office@{domain}.test",
         };
         db.Tenants.Add(tenant);
         await db.SaveChangesAsync();

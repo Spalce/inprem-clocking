@@ -18,20 +18,21 @@ public class EditModel : PageModel
     [BindProperty] public string Slug { get; set; } = "";
     [BindProperty] public string TimeZoneId { get; set; } = "";
     [BindProperty] public string? Address { get; set; }
-    [BindProperty] public string? ContactInfo { get; set; }
+    [BindProperty] public string? Phone { get; set; }
+    [BindProperty] public string? Email { get; set; }
     public string? Error { get; private set; }
 
     public async Task<IActionResult> OnGetAsync(int id)
     {
         var org = await _organizations.GetAsync(id, HttpContext.RequestAborted);
         if (org == null) return NotFound();
-        (Name, Slug, TimeZoneId, Address, ContactInfo) = (org.Summary.Name, org.Summary.Slug, org.TimeZoneId, org.Address, org.ContactInfo);
+        (Name, Slug, TimeZoneId, Address, Phone, Email) = (org.Summary.Name, org.Summary.Slug, org.TimeZoneId, org.Address, org.Phone, org.Email);
         return Page();
     }
 
     public async Task<IActionResult> OnPostAsync(int id)
     {
-        var result = await _organizations.UpdateAsync(id, new OrganizationEdit(Name, Slug, TimeZoneId, Address, ContactInfo), User.Actor(), HttpContext.RequestAborted);
+        var result = await _organizations.UpdateAsync(id, new OrganizationEdit(Name, Slug, TimeZoneId, Address, Phone, Email), User.Actor(), HttpContext.RequestAborted);
         if (!result.Succeeded)
         {
             Error = result.Error;

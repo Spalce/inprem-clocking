@@ -96,10 +96,24 @@ public class Volunteer
 
     public DateTime? CreatedAt { get; set; }
 
+    public VolunteerApprovalStatus ApprovalStatus { get; set; } = VolunteerApprovalStatus.Pending;
+
+    public DateTime? ApprovedAt { get; set; }
+
+    [StringLength(450)]
+    public string? ApprovedBy { get; set; }
+
     public string? FullName => $"{FirstName} {LastName}";
 
     [JsonIgnore]
     public virtual ICollection<Clocking>? Clockings { get; set; }
+}
+
+public enum VolunteerApprovalStatus
+{
+    Pending,
+    Approved,
+    Rejected
 }
 
 /// <summary>Canonical volunteer category values, shared between the sign-up page and its server-side validation.</summary>

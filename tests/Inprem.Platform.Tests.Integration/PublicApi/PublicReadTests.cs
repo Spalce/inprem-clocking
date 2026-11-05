@@ -72,7 +72,7 @@ public class PublicReadTests : IClassFixture<PublicApiFixture>
     {
         using (var scope = _app.Services.CreateScope())
         {
-            var created = await scope.ServiceProvider.GetRequiredService<OrganizationService>().CreateAsync(new NewOrganization("Akim Asafo", "akim-asafo", "UTC", null, null,
+            var created = await scope.ServiceProvider.GetRequiredService<OrganizationService>().CreateAsync(new NewOrganization("Akim Asafo", "akim-asafo", "UTC", null, null, null,
                 "A", "Owner", $"o-{Guid.NewGuid():N}"[..10] + "@slug.test", null, null, null, BillingMode.Free, 0), "test", "https://localhost");
             Assert.True(created.Succeeded, created.Error);
         }

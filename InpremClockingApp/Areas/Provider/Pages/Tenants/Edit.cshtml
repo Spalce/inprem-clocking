@@ -26,7 +26,8 @@
     </select>
   </div>
   <div class="pc-field"><label for="Address">Address</label><input id="Address" name="Address" value="@Model.Address" maxlength="255" /></div>
-  <div class="pc-field"><label for="ContactInfo">Contact</label><input id="ContactInfo" name="ContactInfo" value="@Model.ContactInfo" maxlength="255" /></div>
+  <div class="pc-field"><label for="Phone">Phone</label><input id="Phone" name="Phone" type="tel" value="@Model.Phone" maxlength="255" /></div>
+  <div class="pc-field"><label for="Email">Email</label><input id="Email" name="Email" type="email" value="@Model.Email" maxlength="255" /></div>
   <div class="pc-actions">
     <button type="submit" class="pc-btn pc-btn-primary">Save</button>
     <a asp-page="Details" asp-route-id="@RouteData.Values["id"]" class="pc-btn">Cancel</a>

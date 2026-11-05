@@ -38,7 +38,7 @@ public class ReconciliationTests : IClassFixture<ProviderFixture>
         await sp.GetRequiredService<PlanPublisher>().PublishAsync(planId, "test");
         var price = (await plans.FindAsync(planId))!.Prices[0];
         var tenant = (await sp.GetRequiredService<OrganizationService>().CreateAsync(new NewOrganization($"Reconcile Org {Guid.NewGuid():N}"[..23], $"rc-{Guid.NewGuid():N}"[..14],
-            "UTC", null, null, "R", "Owner", $"r-{Guid.NewGuid():N}"[..10] + "@reconcile.test", null, planId, price.Id, BillingMode.PayPal, trialDays), "test", "https://localhost")).TenantId!.Value;
+            "UTC", null, null, null, "R", "Owner", $"r-{Guid.NewGuid():N}"[..10] + "@reconcile.test", null, planId, price.Id, BillingMode.PayPal, trialDays), "test", "https://localhost")).TenantId!.Value;
         var started = await sp.GetRequiredService<CheckoutService>().StartAsync(new StartCheckout(CheckoutPurpose.Convert, tenant, price.Id, "https://localhost/Billing/Return", "https://localhost/Billing", Guid.NewGuid().ToString(), "test"));
         return (tenant, started.Session!);
     });

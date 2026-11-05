@@ -17,6 +17,8 @@ public interface ICurrentTenantProfile
 {
     string Name { get; }
     string? Address { get; }
+    string? Phone { get; }
+    string? Email { get; }
     string? ContactInfo { get; }
 }
 
@@ -50,5 +52,7 @@ public class CurrentTenantProfile : ICurrentTenantProfile
 
     public string Name => Resolve()?.Name ?? "Unknown Organization";
     public string? Address => Resolve()?.Address;
-    public string? ContactInfo => Resolve()?.ContactInfo;
+    public string? Phone => Resolve()?.Phone;
+    public string? Email => Resolve()?.Email;
+    public string? ContactInfo => string.Join(" | ", new[] { Phone, Email }.Where(value => !string.IsNullOrWhiteSpace(value)));
 }

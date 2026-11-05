@@ -29,5 +29,8 @@ public class Tenant
     public string? Address { get; set; }
 
     [StringLength(255)]
-    public string? ContactInfo { get; set; }
+    public string? Phone { get; set; }
+
+    [StringLength(255)]
+    public string? Email { get; set; }
 }

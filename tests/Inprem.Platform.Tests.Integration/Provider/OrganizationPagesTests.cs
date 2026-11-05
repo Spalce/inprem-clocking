@@ -48,7 +48,7 @@ public class OrganizationPagesTests : IClassFixture<ProviderFixture>
     {
         // Each step posts the page's own form (hidden values of the other steps included) with this step's fields.
         var step1 = await PostAsync(client, "/Provider/Tenants/New", ("Name", name), ("Slug", slug), ("TimeZoneId", "America/Chicago"),
-            ("Address", "1 Test Street"), ("ContactInfo", "555-0100"), ("move", "next"));
+            ("Address", "1 Test Street"), ("Phone", "555-0100"), ("Email", "office@test.test"), ("move", "next"));
         Assert.Contains("wizard-step-2", await BodyAsync(step1));
         var step2 = await PostFromHtmlAsync(client, step1, ("OwnerFirstName", "Ama"), ("OwnerLastName", "Owusu"), ("OwnerEmail", ownerEmail), ("OwnerMobile", "555-0111"), ("move", "next"));
         Assert.Contains("wizard-step-3", await BodyAsync(step2));
@@ -219,7 +219,7 @@ public class OrganizationPagesTests : IClassFixture<ProviderFixture>
         // Edit: a taken address name is refused; a good edit saves.
         Assert.Contains("already used", await BodyAsync(await PostAsync(owner, $"/Provider/Tenants/Edit/{id}", ("Name", "Detail Org"), ("Slug", otherSlug), ("TimeZoneId", "America/Chicago"))));
         Assert.Equal($"/Provider/Tenants/Details/{id}", Location(await PostAsync(owner, $"/Provider/Tenants/Edit/{id}",
-            ("Name", "Detail Org Renamed"), ("Slug", Unique("renamed")), ("TimeZoneId", "America/Denver"), ("Address", "2 Main St"), ("ContactInfo", ""))));
+            ("Name", "Detail Org Renamed"), ("Slug", Unique("renamed")), ("TimeZoneId", "America/Denver"), ("Address", "2 Main St"), ("Phone", ""), ("Email", ""))));
 
         // Suspend needs a reason; then reactivate.
         Assert.Contains("Give a reason", await BodyAsync(await PostAsync(owner, $"/Provider/Tenants/Suspend/{id}", ("Reason", " "))));

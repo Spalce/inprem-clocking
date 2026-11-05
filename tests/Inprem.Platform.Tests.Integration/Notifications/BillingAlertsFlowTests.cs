@@ -67,7 +67,7 @@ public class BillingAlertsFlowTests : IClassFixture<ProviderFixture>
         var price = (await plans.FindAsync(planId))!.Prices[0];
         var owner = $"o-{Guid.NewGuid():N}"[..12] + "@alerts.test";
         var tenant = (await sp.GetRequiredService<OrganizationService>().CreateAsync(new NewOrganization($"Alert Org {Guid.NewGuid():N}"[..20], $"al-{Guid.NewGuid():N}"[..14],
-            "UTC", null, null, "Abena", "Owner", owner, null, planId, price.Id, BillingMode.PayPal, trialDays), "test", "https://localhost")).TenantId!.Value;
+            "UTC", null, null, null, "Abena", "Owner", owner, null, planId, price.Id, BillingMode.PayPal, trialDays), "test", "https://localhost")).TenantId!.Value;
         var started = await sp.GetRequiredService<CheckoutService>().StartAsync(new StartCheckout(CheckoutPurpose.Convert, tenant, price.Id, "https://localhost/Billing/Return", "https://localhost/Billing", Guid.NewGuid().ToString(), "test"));
         return (tenant, owner, started.Session!);
     });

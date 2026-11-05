@@ -98,7 +98,7 @@ public sealed class OrganizationStore : IOrganizationStore
         var subscriptionView = subscription == null ? null
             : new SubscriptionView(plan?.Name, price == null ? null : PlanService.Describe(price), subscription.Mode, subscription.Status, subscription.TrialEndsUtc, subscription.CreatedUtc);
 
-        return new OrganizationDetail(summary, tenant.TimeZoneId, tenant.Address, tenant.ContactInfo, profile?.StatusReason, profile?.StatusChangedUtc,
+        return new OrganizationDetail(summary, tenant.TimeZoneId, tenant.Address, tenant.Phone, tenant.Email, profile?.StatusReason, profile?.StatusChangedUtc,
             staff, volunteers, subscriptionView, admins, notes, audit);
     }
 
@@ -149,7 +149,7 @@ public sealed class OrganizationStore : IOrganizationStore
 
         var tenant = new Tenant
         {
-            Name = input.Name, TimeZoneId = input.TimeZoneId, Address = input.Address, ContactInfo = input.ContactInfo,
+            Name = input.Name, TimeZoneId = input.TimeZoneId, Address = input.Address, Phone = input.Phone, Email = input.Email,
             IsActive = true, CreatedAt = now,
         };
         _app.Tenants.Add(tenant);
@@ -228,7 +228,8 @@ public sealed class OrganizationStore : IOrganizationStore
         tenant.Name = edit.Name;
         tenant.TimeZoneId = edit.TimeZoneId;
         tenant.Address = edit.Address;
-        tenant.ContactInfo = edit.ContactInfo;
+        tenant.Phone = edit.Phone;
+        tenant.Email = edit.Email;
         await _app.SaveChangesAsync(ct);
 
         await using var platform = SharedPlatformContext(_app.Database.GetDbConnection());

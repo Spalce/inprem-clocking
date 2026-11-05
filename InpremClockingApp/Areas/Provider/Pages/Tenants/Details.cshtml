@@ -266,7 +266,8 @@
           <dt>Owner</dt><dd>@(s.OwnerEmails.Count == 0 ? "—" : string.Join(", ", s.OwnerEmails))</dd>
           <dt>Time zone</dt><dd>@org.TimeZoneId</dd>
           <dt>Address</dt><dd>@(org.Address ?? "—")</dd>
-          <dt>Contact</dt><dd>@(org.ContactInfo ?? "—")</dd>
+          <dt>Phone</dt><dd>@(org.Phone ?? "—")</dd>
+          <dt>Email</dt><dd>@(org.Email ?? "—")</dd>
           <dt>Staff</dt><dd>@org.Staff</dd>
           <dt>Volunteers</dt><dd>@org.Volunteers</dd>
           <dt>Plan</dt><dd>@(s.PlanName ?? "—")</dd>

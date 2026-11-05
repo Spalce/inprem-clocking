@@ -29,7 +29,7 @@ public class InvoiceStoreTests : IClassFixture<ProviderFixture>
         var planId = (await plans.CreateAsync($"iv-{Guid.NewGuid():N}"[..12], new("Invoice plan", null, null, null, 0, true), BillingCycle.Monthly, 30m, "USD", "test")).PlanId!.Value;
         var price = (await plans.FindAsync(planId))!.Prices[0];
         var tenant = (await sp.GetRequiredService<OrganizationService>().CreateAsync(new NewOrganization($"Invoice Org {Guid.NewGuid():N}"[..21], $"iv-{Guid.NewGuid():N}"[..14],
-            "UTC", null, null, "I", "Owner", $"i-{Guid.NewGuid():N}"[..10] + "@invoice.test", null, planId, price.Id, BillingMode.Invoiced, 0), "test", "https://localhost")).TenantId!.Value;
+            "UTC", null, null, null, "I", "Owner", $"i-{Guid.NewGuid():N}"[..10] + "@invoice.test", null, planId, price.Id, BillingMode.Invoiced, 0), "test", "https://localhost")).TenantId!.Value;
         await using var db = _app.CreatePlatformDbContext();
         return (tenant, (await db.Subscriptions.SingleAsync(s => s.TenantId == tenant)).Id);
     }

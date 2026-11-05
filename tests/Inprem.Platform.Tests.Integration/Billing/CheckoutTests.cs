@@ -46,7 +46,7 @@ public class CheckoutTests : IClassFixture<ProviderFixture>
 
             var owner = $"o-{Guid.NewGuid():N}"[..12] + "@checkout.test";
             var created = await sp.GetRequiredService<OrganizationService>().CreateAsync(new NewOrganization($"Checkout Org {Guid.NewGuid():N}"[..22], $"co-{Guid.NewGuid():N}"[..14],
-                "UTC", null, null, "Olu", "Owner", owner, null, planId, plan.Prices.Single(p => p.Cycle == BillingCycle.Monthly).Id, BillingMode.PayPal, 7), "test", "https://localhost");
+                "UTC", null, null, null, "Olu", "Owner", owner, null, planId, plan.Prices.Single(p => p.Cycle == BillingCycle.Monthly).Id, BillingMode.PayPal, 7), "test", "https://localhost");
             Assert.True(created.Succeeded, created.Error);
             return (created.TenantId!.Value, plan.Prices.Single(p => p.Cycle == BillingCycle.Monthly), plan.Prices.Single(p => p.Cycle == BillingCycle.Yearly), owner);
         });
@@ -225,7 +225,7 @@ public class CheckoutTests : IClassFixture<ProviderFixture>
 
         // Free organizations do not convert.
         var free = await UseAsync(async sp => (await sp.GetRequiredService<OrganizationService>().CreateAsync(new NewOrganization($"Free Org {Guid.NewGuid():N}"[..18], $"fr-{Guid.NewGuid():N}"[..14],
-            "UTC", null, null, "F", "Owner", $"f-{Guid.NewGuid():N}"[..10] + "@checkout.test", null, null, null, BillingMode.Free, 0), "test", "https://localhost")).TenantId!.Value);
+            "UTC", null, null, null, "F", "Owner", $"f-{Guid.NewGuid():N}"[..10] + "@checkout.test", null, null, null, BillingMode.Free, 0), "test", "https://localhost")).TenantId!.Value);
         Assert.Contains("Only an organization on a trial", (await StartAsync(free, monthly)).Error);
 
         // PayPal failing: the checkout is failed and says to try again; nothing changes.
